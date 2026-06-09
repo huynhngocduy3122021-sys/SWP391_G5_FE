@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập / Đăng Ký - Hệ thống Quản lý Bãi Đỗ Xe</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Hệ thống quản lý bãi đỗ xe thông minh giúp tối ưu hóa không gian, đặt chỗ và giám sát thời gian thực.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <!-- Glowing Background Orbs -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- AUTH SECTION (Login / Register / Forgot Password) -->
+  <div class="auth-wrapper" id="authWrapper" style="display: flex;">
+    <div class="auth-card" style="position: relative;">
+      <a href="index.html" class="btn-back-home" id="authBackToHomeBtn" title="Quay lại trang chủ" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">&times;</a>
+      <div class="auth-header">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">AutoPark</span>
+        </div>
+        <p class="auth-subtitle">Hệ thống giám sát & đỗ xe thông minh</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs" id="authTabs">
+        <button class="auth-tab active" id="tabLoginBtn">Đăng Nhập</button>
+        <button class="auth-tab" id="tabRegisterBtn">Đăng Ký</button>
+      </div>
+
+      <!-- Login Card -->
+      <div class="auth-card-body active" id="loginCard">
+        <form id="loginForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="loginEmail" class="form-label">Email</label>
+            <input type="email" id="loginEmail" class="form-input" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword" class="form-label">Mật khẩu</label>
+            <div class="password-wrapper">
+              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+              <button type="button" class="password-toggle" data-target="loginPassword">👁️</button>
+            </div>
+          </div>
+          <div class="form-options">
+            <label class="checkbox-container">
+              <input type="checkbox" id="rememberMe">
+              <span class="checkmark"></span>
+              Ghi nhớ đăng nhập
+            </label>
+            <a href="#" class="forgot-link" id="toForgotPassword">Quên mật khẩu?</a>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="loginSubmitBtn">
+            <span class="btn-text">Đăng Nhập</span>
+            <span class="spinner" style="display: none;"></span>
+          </button>
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" class="back-home-link" style="color: var(--text-muted); font-size: 0.95rem; text-decoration: none; transition: 0.2s;">← Quay lại trang chính</a>
+          </div>
+        </form>
+      </div>
+
+      <!-- Register Card -->
+      <div class="auth-card-body" id="registerCard">
+        <form id="registerForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="regName" class="form-label">Họ và tên</label>
+            <input type="text" id="regName" class="form-input" placeholder="Nguyễn Văn A" required>
+          </div>
+          <div class="form-group">
+            <label for="regEmail" class="form-label">Email</label>
+            <input type="email" id="regEmail" class="form-input" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="regPassword" class="form-label">Mật khẩu</label>
+            <div class="password-wrapper">
+              <input type="password" id="regPassword" class="form-input" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+              <button type="button" class="password-toggle" data-target="regPassword">👁️</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regPhone" class="form-label">Số điện thoại</label>
+            <input type="tel" id="regPhone" class="form-input" placeholder="03xxxxxxxx" required pattern="(03|05|07|08|09|012|016|018|019)[0-9]{8}">
+          </div>
+          <div class="form-group">
+            <label for="regAddress" class="form-label">Địa chỉ</label>
+            <input type="text" id="regAddress" class="form-input" placeholder="Hà Nội, Việt Nam" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="registerSubmitBtn">
+            <span class="btn-text">Đăng Ký</span>
+            <span class="spinner" style="display: none;"></span>
+          </button>
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" class="back-home-link" style="color: var(--text-muted); font-size: 0.95rem; text-decoration: none; transition: 0.2s;">← Quay lại trang chính</a>
+          </div>
+        </form>
+      </div>
+
+      <!-- Forgot Password Card -->
+      <div class="auth-card-body" id="forgotPasswordCard">
+        <h3 class="card-title">Đặt lại mật khẩu</h3>
+        <p class="card-desc">Nhập email hoặc số điện thoại tài khoản của bạn để tiến hành đặt mật khẩu mới.</p>
+        <form id="forgotForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="resetEmail" class="form-label">Email hoặc Số điện thoại</label>
+            <input type="text" id="resetEmail" class="form-input" placeholder="Nhập email hoặc SĐT" required>
+          </div>
+          <div class="form-group">
+            <label for="resetPassword" class="form-label">Mật khẩu mới</label>
+            <div class="password-wrapper">
+              <input type="password" id="resetPassword" class="form-input" placeholder="Mật khẩu mới" required minlength="6">
+              <button type="button" class="password-toggle" data-target="resetPassword">👁️</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="resetConfirmPassword" class="form-label">Xác nhận mật khẩu mới</label>
+            <div class="password-wrapper">
+              <input type="password" id="resetConfirmPassword" class="form-input" placeholder="Xác nhận mật khẩu" required>
+              <button type="button" class="password-toggle" data-target="resetConfirmPassword">👁️</button>
+            </div>
+          </div>
+          <div class="btn-group-row">
+            <button type="button" class="btn btn-secondary" id="backToLoginBtn">Quay lại</button>
+            <button type="submit" class="btn btn-primary" id="resetSubmitBtn">Xác nhận</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Alert Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Script Module -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

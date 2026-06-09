@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Hệ thống Quản lý Bãi Đỗ Xe</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Hệ thống quản lý bãi đỗ xe thông minh giúp tối ưu hóa không gian, đặt chỗ và giám sát thời gian thực.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <!-- Glowing Background Orbs -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- MAIN DASHBOARD -->
+  <div class="dashboard-wrapper" id="mainDashboard" style="display: flex;">
+    <!-- Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" style="text-decoration: none; color: inherit;">
+          <div class="logo">
+            <span class="logo-icon">⚡</span>
+            <span class="logo-text">AutoPark</span>
+          </div>
+        </a>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" id="navSlots"><span class="nav-icon">🚗</span> Giám sát Slot</a>
+        <a href="#" class="nav-item" id="navUsers"><span class="nav-icon">👤</span> Thành viên</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div class="user-details">
+            <span class="user-name" id="userEmailDisplay">admin@autopark.com</span>
+            <span class="user-role" id="userRoleDisplay">Thành viên</span>
+          </div>
+        </div>
+        <button class="btn btn-logout" id="logoutBtn">Đăng xuất</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top header bar -->
+      <header class="content-header">
+        <div class="welcome-section">
+          <h1 id="dashboardTitle">Hệ thống Giám sát Bãi Đỗ Xe</h1>
+          <p class="subtitle">Trạng thái bãi đỗ xe theo thời gian thực kết nối SQL Server.</p>
+        </div>
+        <div class="stats-overview">
+          <div class="stat-card">
+            <span class="stat-label">Tổng số Slot</span>
+            <span class="stat-val" id="totalSlotsCount">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Còn trống</span>
+            <span class="stat-val text-success" id="availableSlotsCount">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Đã đỗ</span>
+            <span class="stat-val text-danger" id="occupiedSlotsCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Sections -->
+      <div class="content-body">
+        
+        <!-- SECTION 1: PARKING SLOTS MANAGEMENT -->
+        <section class="dashboard-section" id="slotsSection">
+          <div class="section-actions">
+            <h2>Sơ đồ Bãi Đỗ Xe</h2>
+            <div class="action-buttons">
+              <button class="btn btn-secondary" id="refreshSlotsBtn">🔄 Tải lại</button>
+              <button class="btn btn-primary" id="openAddSlotModalBtn">➕ Thêm Slot mới</button>
+            </div>
+          </div>
+
+          <!-- Interactive Grid Visualization -->
+          <div class="parking-grid" id="parkingGrid">
+            <!-- Dynamically populated card-like grid of slots -->
+          </div>
+
+          <!-- Tabular view for slot details -->
+          <div class="card table-card">
+            <div class="card-header">
+              <h3>Bảng chi tiết thông tin Slots</h3>
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Mã Slot</th>
+                    <th>Loại Phương Tiện</th>
+                    <th>Trạng Thái</th>
+                    <th>Hành Động</th>
+                  </tr>
+                </thead>
+                <tbody id="slotTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: USERS LIST (ADMIN ONLY / MEMBERS VIEWER) -->
+        <section class="dashboard-section" id="usersSection" style="display: none;">
+          <div class="section-actions">
+            <h2>Danh sách Thành viên hệ thống</h2>
+            <button class="btn btn-secondary" id="refreshUsersBtn">🔄 Tải lại</button>
+          </div>
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Họ và Tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Địa chỉ</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="userTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL DIALOGS -->
+  
+  <!-- Add/Edit Slot Modal -->
+  <div class="modal" id="slotModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="slotModalTitle">Thêm Slot Mới</h3>
+        <button class="modal-close" id="closeSlotModalBtn">&times;</button>
+      </div>
+      <form id="slotForm" onsubmit="return false;">
+        <input type="hidden" id="slotFormId">
+        <div class="form-group">
+          <label for="slotCode" class="form-label">Mã vị trí (Slot Code)</label>
+          <input type="text" id="slotCode" class="form-input" placeholder="Ví dụ: A-01, B-05" required>
+        </div>
+        <div class="form-group">
+          <label for="vehicleType" class="form-label">Loại xe phù hợp</label>
+          <select id="vehicleType" class="form-input">
+            <option value="Xe máy">🏍️ Xe máy</option>
+            <option value="Ô tô">🚗 Ô tô</option>
+            <option value="Xe đạp điện">🚲 Xe đạp điện</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="slotAvailable" class="form-label">Trạng thái ban đầu</label>
+          <select id="slotAvailable" class="form-input">
+            <option value="true">Còn trống (Có sẵn)</option>
+            <option value="false">Đã có xe đỗ</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelSlotModalBtn">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="saveSlotBtn">Lưu lại</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- User Details / Edit Modal -->
+  <div class="modal" id="userModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cập nhật Thông tin Thành viên</h3>
+        <button class="modal-close" id="closeUserModalBtn">&times;</button>
+      </div>
+      <form id="userForm" onsubmit="return false;">
+        <input type="hidden" id="userFormId">
+        <div class="form-group">
+          <label for="userFullName" class="form-label">Họ và tên</label>
+          <input type="text" id="userFullName" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="userEmail" class="form-label">Email</label>
+          <input type="email" id="userEmail" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="userPhone" class="form-label">Số điện thoại</label>
+          <input type="tel" id="userPhone" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="userAddress" class="form-label">Địa chỉ</label>
+          <input type="text" id="userAddress" class="form-input" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelUserModalBtn">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="saveUserBtn">Lưu lại</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Alert Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Script Module -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

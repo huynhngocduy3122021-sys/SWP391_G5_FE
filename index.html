@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ thống Quản lý Bãi Đỗ Xe Thông Minh</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Hệ thống quản lý bãi đỗ xe thông minh giúp tối ưu hóa không gian, đặt chỗ và giám sát thời gian thực.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Glowing Background Orbs -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- LANDING PAGE SECTION -->
+  <div class="landing-theme" id="landingWrapper">
+    <!-- Header -->
+    <header class="landing-header">
+      <div class="logo" id="logoToHome">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Vinparking</span>
+      </div>
+      <nav class="landing-nav">
+        <a href="#" class="landing-nav-link active">Trang chủ</a>
+        <a href="#locations" class="landing-nav-link">Vị trí</a>
+        <a href="#pricing" class="landing-nav-link">Bảng giá</a>
+        <a href="#contact" class="landing-nav-link">Liên hệ</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <div class="landing-search-container">
+          <span class="landing-search-icon">🔍</span>
+          <input type="text" class="landing-search-input" placeholder="Tìm bãi đỗ...">
+        </div>
+        <a href="auth.html" class="btn btn-primary">Đăng nhập</a>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="landing-hero">
+      <div class="hero-content">
+        <span class="hero-badge">Smart City Solutions</span>
+        <h1 class="hero-title">Giải pháp đỗ xe thông minh<br>cho đô thị hiện đại</h1>
+        <p class="hero-desc">Tối ưu hóa không gian, giảm thiểu thời gian tìm kiếm và nâng cao tiện ích của bãi đỗ xe với
+          hệ thống quản lý Vinparking dựa trên AI và kết nối thời gian thực.</p>
+        <div style="display: flex; gap: 16px;">
+          <a href="#locations" class="btn btn-primary">Tìm bãi đỗ ngay</a>
+          <a href="#app-download" class="btn btn-secondary">Tải ứng dụng</a>
+        </div>
+      </div>
+      <div class="hero-image-container">
+        <img src="./images/hero_parking.png" alt="Modern Smart Parking Lot" class="hero-image">
+      </div>
+    </section>
+
+    <!-- Real-time Parking Status Section -->
+    <section class="landing-status" id="locations">
+      <div>
+        <div class="status-title-container">
+          <h2>Trạng thái bãi đỗ thực tế</h2>
+          <p class="status-update-time" id="statusUpdateTime">Cập nhật lúc: 14:02, 18/02/2026</p>
+        </div>
+
+        <div class="status-table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Tên bãi xe</th>
+                <th>Khu vực</th>
+                <th>Chỗ trống</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-bold">Vinparking Tower A</td>
+                <td>Quận 1, TP.HCM</td>
+                <td><span class="text-bold text-success" style="color: var(--primary);">42</span> / 100</td>
+                <td><span class="badge badge-success"
+                    style="background: rgba(16, 185, 129, 0.15); color: var(--success);">Bình thường</span></td>
+                <td><button class="btn-book" onclick="alert('Vui lòng đăng nhập để thực hiện đặt chỗ trước!')">Đặt
+                    trước</button></td>
+              </tr>
+              <tr>
+                <td class="text-bold">Vinparking Center B</td>
+                <td>Hoàn Kiếm, HN</td>
+                <td><span class="text-bold text-danger" style="color: var(--danger);">05</span> / 200</td>
+                <td><span class="badge badge-danger"
+                    style="background: rgba(239, 68, 68, 0.15); color: var(--danger);">Đầy chỗ</span></td>
+                <td><button class="btn-book" onclick="alert('Vui lòng đăng nhập để thực hiện đặt chỗ trước!')">Đặt
+                    trước</button></td>
+              </tr>
+              <tr>
+                <td class="text-bold">Park & Ride Station</td>
+                <td>Thủ Đức, TP.HCM</td>
+                <td><span class="text-bold" style="color: #0284c7;">129</span> / 300</td>
+                <td><span class="badge badge-info" style="background: rgba(2, 132, 199, 0.15); color: #0284c7;">Thuận
+                    lợi</span></td>
+                <td><button class="btn-book" onclick="alert('Vui lòng đăng nhập để thực hiện đặt chỗ trước!')">Đặt
+                    trước</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sidebar cards -->
+      <div class="status-sidebar">
+        <!-- AI Card -->
+        <div class="sidebar-card ai-card">
+          <div class="ai-card-header">
+            <span>🧠</span>
+            <span>Dự báo AI</span>
+          </div>
+          <p class="ai-card-desc">Khu vực Quận 1 sẽ tăng nhu cầu đỗ xe 25% trong 1 giờ tới do có sự kiện tại nhà hát.
+          </p>
+          <div class="ai-progress-container">
+            <div class="ai-progress-label">
+              <span>Tỉ lệ lấp đầy dự kiến</span>
+              <span>84%</span>
+            </div>
+            <div class="ai-progress-bar-bg">
+              <div class="ai-progress-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's performance Card -->
+        <div class="sidebar-card" id="pricing">
+          <p class="perf-card-header">Hiệu suất đỗ hôm nay</p>
+          <div class="perf-card-body">
+            <span class="perf-value">2,485</span>
+            <span class="perf-chart-icon">📈</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Section -->
+    <section class="landing-featured">
+      <div class="featured-header">
+        <h2>Những bãi đỗ nổi bật được đề xuất cho quý khách</h2>
+        <a href="#" class="featured-link">Xem thêm →</a>
+      </div>
+
+      <div class="featured-grid">
+        <!-- Card 1 -->
+        <div class="featured-card">
+          <div class="featured-image-container">
+            <img src="./images/parking_landmark.png" alt="Landmark 81 Premium" class="featured-img">
+            <span class="featured-rating">⭐ 4.8</span>
+          </div>
+          <div class="featured-info">
+            <h3 class="featured-name">Landmark 81 Premium</h3>
+            <span class="featured-location">📍 Bình Thạnh, TP.HCM</span>
+            <span class="featured-price">VND 30.000đ/Block</span>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="featured-card">
+          <div class="featured-image-container">
+            <img src="./images/parking_vincom.png" alt="Vincom Center Đồng Khởi" class="featured-img">
+            <span class="featured-rating">⭐ 4.9</span>
+          </div>
+          <div class="featured-info">
+            <h3 class="featured-name">Vincom Center Đồng Khởi</h3>
+            <span class="featured-location">📍 Quận 1, TP.HCM</span>
+            <span class="featured-price">VND 30.000đ/Block</span>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="featured-card">
+          <div class="featured-image-container">
+            <img src="./images/parking_grandpark.png" alt="Grand Park Smart Garage" class="featured-img">
+            <span class="featured-rating">⭐ 4.5</span>
+          </div>
+          <div class="featured-info">
+            <h3 class="featured-name">Grand Park Smart Garage</h3>
+            <span class="featured-location">📍 Quận 9, TP.HCM</span>
+            <span class="featured-price">VND 20.000đ/Block</span>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="featured-card">
+          <div class="featured-image-container">
+            <img src="./images/parking_metropolis.png" alt="Metropolis Underground" class="featured-img">
+            <span class="featured-rating">⭐ 5.0</span>
+          </div>
+          <div class="featured-info">
+            <h3 class="featured-name">Metropolis Underground</h3>
+            <span class="featured-location">📍 Ba Đình, Hà Nội</span>
+            <span class="featured-price">VND 30.000đ/Block</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mobile App CTA Section -->
+    <section class="landing-app" id="app-download">
+      <div class="app-content">
+        <h2 class="app-title">Ứng dụng Vinparking trong tầm tay</h2>
+        <p class="app-desc">Tìm kiếm, đặt chỗ và thanh toán không tiền mặt chỉ với vài lần chạm. Tải ngay để nhận
+          voucher đỗ xe miễn phí cho lần đầu tiên.</p>
+
+        <div class="app-download-grid">
+          <div class="qr-container">
+            <div class="qr-code-placeholder">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://vinparking.example.com"
+                alt="QR Code">
+            </div>
+            <div class="qr-text">
+              Quét mã<br><span style="font-weight: 800;">Tải ứng dụng</span>
+            </div>
+          </div>
+          <div class="store-buttons">
+            <a href="#" class="store-btn">
+              <span class="store-icon">🍎</span>
+              <span>App Store</span>
+            </a>
+            <a href="#" class="store-btn">
+              <span class="store-icon">🤖</span>
+              <span>Google Play</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="app-mockup-container">
+        <img src="./images/app_mockup.png" alt="App Mockup" class="app-mockup-img">
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer" id="contact">
+      <div class="footer-logo-container">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">Vinparking</span>
+        </div>
+        <p class="footer-copyright">© 2026 Vinparking Smart Systems. Smart Harbor Engineering.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#" class="footer-link">Privacy Policy</a>
+        <a href="#" class="footer-link">Support</a>
+      </div>
+    </footer>
+  </div>
+
+
+
+  <!-- Custom Alert Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Script Module -->
+  <script type="module" src="app.js"></script>
+</body>
+
+</html>
