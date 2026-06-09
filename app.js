@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import authApi from './api/authApi.js';
 import parkingApi from './api/parkingApi.js';
+=======
+import authApi from './Src/api/authApi.js';
+import parkingApi from './Src/api/parkingApi.js';
+>>>>>>> origin/main
 
 // Global State
 let allSlots = [];
@@ -202,6 +207,7 @@ function logout() {
 // AUTHORIZATION & DOM NAVIGATION
 // =========================================================================
 
+<<<<<<< HEAD
 const landingWrapper = document.getElementById('landingWrapper');
 const authWrapper = document.getElementById('authWrapper');
 const mainDashboard = document.getElementById('mainDashboard');
@@ -232,6 +238,11 @@ backHomeLinks.forEach(link => {
   });
 });
 
+=======
+const authWrapper = document.getElementById('authWrapper');
+const mainDashboard = document.getElementById('mainDashboard');
+
+>>>>>>> origin/main
 const navSlots = document.getElementById('navSlots');
 const navUsers = document.getElementById('navUsers');
 const slotsSection = document.getElementById('slotsSection');
@@ -262,7 +273,10 @@ function checkAuthStatus() {
   const fullName = localStorage.getItem('fullName') || '';
 
   if (token) {
+<<<<<<< HEAD
     if (landingWrapper) landingWrapper.style.display = 'none';
+=======
+>>>>>>> origin/main
     authWrapper.style.display = 'none';
     mainDashboard.style.display = 'flex';
     document.getElementById('userEmailDisplay').innerText = email;
@@ -282,8 +296,12 @@ function checkAuthStatus() {
     navSlots.click();
     loadSlots();
   } else {
+<<<<<<< HEAD
     if (landingWrapper) landingWrapper.style.display = 'block';
     authWrapper.style.display = 'none';
+=======
+    authWrapper.style.display = 'flex';
+>>>>>>> origin/main
     mainDashboard.style.display = 'none';
   }
 }
