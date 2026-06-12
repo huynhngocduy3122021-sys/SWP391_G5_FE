@@ -1,10 +1,13 @@
+import { useNavigate } from 'react-router-dom';
+
 const SLOTS = [
   { name: 'Vinparking Tower A',   area: 'Quận 1, TP.HCM',    free: 42,  total: 100, status: 'Bình thường', badgeCls: 'vin-badge--success' },
   { name: 'Vinparking Center B',  area: 'Hoàn Kiếm, HN',     free: 5,   total: 200, status: 'Đầy chỗ',    badgeCls: 'vin-badge--danger' },
   { name: 'Park & Ride Station',  area: 'Thủ Đức, TP.HCM',   free: 129, total: 300, status: 'Thuận lợi',  badgeCls: 'vin-badge--info' },
 ];
-
 export default function StatusSection() {
+  const navigate = useNavigate();
+
   return (
     <section id="locations" className="status-section">
       <div className="status-layout">
@@ -34,7 +37,8 @@ export default function StatusSection() {
                       <td><span className={`vin-badge ${s.badgeCls}`}>{s.status}</span></td>
                       <td>
                         <button className="vin-btn vin-btn--primary vin-btn--sm"
-                          onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')}>
+                          /* onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')} */
+                          onClick={() => navigate('/auth')}>
                           Đặt trước
                         </button>
                       </td>

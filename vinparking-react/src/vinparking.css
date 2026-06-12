@@ -583,14 +583,16 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
+
 }
 .section-header h2 { margin: 0; font-weight: 700; color: #fff; }
 .section-header a  { color: #60a5fa; text-decoration: none; font-size: 0.9rem; }
 
 .place-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.25rem;
+  
 }
 
 .place-card {
@@ -599,6 +601,7 @@ body {
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.2s;
+  
 }
 .place-card:hover { transform: translateY(-4px); }
 
@@ -613,7 +616,7 @@ body {
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
 }
-.place-card__body { padding: 0.75rem; }
+.place-card__body { padding: 0.75rem;}
 .place-card__name  { font-weight: 700; color: #fff; font-size: 0.9rem; margin: 0 0 0.25rem; }
 .place-card__loc   { font-size: 0.8rem; color: rgba(255,255,255,0.5); display: block; margin-bottom: 0.5rem; }
 .place-card__price { font-size: 0.85rem; font-weight: 600; color: #60a5fa; }
