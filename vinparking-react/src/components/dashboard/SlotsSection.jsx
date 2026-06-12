@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Modal, Button, Form } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import parkingApi from '../../api/parkingApi';
 
@@ -11,8 +10,7 @@ export default function SlotsSection() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const role = localStorage.getItem('role');
-  const isAdmin = role === 'ADMIN';
+  const isAdmin = localStorage.getItem('role') === 'ADMIN';
 
   const load = async () => {
     setLoading(true);
@@ -23,10 +21,10 @@ export default function SlotsSection() {
 
   useEffect(() => { load(); }, []);
 
-  const total = slots.length;
+  const total     = slots.length;
   const available = slots.filter(s => s.available).length;
 
-  const openAdd = () => { setEditId(null); setForm(emptyForm); setShowModal(true); };
+  const openAdd  = () => { setEditId(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (slot) => {
     setEditId(slot.id);
     setForm({ slotCode: slot.slotCode, vehicleType: slot.vehicleType, available: String(slot.available) });
@@ -55,53 +53,52 @@ export default function SlotsSection() {
     return '🚗';
   };
 
+  const stats = [
+    { label: 'Tổng số slot', value: total,           icon: '🅿️', color: '#6366f1' },
+    { label: 'Còn trống',   value: available,         icon: '🟢', color: '#10b981' },
+    { label: 'Đã đỗ',       value: total - available, icon: '🔴', color: '#ef4444' },
+  ];
+
   return (
-    <div className="p-4">
+    <div style={{ padding: '1.5rem' }}>
       {/* Stats */}
-      <div className="row g-3 mb-4">
-        {[
-          { label: 'Tổng số slot', value: total, icon: '🅿️', color: '#6366f1' },
-          { label: 'Còn trống', value: available, icon: '🟢', color: '#10b981' },
-          { label: 'Đã đỗ', value: total - available, icon: '🔴', color: '#ef4444' },
-        ].map((s, i) => (
-          <div key={i} className="col-md-4">
-            <div className="rounded-4 p-4 d-flex align-items-center gap-3"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: '2rem' }}>{s.icon}</span>
-              <div>
-                <div style={{ color: s.color, fontSize: '1.8rem', fontWeight: 700 }}>{s.value}</div>
-                <div className="text-white-50 small">{s.label}</div>
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {stats.map((s, i) => (
+          <div key={i} className="vin-card stat-card">
+            <span className="stat-card__icon">{s.icon}</span>
+            <div>
+              <div className="stat-card__value" style={{ color: s.color }}>{s.value}</div>
+              <div className="stat-card__label">{s.label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Grid visual */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5 className="text-white fw-bold mb-0">Sơ đồ bãi đỗ</h5>
-        <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary btn-sm" onClick={load}>🔄 Làm mới</button>
-          {isAdmin && <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Thêm Slot</button>}
+      {/* Grid header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <h5 style={{ color: '#fff', fontWeight: 700, margin: 0 }}>Sơ đồ bãi đỗ</h5>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="vin-btn vin-btn--secondary vin-btn--sm" onClick={load}>🔄 Làm mới</button>
+          {isAdmin && <button className="vin-btn vin-btn--primary vin-btn--sm" onClick={openAdd}>+ Thêm Slot</button>}
         </div>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 mb-4">
+      {/* Slot grid */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
         {loading
-          ? <div className="text-white-50">Đang tải...</div>
+          ? <span style={{ color: 'rgba(255,255,255,0.5)' }}>Đang tải...</span>
           : slots.map(slot => (
-            <div key={slot.id} className="rounded-3 p-2 text-center position-relative"
-              style={{ width: 90, background: slot.available ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', border: `1px solid ${slot.available ? '#10b981' : '#ef4444'}`, cursor: 'default' }}>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>ID: {slot.id}</div>
-              <div style={{ fontSize: '1.4rem' }}>{slot.available ? '🟢' : vehicleIcon(slot.vehicleType)}</div>
-              <div className="fw-bold text-white" style={{ fontSize: '0.75rem' }}>{slot.slotCode}</div>
-              <div style={{ fontSize: '0.65rem', color: slot.available ? '#10b981' : '#ef4444' }}>
+            <div key={slot.id} className={`slot-cell ${slot.available ? 'slot-cell--free' : 'slot-cell--taken'}`}>
+              <div className="slot-cell__id">ID: {slot.id}</div>
+              <div className="slot-cell__icon">{slot.available ? '🟢' : vehicleIcon(slot.vehicleType)}</div>
+              <div className="slot-cell__code">{slot.slotCode}</div>
+              <div className={`slot-cell__status ${slot.available ? 'slot-cell__status--free' : 'slot-cell__status--taken'}`}>
                 {slot.available ? 'Trống' : 'Đã đỗ'}
               </div>
               {isAdmin && (
-                <div className="d-flex gap-1 mt-1 justify-content-center">
-                  <button className="btn btn-sm p-0 px-1 text-white-50" style={{ fontSize: '0.7rem' }} onClick={() => openEdit(slot)}>✏️</button>
-                  <button className="btn btn-sm p-0 px-1 text-danger" style={{ fontSize: '0.7rem' }} onClick={() => handleDelete(slot.id)}>🗑</button>
+                <div className="slot-cell__actions">
+                  <button onClick={() => openEdit(slot)}>✏️</button>
+                  <button onClick={() => handleDelete(slot.id)}>🗑</button>
                 </div>
               )}
             </div>
@@ -109,11 +106,11 @@ export default function SlotsSection() {
       </div>
 
       {/* Table */}
-      <h5 className="text-white fw-bold mb-3">Danh sách chi tiết</h5>
-      <div className="rounded-4 overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-        <table className="table table-dark table-hover mb-0">
+      <h5 style={{ color: '#fff', fontWeight: 700, marginBottom: '0.75rem' }}>Danh sách chi tiết</h5>
+      <div className="vin-table-wrap">
+        <table className="vin-table">
           <thead>
-            <tr className="text-white-50" style={{ fontSize: '0.85rem' }}>
+            <tr>
               <th>ID</th><th>Mã slot</th><th>Loại xe</th><th>Trạng thái</th>
               {isAdmin && <th>Thao tác</th>}
             </tr>
@@ -121,16 +118,18 @@ export default function SlotsSection() {
           <tbody>
             {slots.map(slot => (
               <tr key={slot.id}>
-                <td className="text-white-50">{slot.id}</td>
-                <td className="fw-bold text-white">{slot.slotCode}</td>
-                <td className="text-white-50">{slot.vehicleType}</td>
-                <td><span className={`badge ${slot.available ? 'bg-success' : 'bg-danger'} bg-opacity-25 ${slot.available ? 'text-success' : 'text-danger'}`}>
-                  {slot.available ? 'Còn trống' : 'Đã đỗ'}
-                </span></td>
+                <td style={{ color: 'rgba(255,255,255,0.5)' }}>{slot.id}</td>
+                <td style={{ fontWeight: 700, color: '#fff' }}>{slot.slotCode}</td>
+                <td style={{ color: 'rgba(255,255,255,0.5)' }}>{slot.vehicleType}</td>
+                <td>
+                  <span className={`vin-badge ${slot.available ? 'vin-badge--success' : 'vin-badge--danger'}`}>
+                    {slot.available ? 'Còn trống' : 'Đã đỗ'}
+                  </span>
+                </td>
                 {isAdmin && (
-                  <td>
-                    <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => openEdit(slot)}>📝</button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(slot.id)}>🗑️</button>
+                  <td style={{ display: 'flex', gap: '0.35rem' }}>
+                    <button className="vin-btn vin-btn--secondary vin-btn--sm" onClick={() => openEdit(slot)}>📝</button>
+                    <button className="vin-btn vin-btn--danger    vin-btn--sm" onClick={() => handleDelete(slot.id)}>🗑️</button>
                   </td>
                 )}
               </tr>
@@ -140,41 +139,41 @@ export default function SlotsSection() {
       </div>
 
       {/* Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton style={{ background: '#1e293b', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <Modal.Title className="text-white">{editId ? 'Cập nhật Slot' : 'Thêm Slot Mới'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: '#1e293b' }}>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label className="text-white-50 small">Mã Slot</Form.Label>
-              <Form.Control className="bg-transparent text-white border-secondary"
-                value={form.slotCode} onChange={e => setForm({ ...form, slotCode: e.target.value })} />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="text-white-50 small">Loại xe</Form.Label>
-              <Form.Select className="bg-transparent text-white border-secondary"
-                value={form.vehicleType} onChange={e => setForm({ ...form, vehicleType: e.target.value })}>
-                <option value="Ô tô">Ô tô</option>
-                <option value="Xe máy">Xe máy</option>
-                <option value="Xe đạp">Xe đạp</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group>
-              <Form.Label className="text-white-50 small">Trạng thái</Form.Label>
-              <Form.Select className="bg-transparent text-white border-secondary"
-                value={form.available} onChange={e => setForm({ ...form, available: e.target.value })}>
-                <option value="true">Còn trống</option>
-                <option value="false">Đã đỗ</option>
-              </Form.Select>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer style={{ background: '#1e293b', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Hủy</Button>
-          <Button variant="primary" onClick={handleSubmit}>Lưu</Button>
-        </Modal.Footer>
-      </Modal>
+      {showModal && (
+        <div className="vin-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="vin-modal" onClick={e => e.stopPropagation()}>
+            <div className="vin-modal__header">
+              <h5>{editId ? 'Cập nhật Slot' : 'Thêm Slot Mới'}</h5>
+              <button className="vin-modal__close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <div className="vin-modal__body">
+              <div className="vin-field">
+                <label>Mã Slot</label>
+                <input value={form.slotCode} onChange={e => setForm({ ...form, slotCode: e.target.value })} />
+              </div>
+              <div className="vin-field">
+                <label>Loại xe</label>
+                <select value={form.vehicleType} onChange={e => setForm({ ...form, vehicleType: e.target.value })}>
+                  <option value="Ô tô">Ô tô</option>
+                  <option value="Xe máy">Xe máy</option>
+                  <option value="Xe đạp">Xe đạp</option>
+                </select>
+              </div>
+              <div className="vin-field">
+                <label>Trạng thái</label>
+                <select value={form.available} onChange={e => setForm({ ...form, available: e.target.value })}>
+                  <option value="true">Còn trống</option>
+                  <option value="false">Đã đỗ</option>
+                </select>
+              </div>
+            </div>
+            <div className="vin-modal__footer">
+              <button className="vin-btn vin-btn--secondary" onClick={() => setShowModal(false)}>Hủy</button>
+              <button className="vin-btn vin-btn--primary"   onClick={handleSubmit}>Lưu</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

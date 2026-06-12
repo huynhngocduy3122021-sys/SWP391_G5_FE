@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-toastify/dist/ReactToastify.css';
 
 import Navbar from './components/layout/Navbar';
@@ -15,7 +14,6 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/auth" replace />;
 }
 
-// Layout dùng chung Navbar + Footer (trang chủ, liên hệ, ...)
 function PublicLayout({ children }) {
   return (
     <>
@@ -30,14 +28,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Các trang dùng Navbar + Footer chung */}
         <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
-
-        {/* Trang auth: không cần Navbar/Footer */}
         <Route path="/auth" element={<AuthPage />} />
 
-        {/* Dashboard: có layout riêng (sidebar), không dùng Navbar/Footer */}
         <Route path="/dashboard" element={
           <PrivateRoute>
             <DashboardPage />

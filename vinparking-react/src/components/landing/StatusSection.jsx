@@ -1,69 +1,66 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
-const slots = [
-  { name: 'Vinparking Tower A', area: 'Quận 1, TP.HCM', free: 42, total: 100, status: 'Bình thường', variant: 'success' },
-  { name: 'Vinparking Center B', area: 'Hoàn Kiếm, HN', free: 5, total: 200, status: 'Đầy chỗ', variant: 'danger' },
-  { name: 'Park & Ride Station', area: 'Thủ Đức, TP.HCM', free: 129, total: 300, status: 'Thuận lợi', variant: 'info' },
+const SLOTS = [
+  { name: 'Vinparking Tower A',   area: 'Quận 1, TP.HCM',    free: 42,  total: 100, status: 'Bình thường', badgeCls: 'vin-badge--success' },
+  { name: 'Vinparking Center B',  area: 'Hoàn Kiếm, HN',     free: 5,   total: 200, status: 'Đầy chỗ',    badgeCls: 'vin-badge--danger' },
+  { name: 'Park & Ride Station',  area: 'Thủ Đức, TP.HCM',   free: 129, total: 300, status: 'Thuận lợi',  badgeCls: 'vin-badge--info' },
 ];
 
 export default function StatusSection() {
   return (
-    <section id="locations" className="px-5 py-5">
-      <div className="d-flex gap-4 align-items-start">
+    <section id="locations" className="status-section">
+      <div className="status-layout">
         {/* Table */}
-        <div className="flex-grow-1">
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <h2 className="text-white fw-bold mb-0">Trạng thái bãi đỗ thực tế</h2>
-            <small className="text-white-50">Cập nhật lúc: 14:02, 18/02/2026</small>
+        <div className="status-table-wrap">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <h2 style={{ color: '#fff', fontWeight: 700, margin: 0 }}>Trạng thái bãi đỗ thực tế</h2>
+            <small style={{ color: 'rgba(255,255,255,0.5)' }}>Cập nhật lúc: 14:02, 18/02/2026</small>
           </div>
-          <div className="rounded-4 p-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <table className="table table-dark table-hover mb-0">
-              <thead>
-                <tr className="text-white-50" style={{ fontSize: '0.85rem' }}>
-                  <th>Tên bãi xe</th><th>Khu vực</th><th>Chỗ trống</th><th>Trạng thái</th><th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slots.map((s, i) => (
-                  <tr key={i}>
-                    <td className="fw-bold text-white">{s.name}</td>
-                    <td className="text-white-50">{s.area}</td>
-                    <td><span className={`text-${s.variant} fw-bold`}>{s.free}</span> <span className="text-white-50">/ {s.total}</span></td>
-                    <td><span className={`badge bg-${s.variant} bg-opacity-25 text-${s.variant}`}>{s.status}</span></td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary"
-                        onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')}>
-                        Đặt trước
-                      </button>
-                    </td>
+          <div className="vin-card" style={{ padding: '0.75rem' }}>
+            <div className="vin-table-wrap" style={{ border: 'none' }}>
+              <table className="vin-table">
+                <thead>
+                  <tr>
+                    <th>Tên bãi xe</th><th>Khu vực</th><th>Chỗ trống</th><th>Trạng thái</th><th>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {SLOTS.map((s, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 700, color: '#fff' }}>{s.name}</td>
+                      <td style={{ color: 'rgba(255,255,255,0.5)' }}>{s.area}</td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: s.badgeCls.includes('success') ? '#10b981' : s.badgeCls.includes('danger') ? '#ef4444' : '#38bdf8' }}>{s.free}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.5)' }}> / {s.total}</span>
+                      </td>
+                      <td><span className={`vin-badge ${s.badgeCls}`}>{s.status}</span></td>
+                      <td>
+                        <button className="vin-btn vin-btn--primary vin-btn--sm"
+                          onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')}>
+                          Đặt trước
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="d-flex flex-column gap-3" style={{ minWidth: 240 }}>
-          {/* AI Card */}
-          <div className="rounded-4 p-4" style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.2))', border: '1px solid rgba(99,102,241,0.3)' }}>
-            <div className="d-flex align-items-center gap-2 mb-2 fw-semibold text-white">
-              <span>🧠</span> Dự báo AI
-            </div>
-            <p className="text-white-50 small mb-3">Khu vực Quận 1 sẽ tăng nhu cầu đỗ xe 25% trong 1 giờ tới.</p>
-            <div className="d-flex justify-content-between small text-white-50 mb-1">
-              <span>Tỉ lệ lấp đầy dự kiến</span><span>84%</span>
-            </div>
-            <div className="progress" style={{ height: 6, background: 'rgba(255,255,255,0.1)' }}>
-              <div className="progress-bar bg-primary" style={{ width: '84%' }} />
+        {/* Sidebar cards */}
+        <div className="status-sidebar">
+          <div className="ai-card">
+            <div className="ai-card__title">🧠 Dự báo AI</div>
+            <p className="ai-card__desc">Khu vực Quận 1 sẽ tăng nhu cầu đỗ xe 25% trong 1 giờ tới.</p>
+            <div className="ai-card__row"><span>Tỉ lệ lấp đầy dự kiến</span><span>84%</span></div>
+            <div className="progress-bar-wrap">
+              <div className="progress-bar-fill" style={{ width: '84%' }} />
             </div>
           </div>
-          {/* Performance Card */}
-          <div className="rounded-4 p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <p className="text-white-50 small mb-2">Hiệu suất đỗ hôm nay</p>
-            <div className="d-flex align-items-center justify-content-between">
-              <span className="fs-2 fw-bold text-white">2,485</span>
-              <span className="fs-3">📈</span>
+          <div className="perf-card">
+            <p>Hiệu suất đỗ hôm nay</p>
+            <div className="perf-card__row">
+              <span className="perf-card__num">2,485</span>
+              <span style={{ fontSize: '1.75rem' }}>📈</span>
             </div>
           </div>
         </div>

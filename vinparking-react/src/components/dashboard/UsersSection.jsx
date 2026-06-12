@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Modal, Button, Form } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import authApi from '../../api/authApi';
 
@@ -36,37 +35,49 @@ export default function UsersSection() {
     catch { toast.error('Lỗi thao tác!'); }
   };
 
+  const fields = [
+    { label: 'Họ tên',     field: 'userFullName' },
+    { label: 'Email',      field: 'userEmail' },
+    { label: 'Điện thoại', field: 'userPhone' },
+    { label: 'Địa chỉ',   field: 'userAddress' },
+  ];
+
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h5 className="text-white fw-bold mb-0">Quản lý thành viên</h5>
-        <button className="btn btn-outline-secondary btn-sm" onClick={load}>🔄 Làm mới</button>
+    <div style={{ padding: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <h5 style={{ color: '#fff', fontWeight: 700, margin: 0 }}>Quản lý thành viên</h5>
+        <button className="vin-btn vin-btn--secondary vin-btn--sm" onClick={load}>🔄 Làm mới</button>
       </div>
 
-      <div className="rounded-4 overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-        <table className="table table-dark table-hover mb-0">
+      <div className="vin-table-wrap">
+        <table className="vin-table">
           <thead>
-            <tr className="text-white-50" style={{ fontSize: '0.85rem' }}>
+            <tr>
               <th>ID</th><th>Họ tên</th><th>Email</th><th>Điện thoại</th>
               <th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.userId} className={user.deleted ? 'opacity-50' : ''}>
-                <td className="text-white-50">{user.userId}</td>
-                <td className="fw-bold text-white">{user.userFullName}</td>
-                <td className="text-white-50">{user.userEmail}</td>
-                <td className="text-white-50">{user.userPhone}</td>
-                <td><span className={`badge ${user.userRole === 'ADMIN' ? 'bg-info' : 'bg-secondary'} bg-opacity-25 ${user.userRole === 'ADMIN' ? 'text-info' : 'text-secondary'}`}>
-                  {user.userRole}
-                </span></td>
-                <td><span className={`badge ${user.deleted ? 'bg-danger' : 'bg-success'} bg-opacity-25 ${user.deleted ? 'text-danger' : 'text-success'}`}>
-                  {user.deleted ? 'Đã khóa' : 'Hoạt động'}
-                </span></td>
+              <tr key={user.userId} style={{ opacity: user.deleted ? 0.5 : 1 }}>
+                <td style={{ color: 'rgba(255,255,255,0.5)' }}>{user.userId}</td>
+                <td style={{ fontWeight: 700, color: '#fff' }}>{user.userFullName}</td>
+                <td style={{ color: 'rgba(255,255,255,0.5)' }}>{user.userEmail}</td>
+                <td style={{ color: 'rgba(255,255,255,0.5)' }}>{user.userPhone}</td>
                 <td>
-                  <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => openEdit(user)}>📝</button>
-                  <button className={`btn btn-sm ${user.deleted ? 'btn-outline-success' : 'btn-outline-danger'}`}
+                  <span className={`vin-badge ${user.userRole === 'ADMIN' ? 'vin-badge--info' : 'vin-badge--secondary'}`}>
+                    {user.userRole}
+                  </span>
+                </td>
+                <td>
+                  <span className={`vin-badge ${user.deleted ? 'vin-badge--danger' : 'vin-badge--success'}`}>
+                    {user.deleted ? 'Đã khóa' : 'Hoạt động'}
+                  </span>
+                </td>
+                <td style={{ display: 'flex', gap: '0.35rem' }}>
+                  <button className="vin-btn vin-btn--secondary vin-btn--sm" onClick={() => openEdit(user)}>📝</button>
+                  <button
+                    className={`vin-btn vin-btn--sm ${user.deleted ? 'vin-btn--success' : 'vin-btn--danger'}`}
                     onClick={() => handleToggle(user.userId)}>
                     {user.deleted ? '🔄' : '🚫'}
                   </button>
@@ -77,31 +88,28 @@ export default function UsersSection() {
         </table>
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton style={{ background: '#1e293b', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <Modal.Title className="text-white">Cập nhật thành viên</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: '#1e293b' }}>
-          <Form>
-            {[
-              { label: 'Họ tên', field: 'userFullName' },
-              { label: 'Email', field: 'userEmail' },
-              { label: 'Điện thoại', field: 'userPhone' },
-              { label: 'Địa chỉ', field: 'userAddress' },
-            ].map(({ label, field }) => (
-              <Form.Group className="mb-3" key={field}>
-                <Form.Label className="text-white-50 small">{label}</Form.Label>
-                <Form.Control className="bg-transparent text-white border-secondary"
-                  value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} />
-              </Form.Group>
-            ))}
-          </Form>
-        </Modal.Body>
-        <Modal.Footer style={{ background: '#1e293b', borderColor: 'rgba(255,255,255,0.1)' }}>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Hủy</Button>
-          <Button variant="primary" onClick={handleSubmit}>Lưu</Button>
-        </Modal.Footer>
-      </Modal>
+      {showModal && (
+        <div className="vin-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="vin-modal" onClick={e => e.stopPropagation()}>
+            <div className="vin-modal__header">
+              <h5>Cập nhật thành viên</h5>
+              <button className="vin-modal__close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <div className="vin-modal__body">
+              {fields.map(({ label, field }) => (
+                <div className="vin-field" key={field}>
+                  <label>{label}</label>
+                  <input value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+            <div className="vin-modal__footer">
+              <button className="vin-btn vin-btn--secondary" onClick={() => setShowModal(false)}>Hủy</button>
+              <button className="vin-btn vin-btn--primary"   onClick={handleSubmit}>Lưu</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
