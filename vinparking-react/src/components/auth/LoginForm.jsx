@@ -27,33 +27,56 @@ export default function LoginForm({ onSuccess, onForgot }) {
   };
 
   return (
-    <div onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
+      <div className="text-center mb-4">
+        <h4 className="fw-bold" style={{ color: '#164e63' }}>Đăng nhập</h4>
+        <p className="text-muted small">Chào mừng bạn quay lại hệ thống</p>
+      </div>
+
       <div className="mb-3">
-        <label className="form-label text-white-50 small">Email</label>
-        <input type="email" className="form-control bg-transparent text-white border-secondary"
+        <label className="form-label small fw-semibold text-dark">Email</label>
+        <input type="email" className="form-control"
           placeholder="your@email.com" value={form.email}
           onChange={e => setForm({ ...form, email: e.target.value })} required />
       </div>
       <div className="mb-3">
-        <label className="form-label text-white-50 small">Mật khẩu</label>
+        <label className="form-label small fw-semibold text-dark">Mật khẩu</label>
         <div className="input-group">
-          <input type={showPw ? 'text' : 'password'} className="form-control bg-transparent text-white border-secondary"
+          <input type={showPw ? 'text' : 'password'} className="form-control border-end-0"
             placeholder="••••••••" value={form.password}
             onChange={e => setForm({ ...form, password: e.target.value })} required />
-          <button type="button" className="btn btn-outline-secondary" onClick={() => setShowPw(!showPw)}>
+          <span className="input-group-text bg-white" style={{ cursor: 'pointer' }} onClick={() => setShowPw(!showPw)}>
             {showPw ? '🔒' : '👁️'}
-          </button>
+          </span>
         </div>
       </div>
       <div className="mb-4 text-end">
-        <button type="button" className="btn btn-link p-0 text-primary small" onClick={onForgot}>
+        <button type="button" className="btn btn-link p-0 text-decoration-none small" style={{ color: '#1f6a85' }} onClick={onForgot}>
           Quên mật khẩu?
         </button>
       </div>
-      <button className="btn btn-primary w-100" onClick={handleSubmit} disabled={loading}>
+      <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
         {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
-        {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+        {loading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
       </button>
-    </div>
+
+      <div className="position-relative mb-4 text-center mt-3">
+        <hr className="text-muted" />
+        <span className="position-absolute top-50 start-50 translate-middle px-2 text-muted small" style={{ backgroundColor: '#fff', fontSize: '0.8rem' }}>
+          Hoặc đăng nhập bằng:
+        </span>
+      </div>
+
+      <div className="d-flex gap-3">
+        <button type="button" className="btn btn-outline-secondary w-50 d-flex align-items-center justify-content-center gap-2">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="18" height="18" />
+          <span className="small text-dark fw-medium">Google</span>
+        </button>
+        <button type="button" className="btn btn-outline-secondary w-50 d-flex align-items-center justify-content-center gap-2">
+          <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" width="18" height="18" />
+          <span className="small text-dark fw-medium">Facebook</span>
+        </button>
+      </div>
+    </form>
   );
 }
