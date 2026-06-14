@@ -8,6 +8,10 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar() {
+  const isLoggedIn = !!localStorage.getItem('token');
+  const fullName = localStorage.getItem('fullName') || 'User';
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=164e63&color=fff`;
+
   return (
     <header className="glass-nav">
       <Link to="/" className="nav-logo">
@@ -28,7 +32,17 @@ export default function Navbar() {
           <span>🔍</span>
           <input placeholder="Tìm bãi đỗ..." />
         </div>
-        <Link to="/auth" className="vin-btn vin-btn--primary vin-btn--pill">Đăng nhập</Link>
+        
+        {isLoggedIn ? (
+          <Link to="/user-dashboard" className="text-decoration-none d-flex align-items-center gap-2 px-3 py-1 rounded-pill ms-2" style={{ backgroundColor: '#164e63' }}>
+            <span className="text-white fw-bold small d-none d-md-block">{fullName}</span>
+            <div className="rounded-circle overflow-hidden bg-white" style={{ width: '28px', height: '28px' }}>
+              <img src={avatarUrl} alt="User" className="w-100 h-100 object-fit-cover" />
+            </div>
+          </Link>
+        ) : (
+          <Link to="/auth" className="vin-btn vin-btn--primary vin-btn--pill">Đăng nhập</Link>
+        )}
       </div>
     </header>
   );
