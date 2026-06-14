@@ -1,17 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { PARKING_LOTS } from '../../data/parkingData';
 
-const SLOTS = [
-  { name: 'Vinparking Tower A',   area: 'Quận 1, TP.HCM',    free: 42,  total: 100, status: 'Bình thường', badgeCls: 'vin-badge--success' },
-  { name: 'Vinparking Center B',  area: 'Hoàn Kiếm, HN',     free: 5,   total: 200, status: 'Đầy chỗ',    badgeCls: 'vin-badge--danger' },
-  { name: 'Park & Ride Station',  area: 'Thủ Đức, TP.HCM',   free: 129, total: 300, status: 'Thuận lợi',  badgeCls: 'vin-badge--info' },
-];
 export default function StatusSection() {
   const navigate = useNavigate();
 
   return (
     <section id="locations" className="status-section">
       <div className="status-layout">
-        {/* Table */}
         <div className="status-table-wrap">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <h2 style={{ color: '#fff', fontWeight: 700, margin: 0 }}>Trạng thái bãi đỗ thực tế</h2>
@@ -26,19 +21,19 @@ export default function StatusSection() {
                   </tr>
                 </thead>
                 <tbody>
-                  {SLOTS.map((s, i) => (
-                    <tr key={i}>
+                  {PARKING_LOTS.map((s) => (
+                    <tr key={s.id}>
                       <td style={{ fontWeight: 700, color: '#fff' }}>{s.name}</td>
                       <td style={{ color: 'rgba(255,255,255,0.5)' }}>{s.area}</td>
                       <td>
-                        <span style={{ fontWeight: 700, color: s.badgeCls.includes('success') ? '#10b981' : s.badgeCls.includes('danger') ? '#ef4444' : '#38bdf8' }}>{s.free}</span>
+                        <span style={{ fontWeight: 700, color: s.badgeCls.includes('success') ? '#10b981' : s.badgeCls.includes('danger') ? '#ef4444' : '#38bdf8' }}>
+                          {s.free}
+                        </span>
                         <span style={{ color: 'rgba(255,255,255,0.5)' }}> / {s.total}</span>
                       </td>
                       <td><span className={`vin-badge ${s.badgeCls}`}>{s.status}</span></td>
                       <td>
-                        <button className="vin-btn vin-btn--primary vin-btn--sm"
-                          /* onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')} */
-                          onClick={() => navigate('/auth')}>
+                        <button className="vin-btn vin-btn--primary vin-btn--sm" onClick={() => navigate('/locations')}>
                           Đặt trước
                         </button>
                       </td>
@@ -50,7 +45,6 @@ export default function StatusSection() {
           </div>
         </div>
 
-        {/* Sidebar cards */}
         <div className="status-sidebar">
           <div className="ai-card">
             <div className="ai-card__title">🧠 Dự báo AI</div>

@@ -19,7 +19,8 @@ export default function LoginForm({ onSuccess, onForgot }) {
       localStorage.setItem('userId', data.userId);
       toast.success('Đăng nhập thành công!');
       onSuccess();
-    } catch (err) {
+    }catch{
+    // } catch (err) {
       // toast.error(err.response?.data || 'Đăng nhập thất bại!');
       // Mock token ở đây , tạm thời lấy lệnh dưới để check thử khi nào dùng thật thì dùng cái bên trên 
       localStorage.setItem('token', 'mock-token-123');
