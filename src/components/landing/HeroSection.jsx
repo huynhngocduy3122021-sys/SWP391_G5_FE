@@ -6,7 +6,6 @@ export default function HeroSection() {
       style={{ backgroundImage: `url(${heroParkingImg})` }}>
       <div className="hero-overlay" />
       <div className="hero-content">
-        <span className="hero-badge">✨ Smart City Solutions</span>
         <h1 className="hero-title">
           Giải pháp đỗ xe thông minh <br />
           <span style={{ color: '#38bdf8' }}>cho đô thị hiện đại</span>
