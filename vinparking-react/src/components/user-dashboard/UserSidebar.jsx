@@ -70,7 +70,7 @@ export default function UserSidebar({ activeTab, onTabChange }) {
           <button className="btn text-start text-muted bg-transparent border-0 d-flex align-items-center gap-2 py-2">
             <span>❓</span> Trợ giúp
           </button>
-          <button onClick={() => navigate('/auth')} className="btn text-start text-danger bg-transparent border-0 d-flex align-items-center gap-2 py-2">
+          <button onClick={() => { localStorage.clear(); navigate('/'); }} className="btn text-start text-danger bg-transparent border-0 d-flex align-items-center gap-2 py-2">
             <span>🚪</span> Đăng xuất
           </button>
         </div>

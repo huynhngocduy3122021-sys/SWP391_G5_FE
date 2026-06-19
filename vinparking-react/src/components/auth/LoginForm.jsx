@@ -11,7 +11,7 @@ export default function LoginForm({ onSuccess, onForgot }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await authApi.login({ userEmail: form.email, userPassword: form.password });
+      const data = await authApi.login({ identifier: form.email, userPassword: form.password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', data.userEmail);
       localStorage.setItem('role', data.userRole);
@@ -34,9 +34,9 @@ export default function LoginForm({ onSuccess, onForgot }) {
       </div>
 
       <div className="mb-3">
-        <label className="form-label small fw-semibold text-dark">Email</label>
-        <input type="email" className="form-control"
-          placeholder="your@email.com" value={form.email}
+        <label className="form-label small fw-semibold text-dark">Email/Số điện thoại</label>
+        <input type="text" className="form-control"
+          placeholder="Email hoặc SĐT" value={form.email}
           onChange={e => setForm({ ...form, email: e.target.value })} required />
       </div>
       <div className="mb-3">

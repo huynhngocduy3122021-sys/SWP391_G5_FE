@@ -37,8 +37,14 @@ export default function StatusSection() {
                       <td><span className={`vin-badge ${s.badgeCls}`}>{s.status}</span></td>
                       <td>
                         <button className="vin-btn vin-btn--primary vin-btn--sm"
-                          /* onClick={() => alert('Vui lòng đăng nhập để đặt chỗ trước!')} */
-                          onClick={() => navigate('/auth')}>
+                          onClick={() => {
+                            const token = localStorage.getItem('token');
+                            if (token) {
+                              navigate('/locations');
+                            } else {
+                              navigate('/auth');
+                            }
+                          }}>
                           Đặt trước
                         </button>
                       </td>

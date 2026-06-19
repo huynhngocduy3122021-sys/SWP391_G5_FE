@@ -30,7 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<PublicLayout><SearchPage /></PublicLayout>} />
+        <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
         <Route path="/locations" element={<PublicLayout><SearchPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
         <Route path="/auth" element={<AuthPage />} />
