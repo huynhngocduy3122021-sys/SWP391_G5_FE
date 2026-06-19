@@ -261,12 +261,9 @@ export default function SearchPage() {
                               </div>
 
                               <div className="mt-4">
-                                <div className="text-muted small mb-1" style={{ fontSize: '0.7rem' }}>MÃ GIẢM GIÁ ĐÃ ÁP DỤNG</div>
                                 <div className="d-flex align-items-center justify-content-end gap-2 mb-1">
-                                  <span className="badge bg-danger">{lot.discount}</span>
-                                  <h4 className="fw-bold text-danger m-0">{lot.price}</h4>
+                                  <h4 className="fw-bold m-0">{lot.price}</h4>
                                 </div>
-                                <div className="text-muted text-decoration-line-through small">{lot.originalPrice}</div>
                                 <div className="text-muted small mt-1" style={{ fontSize: '0.75rem' }}>Giá cho 1 giờ sử dụng</div>
                                 <div className="fw-bold text-dark small mt-1">Gói tháng: {lot.monthlyPrice}</div>
                                 <div className="text-primary small fw-bold mb-3" style={{ fontSize: '0.75rem' }}>Hủy MIỄN PHÍ</div>
