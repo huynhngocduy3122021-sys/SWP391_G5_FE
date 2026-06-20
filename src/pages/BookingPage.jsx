@@ -31,9 +31,7 @@ export default function BookingPage() {
   const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo', 'vnpay', 'card', 'cash'
-  const [promoCode, setPromoCode] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo', 'vnpay', 'card', 'cash', 'wallet'
 
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
@@ -89,18 +87,7 @@ export default function BookingPage() {
     : lotCarPrice;
 
   const bookingFee = isMotorcycle ? 5000 : 15000;
-  const discount = appliedPromo === 'VP2024' ? bookingFee : 0;
-  const finalPrice = Math.max(0, bookingFee - discount);
-
-  // Apply discount logic
-  const handleApplyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'VP2024') {
-      setAppliedPromo('VP2024');
-      toast.success(`Áp dụng mã giảm giá thành công! Giảm ${bookingFee.toLocaleString('vi-VN')}đ`);
-    } else {
-      toast.error('Mã giảm giá không hợp lệ!');
-    }
-  };
+  const finalPrice = bookingFee;
 
   // Proceed to next steps
   const handleNextStep = () => {
@@ -607,32 +594,6 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {/* Promo Codes */}
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
-              <h6 className="text-muted fw-bold mb-3 d-flex align-items-center gap-1.5" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>
-                <span>🎟️</span> MÃ GIẢM GIÁ
-              </h6>
-              <div className="d-flex gap-2">
-                <input
-                  type="text"
-                  className="form-control text-dark font-medium uppercase"
-                  placeholder="Nhập mã ưu đãi (Thử: VP2024)"
-                  value={promoCode}
-                  onChange={e => setPromoCode(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  className="btn btn-primary fw-bold"
-                  style={{ backgroundColor: '#164e63', border: 'none' }}
-                >
-                  ÁP DỤNG
-                </button>
-              </div>
-              {appliedPromo && (
-                <div className="text-success small fw-bold mt-2">✓ Đã áp dụng mã {appliedPromo} (-5.000đ)</div>
-              )}
-            </div>
 
             {/* Estimated payment details */}
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white text-dark">
@@ -646,12 +607,7 @@ export default function BookingPage() {
                 <span className="text-muted">VAT (10%)</span>
                 <span>0đ</span>
               </div>
-              {discount > 0 && (
-                <div className="d-flex justify-content-between align-items-center mb-2 small text-success">
-                  <span>Giảm giá mã {appliedPromo}</span>
-                  <span>-{discount.toLocaleString('vi-VN')}đ</span>
-                </div>
-              )}
+
               
               <hr className="my-3 text-muted opacity-25" />
 

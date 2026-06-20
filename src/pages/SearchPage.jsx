@@ -156,13 +156,6 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Banner */}
-      <div className="bg-white border-bottom py-2 shadow-sm mb-4">
-        <div className="container d-flex justify-content-between align-items-center small">
-          <span className="text-danger fw-medium">🏷️ Đang tìm giá rẻ hơn? Chúng tôi vừa cập nhật 12 bãi đỗ xe có ưu đãi lớn hôm nay.</span>
-          <span className="text-primary fw-bold cursor-pointer">Xem ưu đãi ngay!</span>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="container">

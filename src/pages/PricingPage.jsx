@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { PARKING_LOTS } from '../data/parkingData';
 
 export default function PricingPage() {
@@ -17,12 +18,44 @@ export default function PricingPage() {
       setSelectedLotId(Number(location.state.selectedLotId));
     }
   }, [location.state]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [dropdownSearchQuery, setDropdownSearchQuery] = useState('');
-  const dropdownRef = useRef(null);
+
+  const [activeSubPlan, setActiveSubPlan] = useState(null);
+  const [selectedSubVehicleId, setSelectedSubVehicleId] = useState(1); // Default to VinFast VF8 (Car)
+
+  const mockVehicles = [
+    { id: 1, type: 'Car', name: 'VinFast VF8', plate: '51H-987.65' },
+    { id: 2, type: 'Car', name: 'Toyota Camry', plate: '30A-555.55' },
+    { id: 3, type: 'Motorcycle', name: 'Honda SH 150i', plate: '29A-123.45' },
+    { id: 4, type: 'Motorcycle', name: 'Yamaha Exciter', plate: '59F-999.99' },
+  ];
 
   // Find currently selected lot or default to the first one
   const currentLot = PARKING_LOTS.find(lot => lot.id === Number(selectedLotId)) || PARKING_LOTS[0];
+
+  const getSubPrices = (lot) => {
+    const vipCarPrice = parseInt(lot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
+    const ecoCarPrice = Math.max(1000000, vipCarPrice - 1000000);
+    const ecoMotorPrice = Math.max(150000, Math.round((ecoCarPrice / 6) / 10000) * 10000); // rounded to nearest 10k (e.g. 250.000)
+    const vipMotorPrice = ecoMotorPrice * 2; // e.g. 500.000
+    return {
+      ecoCar: ecoCarPrice,
+      ecoMotor: ecoMotorPrice,
+      vipCar: vipCarPrice,
+      vipMotor: vipMotorPrice
+    };
+  };
+
+  const prices = getSubPrices(currentLot);
+  const selectedVehicle = mockVehicles.find(v => v.id === selectedSubVehicleId) || mockVehicles[0];
+  const activePlanPrice = activeSubPlan ? (
+    activeSubPlan.baseType === 'Economic' 
+      ? (selectedVehicle.type === 'Car' ? prices.ecoCar : prices.ecoMotor)
+      : (selectedVehicle.type === 'Car' ? prices.vipCar : prices.vipMotor)
+  ) : 0;
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownSearchQuery, setDropdownSearchQuery] = useState('');
+  const dropdownRef = useRef(null);
 
   // Derived filtered lots for search inside dropdown menu
   const dropdownFilteredLots = PARKING_LOTS.filter(lot =>
@@ -276,109 +309,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Parking Tiers Section */}
-        <h4 className="fw-bold text-dark mb-3 mt-5">Các Gói Tùy Chọn Đỗ Xe (Parking Tiers)</h4>
-        <div className="row g-4 mb-5">
-          {/* STANDARD */}
-          <div className="col-lg-4">
-            <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden bg-white">
-              <div className="p-4 flex-grow-1">
-                <small className="text-muted uppercase fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>STANDARD</small>
-                <h2 className="fw-bold text-dark mt-2 mb-3">
-                  {currentLot.price}<span className="fs-6 text-muted font-normal">/hour</span>
-                </h2>
-                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted my-4">
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Đỗ bất kì vị trí trống nào
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Quét biển số ra vào tự động
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Hỗ trợ thanh toán nhanh bằng ví
-                  </li>
-                </ul>
-              </div>
-              <div className="p-4 pt-0">
-                <button
-                  type="button"
-                  onClick={() => handleBookNow('Standard')}
-                  className="btn btn-outline-primary w-100 fw-bold py-2 rounded-3"
-                  style={{ borderColor: '#164e63', color: '#164e63' }}
-                >
-                  Select Tier
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* FULL DAY */}
-          <div className="col-lg-4">
-            <div className="card shadow rounded-4 h-100 overflow-hidden bg-white position-relative" style={{ border: '2.5px solid #164e63' }}>
-              <span 
-                className="position-absolute top-0 end-0 bg-teal text-white fw-bold px-3 py-1 rounded-bl-3" 
-                style={{ fontSize: '0.75rem', borderBottomLeftRadius: '12px', backgroundColor: '#164e63' }}
-              >
-                POPULAR
-              </span>
-              <div className="p-4 flex-grow-1">
-                <small className="text-muted uppercase fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>FULL DAY</small>
-                <h2 className="fw-bold text-dark mt-2 mb-3">
-                  {Math.floor(basePrice * 8).toLocaleString('vi-VN')}đ<span className="fs-6 text-muted font-normal">/day</span>
-                </h2>
-                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted my-4">
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Không giới hạn số lượt ra vào bãi
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Có khu vực đỗ xe ưu tiên riêng biệt
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Dịch vụ Valet hỗ trợ đỗ hộ
-                  </li>
-                </ul>
-              </div>
-              <div className="p-4 pt-0">
-                <button
-                  type="button"
-                  onClick={() => handleBookNow('Full Day')}
-                  className="btn text-white w-100 fw-bold py-2 rounded-3"
-                  style={{ backgroundColor: '#164e63' }}
-                >
-                  Select Tier
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* CORPORATE */}
-          <div className="col-lg-4">
-            <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden bg-white">
-              <div className="p-4 flex-grow-1">
-                <small className="text-muted uppercase fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>CORPORATE</small>
-                <h2 className="fw-bold text-dark mt-2 mb-3">
-                  {currentLot.monthlyPrice || '2.500.000đ'}<span className="fs-6 text-muted font-normal">/month</span>
-                </h2>
-                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted my-4">
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Có ô đỗ gắn tên cố định 100%
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Xuất hóa đơn đỏ (VAT) doanh nghiệp
-                  </li>
-                  <li className="d-flex align-items-center gap-2">
-                    <span className="text-success fw-bold">✓</span> Hỗ trợ rửa xe & sạc điện trọn gói
-                  </li>
-                </ul>
-              </div>
-              <div className="p-4 pt-0">
-                <Link to="/contact" className="btn btn-outline-secondary w-100 fw-bold py-2 rounded-3">
-                  Contact Sales
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Detailed Rates Section */}
         <h4 className="fw-bold text-dark mb-4 mt-5">🕒 Chi tiết Bảng giá dịch vụ (Rates Table)</h4>
@@ -458,24 +389,45 @@ export default function PricingPage() {
 
         {/* Long term subscriptions */}
         <h5 className="fw-bold text-dark mt-5 mb-3">Gói Đăng Ký Dài Hạn (Subscriptions)</h5>
-        <p className="text-muted small mb-4">Tiết kiệm hơn với các lựa chọn đăng ký theo tháng dành riêng cho cư dân hoặc doanh nghiệp.</p>
+        <p className="text-muted small mb-4">Tiết kiệm hơn với các lựa chọn đăng ký theo tháng dành riêng cho phương tiện của bạn.</p>
         
         <div className="row g-4 mb-5">
+          {/* Card 1: Gói Tháng Tiết Kiệm */}
           <div className="col-md-6">
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-white h-100">
-              <h5 className="fw-bold text-dark mb-1">Gói Tháng Tiết Kiệm</h5>
-              <h3 className="fw-bold text-teal my-3" style={{ color: '#164e63' }}>
-                1.200.000đ<span className="fs-6 text-muted fw-normal">/tháng</span>
-              </h3>
-              <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4">
-                <li>🟢 Đỗ xe không giới hạn lượt ra vào</li>
-                <li>🟢 Áp dụng cho mọi vị trí đỗ phổ thông</li>
-                <li>🟢 Thanh toán tự động qua App</li>
-              </ul>
+            <div className="card border shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column justify-content-between position-relative" style={{ transition: 'all 0.3s' }}>
+              <div>
+                <h5 className="fw-bold text-dark mb-1">Gói Tháng Tiết Kiệm</h5>
+                <p className="text-muted small">Tiết kiệm chi phí gửi xe định kỳ hàng tháng.</p>
+                
+                <div className="bg-light rounded-3 p-3 mb-4 d-flex flex-column gap-2">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted fw-semibold small">🛵 Xe máy:</span>
+                    <strong className="fs-5" style={{ color: '#164e63' }}>
+                      {prices.ecoMotor.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span>
+                    </strong>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted fw-semibold small">🚗 Ô tô:</span>
+                    <strong className="fs-5" style={{ color: '#164e63' }}>
+                      {prices.ecoCar.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span>
+                    </strong>
+                  </div>
+                </div>
+
+                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4">
+                  <li>🟢 Đỗ xe không giới hạn lượt ra vào</li>
+                  <li>🟢 Áp dụng cho mọi vị trí đỗ phổ thông</li>
+                  <li>🟢 Thanh toán tự động qua App</li>
+                </ul>
+              </div>
+              
               <button 
                 type="button"
-                onClick={() => handleBookNow('Savings Monthly')}
-                className="btn text-white fw-bold py-2 rounded-3 w-100 mt-auto"
+                onClick={() => {
+                  setSelectedSubVehicleId(1); // Pre-select Car VinFast VF8
+                  setActiveSubPlan({ name: 'Economic Monthly', baseType: 'Economic' });
+                }}
+                className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto animate-pulse"
                 style={{ backgroundColor: '#164e63' }}
               >
                 Đăng Ký Ngay
@@ -483,24 +435,61 @@ export default function PricingPage() {
             </div>
           </div>
 
+          {/* Card 2: Gói VIP Cư Dân */}
           <div className="col-md-6">
-            <div className="card border shadow-sm p-4 rounded-4 bg-white h-100 position-relative" style={{ border: '2px solid #164e63' }}>
-              <span className="position-absolute top-0 end-0 bg-teal text-white fw-bold px-3 py-1 rounded-bl-3" style={{ fontSize: '0.75rem', borderBottomLeftRadius: '12px', backgroundColor: '#164e63' }}>
+            <div className="card border shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column justify-content-between position-relative" style={{ borderColor: '#164e63', borderWidth: '2px', transition: 'all 0.3s' }}>
+              
+              {/* Popular badge */}
+              <div 
+                className="position-absolute px-3 py-1 text-white fw-bold text-uppercase"
+                style={{
+                  top: 0,
+                  right: '24px',
+                  backgroundColor: '#164e63',
+                  borderBottomLeftRadius: '8px',
+                  borderBottomRightRadius: '8px',
+                  fontSize: '0.68rem',
+                  letterSpacing: '1px',
+                  zIndex: 2
+                }}
+              >
                 PHỔ BIẾN NHẤT
-              </span>
-              <h5 className="fw-bold text-dark mb-1">Gói VIP Cư Dân</h5>
-              <h3 className="fw-bold text-teal my-3" style={{ color: '#164e63' }}>
-                2.500.000đ<span className="fs-6 text-muted fw-normal">/tháng</span>
-              </h3>
-              <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4">
-                <li>🟢 Vị trí đỗ ưu tiên gần thang máy</li>
-                <li>🟢 Hỗ trợ rửa xe 2 lần/tháng</li>
-                <li>🟢 Miễn phí sạc EV (áp dụng cho 50kWh đầu)</li>
-              </ul>
+              </div>
+
+              <div>
+                <h5 className="fw-bold text-dark mb-1">Gói VIP Cư Dân</h5>
+                <p className="text-muted small">Đặc quyền đỗ xe cao cấp và dịch vụ chăm sóc trọn gói.</p>
+                
+                <div className="bg-light rounded-3 p-3 mb-4 d-flex flex-column gap-2">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted fw-semibold small">🛵 Xe máy:</span>
+                    <strong className="fs-5" style={{ color: '#164e63' }}>
+                      {prices.vipMotor.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span>
+                    </strong>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted fw-semibold small">🚗 Ô tô:</span>
+                    <strong className="fs-5" style={{ color: '#164e63' }}>
+                      {prices.vipCar.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span>
+                    </strong>
+                  </div>
+                </div>
+
+                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4">
+                  <li>🟢 Vị trí đỗ ưu tiên gần thang máy</li>
+                  <li>🟢 Hỗ trợ rửa xe 2 lần/tháng</li>
+                  <li>🟢 Miễn phí sạc EV (áp dụng cho 50kWh đầu)</li>
+                  <li>🟢 Ưu tiên hỗ trợ từ Vinparking</li>
+                </ul>
+              </div>
+              
               <button 
                 type="button"
-                onClick={() => handleBookNow('VIP Monthly')}
-                className="btn text-white fw-bold py-2 rounded-3 w-100 mt-auto"
+                onClick={() => {
+                  setSelectedSubVehicleId(1); // Pre-select Car VinFast VF8
+                  setActiveSubPlan({ name: 'VIP Monthly', baseType: 'VIP' });
+                }}
+                className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto"
                 style={{ backgroundColor: '#164e63' }}
               >
                 Đăng Ký Gói VIP
@@ -627,6 +616,208 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* Subscription Confirmation Modal Overlay matching Image 1 exactly */}
+        {activeSubPlan && (
+          <div 
+            className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+            style={{ backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 2000 }}
+          >
+            <div 
+              className="bg-white rounded-4 shadow-lg p-4 p-md-5 overflow-auto w-100 m-3" 
+              style={{ maxWidth: '1000px', maxHeight: '90vh', border: '1px solid #e2e8f0', color: '#1e293b' }}
+            >
+              {/* Header row matching figma */}
+              <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                <div className="d-flex align-items-center gap-2">
+                  <span style={{ fontSize: '1.5rem' }} className="text-teal">⚡</span>
+                  <strong className="text-dark fs-5">Vinparking</strong>
+                </div>
+                <div className="text-muted d-flex gap-3 small">
+                  <span style={{ cursor: 'pointer' }} className="fw-semibold">❓ Trợ giúp</span>
+                  <span style={{ cursor: 'pointer' }} className="fw-semibold">👤 Tài khoản</span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="mb-4">
+                <h4 className="fw-bold text-dark mb-1">Chi tiết đăng ký</h4>
+                <p className="text-muted small">Hoàn tất các thông tin bên dưới để kích hoạt gói dịch vụ của bạn.</p>
+              </div>
+
+              <div className="row g-4">
+                {/* Left Column */}
+                <div className="col-lg-8">
+                  
+                  {/* PLAN SELECTED */}
+                  <div className="border rounded-3 p-4 mb-4 bg-white position-relative">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 mb-2 px-2.5 py-1 text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                          PLAN SELECTED
+                        </span>
+                        <h5 className="fw-bold text-dark mb-3">{activeSubPlan.name}</h5>
+                        <div className="d-flex flex-column flex-sm-row gap-3 text-muted small mt-2">
+                          <span>✓ Unlimited 24/7 parking</span>
+                          <span>✓ Plate recognition (LPR)</span>
+                          <span>✓ Automatic payment</span>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <h4 className="fw-bold text-dark m-0">{activePlanPrice.toLocaleString('vi-VN')} VNĐ</h4>
+                        <small className="text-muted">/tháng</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CẤU HÌNH GÓI ĐĂNG KÝ */}
+                  <div className="border rounded-3 p-4 mb-4 bg-white">
+                    <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
+                      ⚙ Cấu hình gói đăng ký
+                    </h6>
+                    
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label text-muted small fw-bold">ĐỊA ĐIỂM ĐĂNG KÝ</label>
+                        <select className="form-select text-dark fw-semibold" defaultValue="Vinhomes Central Park">
+                          <option value="Vinhomes Central Park">Vinhomes Central Park</option>
+                          <option value="Vincom Center Đồng Khởi">Vincom Center Đồng Khởi</option>
+                          <option value="Grand Park Smart Garage">Grand Park Smart Garage</option>
+                          <option value="Metropolis Underground">Metropolis Underground</option>
+                        </select>
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="form-label text-muted small fw-bold">NGÀY BẮT ĐẦU</label>
+                        <input type="date" className="form-control text-dark fw-semibold" defaultValue="2024-05-20" />
+                      </div>
+
+                      <div className="col-12">
+                        <label className="form-label text-muted small fw-bold">CHU KỲ THANH TOÁN</label>
+                        <input type="text" className="form-control bg-light text-muted fw-semibold" value="Monthly (Hàng tháng)" readOnly />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CHỌN PHƯƠNG TIỆN */}
+                  <div className="border rounded-3 p-4 bg-white">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="fw-bold text-dark m-0" style={{ fontSize: '0.9rem' }}>
+                        🚗 Chọn phương tiện
+                      </h6>
+                      <button type="button" className="btn btn-link text-decoration-none p-0 fw-bold small text-teal animate-pulse" style={{ color: '#164e63' }}>
+                        + THÊM MỚI
+                      </button>
+                    </div>
+
+                    <div className="row g-3">
+                      {[
+                        { id: 1, type: 'Car', name: 'VinFast VF8', plate: '51H-987.65' },
+                        { id: 3, type: 'Motorcycle', name: 'Honda SH 150i', plate: '29A-123.45' },
+                      ].map(v => {
+                        const isSelected = selectedSubVehicleId === v.id;
+                        return (
+                          <div className="col-md-6" key={v.id}>
+                            <div 
+                              className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer transition-all"
+                              style={{ 
+                                borderColor: isSelected ? '#164e63' : '#e2e8f0', 
+                                backgroundColor: isSelected ? '#f0fdfa' : 'transparent',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => setSelectedSubVehicleId(v.id)}
+                            >
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="fs-3">{v.type === 'Car' ? '🚗' : '🏍️'}</span>
+                                <div>
+                                  <h6 className="fw-bold text-dark mb-0 small">{v.name}</h6>
+                                  <small className="text-muted">{v.plate}</small>
+                                </div>
+                              </div>
+                              <input 
+                                type="radio" 
+                                className="form-check-input text-teal"
+                                checked={isSelected}
+                                onChange={() => setSelectedSubVehicleId(v.id)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Right Column */}
+                <div className="col-lg-4">
+                  
+                  {/* TÓM TẮT THANH TOÁN */}
+                  <div className="border rounded-3 p-4 bg-white h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <h6 className="fw-bold text-dark mb-3">Tóm tắt thanh toán</h6>
+                      
+                      <div className="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                        <span>Tạm tính ({activeSubPlan.name})</span>
+                        <span className="fw-semibold text-dark">{activePlanPrice.toLocaleString('vi-VN')} VNĐ</span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center mb-3 small text-muted">
+                        <span>VAT (10%)</span>
+                        <span className="fw-semibold text-dark">{Math.floor(activePlanPrice * 0.1).toLocaleString('vi-VN')} VNĐ</span>
+                      </div>
+                      
+                      <hr className="my-3 text-muted opacity-25" />
+
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <strong className="text-dark">Tổng cộng</strong>
+                        <strong className="fs-5 text-dark" style={{ color: '#164e63' }}>
+                          {Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')} VNĐ
+                        </strong>
+                      </div>
+
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          toast.success('Đăng ký gói thành viên dài hạn thành công!');
+                          setActiveSubPlan(null);
+                        }}
+                        className="btn text-white w-100 fw-bold py-2.5 rounded-3 mb-3 d-flex align-items-center justify-content-center gap-1 shadow-sm"
+                        style={{ backgroundColor: '#164e63' }}
+                      >
+                        Xác nhận đăng ký ➔
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveSubPlan(null)}
+                        className="btn btn-outline-danger w-100 fw-bold py-2.5 rounded-3 border-0 bg-transparent text-danger mb-4"
+                      >
+                        Hủy bỏ
+                      </button>
+                    </div>
+
+                    {/* Box Image / Terms */}
+                    <div>
+                      <p className="text-muted small mt-4 m-0" style={{ fontSize: '0.72rem', lineHeight: '1.4' }}>
+                        Bằng cách xác nhận, bạn đồng ý với các Điều khoản & Chính sách của Vinparking Urban Solutions. Thuê bao sẽ tự động gia hạn vào mỗi tháng.
+                      </p>
+                      
+                      <div className="rounded-3 overflow-hidden mt-3 shadow-sm" style={{ height: '90px' }}>
+                        <img 
+                          src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&q=80" 
+                          alt="Vinparking Smart Network" 
+                          className="w-100 h-100 object-fit-cover" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
