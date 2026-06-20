@@ -1,23 +1,6 @@
-import { useState } from 'react';
-
 export default function WalletSection() {
   const fullName = localStorage.getItem('fullName') || 'Khách hàng';
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=164e63&color=fff`;
-  
-  const [walletBalance] = useState(() => {
-    const bal = localStorage.getItem('walletBalance');
-    if (bal !== null) {
-      return Number(bal);
-    } else {
-      localStorage.setItem('walletBalance', '1250000');
-      return 1250000;
-    }
-  });
-
-  const [customTx] = useState(() => {
-    const txStr = localStorage.getItem('customTransactions');
-    return txStr ? JSON.parse(txStr) : [];
-  });
 
   return (
     <div>
@@ -47,10 +30,7 @@ export default function WalletSection() {
               </div>
               <div className="text-end">
                 <p className="text-muted small mb-1">Số dư khả dụng</p>
-                <h3 className="fw-bold m-0" style={{ color: '#164e63' }}>
-                  {walletBalance.toLocaleString('vi-VN')}
-                  <span style={{ fontSize: '1.2rem' }}>đ</span>
-                </h3>
+                <h3 className="fw-bold m-0" style={{ color: '#164e63' }}>1,250,000<span style={{ fontSize: '1.2rem' }}>đ</span></h3>
               </div>
             </div>
             
@@ -125,22 +105,6 @@ export default function WalletSection() {
             </div>
             
             <div className="d-flex flex-column gap-3">
-              {/* Dynamic transactions first */}
-              {customTx.map((tx) => (
-                <div key={tx.id} className="d-flex justify-content-between align-items-center pb-3 border-bottom">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
-                      ↑
-                    </div>
-                    <div>
-                      <h6 className="mb-1 text-dark fw-bold">{tx.service}</h6>
-                      <p className="text-muted small mb-0">{tx.date}</p>
-                    </div>
-                  </div>
-                  <h6 className="text-danger fw-bold m-0">-{tx.amount.toLocaleString('vi-VN')}đ</h6>
-                </div>
-              ))}
-
               <div className="d-flex justify-content-between align-items-center pb-3 border-bottom">
                 <div className="d-flex align-items-center gap-3">
                   <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>

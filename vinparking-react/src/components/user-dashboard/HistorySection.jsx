@@ -1,15 +1,4 @@
-import { useState } from 'react';
-
 export default function HistorySection() {
-  const [customTx] = useState(() => {
-    const txStr = localStorage.getItem('customTransactions');
-    return txStr ? JSON.parse(txStr) : [];
-  });
-
-  // Calculate dynamic totals
-  const dynamicTotalSpent = 1340000 + customTx.reduce((sum, tx) => sum + tx.amount, 0);
-  const dynamicTotalTrips = 35 + customTx.length;
-
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -26,17 +15,14 @@ export default function HistorySection() {
         <div className="col-md-4">
           <div className="card border-0 shadow-sm p-4 rounded-4 h-100" style={{ background: '#ffffff' }}>
             <p className="text-muted small mb-1 fw-bold">Tổng chi tiêu (tháng này)</p>
-            <h3 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px' }}>
-              {dynamicTotalSpent.toLocaleString('vi-VN')}
-              <span style={{ fontSize: '1.2rem' }}>đ</span>
-            </h3>
+            <h3 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px' }}>1,340,000<span style={{ fontSize: '1.2rem' }}>đ</span></h3>
             <p className="text-success small m-0 mt-2">↓ 15% so với tháng trước</p>
           </div>
         </div>
         <div className="col-md-4">
           <div className="card border-0 shadow-sm p-4 rounded-4 h-100" style={{ background: '#ffffff' }}>
             <p className="text-muted small mb-1 fw-bold">Tổng lượt đỗ xe</p>
-            <h3 className="fw-bold text-dark m-0">{dynamicTotalTrips} lượt</h3>
+            <h3 className="fw-bold text-dark m-0">35 lượt</h3>
             <p className="text-muted small m-0 mt-2">Trong 30 ngày qua</p>
           </div>
         </div>
@@ -75,28 +61,6 @@ export default function HistorySection() {
               </tr>
             </thead>
             <tbody>
-              {/* Dynamic Bookings */}
-              {customTx.map((tx) => {
-                const parts = tx.date.split(' ');
-                const dateVal = parts[0];
-                const timeVal = parts[1] || '';
-                return (
-                  <tr key={tx.id}>
-                    <td className="fw-medium">{tx.id}</td>
-                    <td><small>{timeVal}<br/>{dateVal}</small></td>
-                    <td>
-                      <span className="fw-medium">{tx.service}</span>
-                      <br/>
-                      <small className="text-muted">{tx.lotName}</small>
-                    </td>
-                    <td><span className="badge bg-light text-dark border">{tx.plate}</span></td>
-                    <td className="fw-bold text-dark">{tx.amount.toLocaleString('vi-VN')}đ</td>
-                    <td><span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Thành công</span></td>
-                  </tr>
-                );
-              })}
-
-              {/* Hardcoded mock items */}
               <tr>
                 <td className="fw-medium">#VP-89234</td>
                 <td><small>18:45<br/>13/12/2023</small></td>
@@ -134,7 +98,7 @@ export default function HistorySection() {
         </div>
 
         <div className="d-flex justify-content-between align-items-center mt-3">
-          <small className="text-muted">Hiển thị 1-{4 + customTx.length} trên tổng số {dynamicTotalTrips} giao dịch</small>
+          <small className="text-muted">Hiển thị 1-4 trên tổng số 35 giao dịch</small>
           <nav>
             <ul className="pagination pagination-sm m-0">
               <li className="page-item disabled"><a className="page-link" href="#!">Trước</a></li>
