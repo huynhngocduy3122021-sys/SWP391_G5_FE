@@ -34,7 +34,6 @@ export default function BookingPage() {
   const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo', 'vnpay', 'card', 'cash'
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState('');
-  const [discount, setDiscount] = useState(0);
 
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
@@ -76,16 +75,28 @@ export default function BookingPage() {
     }
   };
 
-  // Fixed Fees
-  const bookingFee = 5000; // 5.000đ reservation deposit as in mockup
+  // Get base hourly price as number
+  const getBasePrice = (priceStr) => {
+    if (!priceStr) return 30000;
+    const num = parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
+    return isNaN(num) ? 30000 : num;
+  };
+
+  const lotCarPrice = getBasePrice(lot.price);
+  const isMotorcycle = vehicle.includes('Xe máy');
+  const hourlyRate = isMotorcycle 
+    ? (lotCarPrice === 20000 ? 3000 : 5000) 
+    : lotCarPrice;
+
+  const bookingFee = isMotorcycle ? 5000 : 15000;
+  const discount = appliedPromo === 'VP2024' ? bookingFee : 0;
   const finalPrice = Math.max(0, bookingFee - discount);
 
   // Apply discount logic
   const handleApplyPromo = () => {
     if (promoCode.trim().toUpperCase() === 'VP2024') {
-      setDiscount(5000);
       setAppliedPromo('VP2024');
-      toast.success('Áp dụng mã giảm giá thành công! Giảm 5.000đ');
+      toast.success(`Áp dụng mã giảm giá thành công! Giảm ${bookingFee.toLocaleString('vi-VN')}đ`);
     } else {
       toast.error('Mã giảm giá không hợp lệ!');
     }
@@ -319,7 +330,7 @@ export default function BookingPage() {
                   <h6 className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>PHÍ GIỮ CHỖ TRƯỚC: MIỄN PHÍ</h6>
                   <p className="text-muted small m-0">Khách hàng: {vehicle} - {timeSlot}</p>
                 </div>
-                <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>5.000đ</h4>
+                <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{bookingFee.toLocaleString('vi-VN')}đ</h4>
               </div>
 
               <p className="text-muted small mb-3 border-top pt-2" style={{ lineHeight: '1.4' }}>
@@ -339,7 +350,7 @@ export default function BookingPage() {
             <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
               <div>
                 <small className="text-muted d-block">Tổng cộng</small>
-                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>5.000đ</h5>
+                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>{bookingFee.toLocaleString('vi-VN')}đ</h5>
               </div>
               <button
                 type="button"
@@ -448,7 +459,7 @@ export default function BookingPage() {
               
               <div className="d-flex justify-content-between align-items-center mb-2 small">
                 <span className="text-muted">Phí giữ chỗ (Booking fee)</span>
-                <span className="fw-bold text-dark">5.000đ</span>
+                <span className="fw-bold text-dark">{bookingFee.toLocaleString('vi-VN')}đ</span>
               </div>
               <div className="d-flex justify-content-between align-items-center mb-3 small">
                 <span className="text-muted">Phí tiện ích AI</span>
@@ -465,7 +476,7 @@ export default function BookingPage() {
             <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
               <div>
                 <small className="text-muted d-block">Tổng cộng</small>
-                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>5.000đ</h5>
+                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>{bookingFee.toLocaleString('vi-VN')}đ</h5>
               </div>
               <button
                 type="button"
@@ -629,7 +640,7 @@ export default function BookingPage() {
               
               <div className="d-flex justify-content-between align-items-center mb-2 small">
                 <span className="text-muted">Tạm tính</span>
-                <span>5.000đ</span>
+                <span>{bookingFee.toLocaleString('vi-VN')}đ</span>
               </div>
               <div className="d-flex justify-content-between align-items-center mb-2 small">
                 <span className="text-muted">VAT (10%)</span>
@@ -638,7 +649,7 @@ export default function BookingPage() {
               {discount > 0 && (
                 <div className="d-flex justify-content-between align-items-center mb-2 small text-success">
                   <span>Giảm giá mã {appliedPromo}</span>
-                  <span>-5.000đ</span>
+                  <span>-{discount.toLocaleString('vi-VN')}đ</span>
                 </div>
               )}
               
@@ -740,7 +751,7 @@ export default function BookingPage() {
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>💵 PHÍ DỰ KIẾN</span>
                   <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 py-1 px-2.5 fw-bold">
-                    {vehicle.includes('Xe máy') ? '5.000đ/1h' : `${lot.price}/1h`}
+                    {vehicle.includes('Xe máy') ? `${hourlyRate.toLocaleString('vi-VN')}đ/1h` : `${lot.price}/1h`}
                   </span>
                 </div>
               </div>

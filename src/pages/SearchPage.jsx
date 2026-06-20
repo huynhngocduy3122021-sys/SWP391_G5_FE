@@ -37,14 +37,6 @@ export default function SearchPage() {
 
   const handleSearchSubmit = () => {
     setAppliedSearch({ ...search });
-    
-    if (search.dateFrom && search.dateTo) {
-      const start = new Date(search.dateFrom);
-      const end = new Date(search.dateTo);
-      if (end <= start) {
-        toast.error('Ngày lấy xe phải lớn hơn ngày nhận xe!');
-      }
-    }
   };
 
   const handleBooking = (lot) => {
@@ -133,17 +125,6 @@ export default function SearchPage() {
                 className="form-control border-0 p-0 fw-medium shadow-none bg-transparent"
                 value={search.dateFrom}
                 onChange={e => setSearch({ ...search, dateFrom: e.target.value })}
-              />
-            </div>
-
-            {/* Ngày lấy xe */}
-            <div className="flex-grow-1 px-3 py-2 w-100" style={{ borderRight: '1px solid #e2e8f0' }}>
-              <div className="text-muted small mb-1">🕒 Ngày lấy xe</div>
-              <input
-                type="datetime-local"
-                className="form-control border-0 p-0 fw-medium shadow-none bg-transparent"
-                value={search.dateTo}
-                onChange={e => setSearch({ ...search, dateTo: e.target.value })}
               />
             </div>
 
