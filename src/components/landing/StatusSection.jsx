@@ -33,7 +33,10 @@ export default function StatusSection() {
                       </td>
                       <td><span className={`vin-badge ${s.badgeCls}`}>{s.status}</span></td>
                       <td>
-                        <button className="vin-btn vin-btn--primary vin-btn--sm" onClick={() => navigate('/locations')}>
+                        <button 
+                          className="vin-btn vin-btn--primary vin-btn--sm" 
+                          onClick={() => navigate('/pricing', { state: { selectedLotId: s.id } })}
+                        >
                           Đặt trước
                         </button>
                       </td>

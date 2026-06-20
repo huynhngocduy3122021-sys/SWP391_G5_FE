@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { PARKING_LOTS } from '../data/parkingData';
 
 export default function PricingPage() {
   const navigate = useNavigate();
-  const [selectedLotId, setSelectedLotId] = useState(1);
+  const location = useLocation();
+  const [selectedLotId, setSelectedLotId] = useState(() => {
+    if (location.state?.selectedLotId) {
+      return Number(location.state.selectedLotId);
+    }
+    return 1;
+  });
+
+  useEffect(() => {
+    if (location.state?.selectedLotId) {
+      setSelectedLotId(Number(location.state.selectedLotId));
+    }
+  }, [location.state]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState('');
   const dropdownRef = useRef(null);
