@@ -10,7 +10,14 @@ export default function AuthPage() {
 
   const handleLoginSuccess = () => {
     window.dispatchEvent(new Event('storage'));
-    navigate('/');
+    const role = localStorage.getItem('role')?.toLowerCase();
+    if (role === 'manager') {
+      navigate('/manager-dashboard');
+    } else if (role === 'staff') {
+      navigate('/staff/entry');
+    } else {
+      navigate('/');
+    }
   };
 
   const handleRegisterSuccess = () => setTab('login');
@@ -18,7 +25,7 @@ export default function AuthPage() {
   return (
     <div
       className="d-flex align-items-center justify-content-center min-vh-100"
-      style={{ background: '#0f172a' }}
+      style={{ background: 'var(--vin-bg-deep)' }}
     >
       <div style={{ position: 'fixed', top: '20%', left: '10%', width: 400, height: 400, borderRadius: '50%', background: 'rgba(99,102,241,0.08)', filter: 'blur(80px)', pointerEvents: 'none' }} />
       <div style={{ position: 'fixed', bottom: '20%', right: '10%', width: 300, height: 300, borderRadius: '50%', background: 'rgba(168,85,247,0.08)', filter: 'blur(80px)', pointerEvents: 'none' }} />

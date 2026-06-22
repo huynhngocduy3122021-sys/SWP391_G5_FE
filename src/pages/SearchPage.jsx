@@ -1,22 +1,33 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { PARKING_LOTS } from '../data/parkingData';
 
 export default function SearchPage() {
+  const location = useLocation();
+  const initialQuery = location.state?.searchQuery || '';
+
   const [search, setSearch] = useState({
-    location: '',
+    location: initialQuery,
     dateFrom: '',
     dateTo: '',
     vehicle: 'Ô tô (1 phương tiện)',
   });
 
   const [appliedSearch, setAppliedSearch] = useState({
-    location: '',
+    location: initialQuery,
     dateFrom: '',
     dateTo: '',
     vehicle: 'Ô tô (1 phương tiện)',
   });
+
+  // Sync state if navigation changes while already on this page
+  useEffect(() => {
+    if (location.state?.searchQuery) {
+      setSearch(prev => ({ ...prev, location: location.state.searchQuery }));
+      setAppliedSearch(prev => ({ ...prev, location: location.state.searchQuery }));
+    }
+  }, [location.state?.searchQuery]);
 
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(50000);
