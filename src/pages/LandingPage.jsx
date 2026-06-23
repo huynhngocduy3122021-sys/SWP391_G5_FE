@@ -5,7 +5,7 @@ import AppSection from '../components/landing/AppSection';
 
 export default function LandingPage() {
   return (
-    <div style={{ background: '#0f172a', minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh' }}>
       <HeroSection />
       <StatusSection />
       <FeaturedSection />

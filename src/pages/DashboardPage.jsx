@@ -16,7 +16,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="d-flex" style={{ minHeight: '100vh', background: '#0f172a' }}>
+    <div className="d-flex" style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)' }}>
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
       <main className="flex-grow-1 overflow-auto">
         {activeTab === 'slots' && <SlotsSection />}

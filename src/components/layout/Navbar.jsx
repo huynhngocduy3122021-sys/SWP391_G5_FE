@@ -12,11 +12,13 @@ const NAV_ITEMS = [
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   const fullName = localStorage.getItem('fullName') || 'User';
   const email = localStorage.getItem('email') || '';
+  const role = localStorage.getItem('role') || 'user';
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=164e63&color=fff`;
 
   useEffect(() => {
@@ -65,7 +67,17 @@ export default function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div className="nav-search">
           <span>🔍</span>
-          <input placeholder="Tìm bãi đỗ..." />
+          <input 
+            placeholder="Tìm bãi đỗ..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                navigate('/locations', { state: { searchQuery: searchQuery.trim() } });
+                setSearchQuery('');
+              }
+            }}
+          />
         </div>
 
         {isLoggedIn ? (
@@ -128,6 +140,53 @@ export default function Navbar() {
                       {item.icon} {item.label}
                     </Link>
                   ))}
+
+                  {role === 'manager' && (
+                    <Link to="/manager-dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.65rem',
+                        padding: '0.6rem 0.75rem', borderRadius: 8,
+                        color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
+                        fontSize: '0.875rem', fontWeight: 500,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      📊 Quản lý hệ thống
+                    </Link>
+                  )}
+
+                  {role === 'staff' && (
+                    <>
+                      <Link to="/staff/entry"
+                        onClick={() => setDropdownOpen(false)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.65rem',
+                          padding: '0.6rem 0.75rem', borderRadius: 8,
+                          color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
+                          fontSize: '0.875rem', fontWeight: 500,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        📥 Quản lý Cổng vào
+                      </Link>
+                      <Link to="/staff/exit"
+                        onClick={() => setDropdownOpen(false)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.65rem',
+                          padding: '0.6rem 0.75rem', borderRadius: 8,
+                          color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
+                          fontSize: '0.875rem', fontWeight: 500,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        📤 Quản lý Cổng ra
+                      </Link>
+                    </>
+                  )}
 
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '0.25rem 0' }} />
 

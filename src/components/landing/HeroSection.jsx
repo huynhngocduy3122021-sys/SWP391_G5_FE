@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import heroParkingImg from '../../image/hero_parking.png';
 
 export default function HeroSection() {
@@ -14,9 +15,9 @@ export default function HeroSection() {
           Tối ưu hóa không gian, giảm thiểu thời gian tìm kiếm và nâng cao tiện ích của bãi đỗ xe
           với hệ thống quản lý <strong style={{ color: '#fff' }}>Vinparking</strong> dựa trên AI và kết nối thời gian thực.
         </p>
-        <a href="#locations" className="vin-btn vin-btn--primary" style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}>
+        <Link to="/locations" className="vin-btn vin-btn--primary" style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}>
           Tìm bãi đỗ ngay
-        </a>
+        </Link>
       </div>
     </section>
   );
