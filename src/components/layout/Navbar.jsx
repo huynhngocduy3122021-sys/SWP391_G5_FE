@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
 
-import { toast } from 'react-toastify';
-
 const NAV_ITEMS = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Vị trí',    to: '/locations' },

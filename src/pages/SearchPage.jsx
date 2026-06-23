@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { PARKING_LOTS } from '../data/parkingData';
+import { useAuth } from '../hooks/useAuth';
+
 
 export default function SearchPage() {
+  const { user } = useAuth();
   const location = useLocation();
   const initialQuery = location.state?.searchQuery || '';
 
@@ -51,8 +54,7 @@ export default function SearchPage() {
   };
 
   const handleBooking = (lot) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!user) {
       toast.info('Vui lòng đăng nhập để đặt chỗ!');
       navigate('/auth');
     } else {
