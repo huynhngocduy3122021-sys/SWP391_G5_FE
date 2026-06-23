@@ -6,25 +6,28 @@ import ZoneOccupancyTable, { MOCK_ZONES } from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
 const GATE_ID = 'GATE-04';
-const PAY_METHODS = ['E-WALLET PAID', 'QR PAYMENT', 'CASH', 'RE-PRINT', 'INVOICE'];
+const PAY_METHODS = ['VNPAY', 'CASH'];
 
 // Màn "Cổng ra" — khớp ảnh thiết kế (Payment Summary + Captured Entry/Exit)
 export default function GateOutPanel() {
   // Mock theo ảnh — thay bằng staffApi.getExitPaymentSummary(plateNumber)
   const [summary, setSummary] = useState({
-    entryPlate: '47-B2-722.38', exitPlate: '59-S1-777.58', matchAccuracy: 99.8,
+    entryPlate: '30K-888.88', exitPlate: '30K-888.88', matchAccuracy: 99.8,
     vehicleType: 'Sedan (Premium)', durationLabel: '02h 45m', rateLabel: '$2.00 / hour',
     paid: true, totalFee: 6.0,
   });
+  const [cardCode, setCardCode] = useState('CARD-123');
+  const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [confirming, setConfirming] = useState(false);
 
   const handleConfirm = async () => {
     setConfirming(true);
     try {
-      await staffApi.confirmExit({ gateId: GATE_ID, plateNumber: summary.exitPlate, totalFee: summary.totalFee });
+      await staffApi.confirmExit({ gateId: GATE_ID, plateNumber: summary.exitPlate, totalFee: summary.totalFee, cardCode, paymentMethod: selectedMethod });
       toast.success(`Đã mở barie cho xe ${summary.exitPlate} ra!`);
-    } catch {
-      toast.error('Xác nhận ra cổng thất bại!');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Xác nhận ra cổng thất bại!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi server khi check-out!');
     } finally {
       setConfirming(false);
     }
@@ -50,33 +53,48 @@ export default function GateOutPanel() {
       {/* ── Cột phải: payment summary + support ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="vin-card">
-          <div style={{ fontWeight: 700, color: '#fff', marginBottom: '1rem' }}>💳 PAYMENT SUMMARY</div>
-
-          <SummaryRow label="Duration" value={summary.durationLabel} />
-          <SummaryRow label="Parking Rate" value={summary.rateLabel} />
-          <SummaryRow
-            label="Trạng thái thanh toán"
-            value={<span className="vin-badge vin-badge--success">✅ ĐÃ THANH TOÁN</span>}
-          />
-
-          <div style={{ borderTop: '1px solid var(--vin-border)', margin: '0.75rem 0' }} />
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>TOTAL FEE</span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--vin-success)' }}>
-              ${summary.totalFee.toFixed(2)}
-            </span>
+          <div style={{ fontWeight: 700, color: '#fff', marginBottom: '1.25rem', fontSize: '1.1rem' }}>
+            📋 THÔNG TIN CHECK-OUT
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <div className="vin-field" style={{ marginBottom: '1rem' }}>
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE</label>
+            <input
+              value={summary.exitPlate}
+              onChange={(e) => setSummary({ ...summary, exitPlate: e.target.value.toUpperCase() })}
+              style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <div className="vin-field" style={{ marginBottom: '1.25rem' }}>
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>CARD CODE (MÃ THẺ)</label>
+            <input
+              value={cardCode}
+              onChange={(e) => setCardCode(e.target.value)}
+              style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
+
+          <div style={{ marginBottom: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>
+            PHƯƠNG THỨC THANH TOÁN
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
             {PAY_METHODS.map((m) => (
-              <button key={m} className="vin-btn vin-btn--secondary vin-btn--sm">{m}</button>
+              <button key={m} 
+                className={`vin-btn vin-btn--sm ${selectedMethod === m ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
+                onClick={() => setSelectedMethod(m)}
+                style={{ py: '0.75rem', fontWeight: 600 }}
+              >
+                {m === 'CASH' ? '💵 TIỀN MẶT' : '📱 VNPAY'}
+              </button>
             ))}
           </div>
 
-          <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: '#fff' }}
+          <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: '#fff', padding: '0.85rem', fontSize: '1rem' }}
             disabled={confirming} onClick={handleConfirm}>
-            {confirming ? <span className="vin-spinner" /> : '✅'} CONFIRM & OPEN
+            {confirming ? <span className="vin-spinner" /> : '✅'} XÁC NHẬN & MỞ CỔNG RA
           </button>
         </div>
 

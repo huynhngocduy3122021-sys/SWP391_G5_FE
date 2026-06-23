@@ -15,10 +15,24 @@ const staffApi = {
     });
   },
   confirmEntry: async (data) => {
-    return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 500));
+    const payload = {
+      licensePlate: data.plateNumber.replace(/[^A-Za-z0-9\-.]/g, ''),
+      vehicleTypeId: data.vehicleType === 'Xe máy' ? 2 : 1,
+      cardCode: data.cardCode || `CARD-${Math.floor(Math.random() * 10000)}`,
+      vehicleBrand: data.vehicleType,
+    };
+    return (await API.post('/api/parking-sessions/guest/check-in', payload)).data;
   },
   confirmExit: async (data) => {
-    return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 500));
+    let paymentMethod = 'CASH';
+    if (data.paymentMethod && data.paymentMethod.includes('VNPAY')) paymentMethod = 'VNPAY';
+    
+    const payload = {
+      licensePlate: data.plateNumber.replace(/[^A-Za-z0-9\-.]/g, ''),
+      cardCode: data.cardCode || 'UNKNOWN',
+      paymentMethod: paymentMethod,
+    };
+    return (await API.post('/api/parking-sessions/guest/check-out', payload)).data;
   },
   reportIncident: async (data) => {
     return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 500));
