@@ -18,18 +18,10 @@ export default function LoginForm({ onSuccess, onForgot }) {
       localStorage.setItem('fullName', data.userFullName);
       localStorage.setItem('userId', data.userId);
       toast.success('Đăng nhập thành công!');
-      onSuccess();
-    }catch{
-    // } catch (err) {
-      // toast.error(err.response?.data || 'Đăng nhập thất bại!');
-      // Mock token ở đây , tạm thời lấy lệnh dưới để check thử khi nào dùng thật thì dùng cái bên trên 
-      localStorage.setItem('token', 'mock-token-123');
-      localStorage.setItem('email', form.identifier);
-      localStorage.setItem('role', 'USER');
-      localStorage.setItem('fullName', form.identifier.split('@')[0]);
-      localStorage.setItem('userId', '1');
-      toast.success('Đăng nhập thành công! (mock)');
-      onSuccess();
+      onSuccess(data);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại!';
+      toast.error(typeof errorMessage === 'string' ? errorMessage : 'Đăng nhập thất bại!');
     } finally {
       setLoading(false);
     }
@@ -64,7 +56,7 @@ export default function LoginForm({ onSuccess, onForgot }) {
           Quên mật khẩu?
         </button>
       </div>
-      <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
+<button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
         {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
         {loading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
       </button>

@@ -69,7 +69,7 @@ export default function RegisterForm({ onSuccess }) {
             <button type="button" className="btn bg-light border-0 text-muted" onClick={() => setShowPw(!showPw)}>
               {showPw ? '🔒' : '👁️'}
             </button>
-          </div>
+</div>
         </div>
         <div className="col-6">
           <label className="form-label small fw-semibold text-dark">Xác nhận mật khẩu</label>
