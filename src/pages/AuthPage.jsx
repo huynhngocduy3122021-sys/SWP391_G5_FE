@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
 import RegisterForm from '../components/auth/RegisterForm';
 import ForgotForm from '../components/auth/ForgotForm';
+import { useAuth } from '../hooks/useAuth';
+
 
 export default function AuthPage() {
   const [tab, setTab] = useState('login');
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
-    window.dispatchEvent(new Event('storage'));
-    const role = localStorage.getItem('role')?.toLowerCase();
+  const { login } = useAuth();
+
+  const handleLoginSuccess = (userData) => {
+    login(userData);
+    const role = userData.userRole?.toLowerCase();
     if (role === 'manager') {
       navigate('/manager-dashboard');
     } else if (role === 'staff') {

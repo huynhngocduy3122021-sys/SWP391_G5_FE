@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const BASE_URL = 'http://localhost:8081';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -13,5 +13,22 @@ API.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// Xử lý token hết hạn (401)
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('email');
+      localStorage.removeItem('fullName');
+      localStorage.removeItem('userId');
+      window.dispatchEvent(new Event('storage'));
+      window.location.href = '/auth'; // Redirect to login
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default API;
