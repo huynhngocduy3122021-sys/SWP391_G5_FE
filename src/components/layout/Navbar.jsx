@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../hooks/useAuth';
+
+import { toast } from 'react-toastify';
 
 const NAV_ITEMS = [
   { label: 'Trang chủ', to: '/' },
@@ -10,22 +13,17 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const { user, role, logout } = useAuth();
+  const isLoggedIn = !!user;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const fullName = localStorage.getItem('fullName') || 'User';
-  const email = localStorage.getItem('email') || '';
-  const role = localStorage.getItem('role') || 'user';
+  const fullName = user?.fullName || 'User';
+  const email = user?.email || '';
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=164e63&color=fff`;
 
-  useEffect(() => {
-    const syncLogin = () => setIsLoggedIn(!!localStorage.getItem('token'));
-    window.addEventListener('storage', syncLogin);
-    return () => window.removeEventListener('storage', syncLogin);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -37,16 +35,10 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('email');
-    localStorage.removeItem('role');
-    localStorage.removeItem('fullName');
-    localStorage.removeItem('userId');
-    setIsLoggedIn(false);
+  const handleLogoutClick = () => {
+    logout();
     setDropdownOpen(false);
     toast.info('Đã đăng xuất!');
-    navigate('/');
   };
 
   return (
@@ -190,7 +182,7 @@ export default function Navbar() {
 
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '0.25rem 0' }} />
 
-                  <button onClick={handleLogout}
+                  <button onClick={handleLogoutClick}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.65rem',
                       padding: '0.6rem 0.75rem', borderRadius: 8, width: '100%',

@@ -12,13 +12,8 @@ export default function LoginForm({ onSuccess, onForgot }) {
     setLoading(true);
     try {
       const data = await authApi.login({ userEmail: form.email, userPassword: form.password });
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('email', data.userEmail);
-      localStorage.setItem('role', data.userRole);
-      localStorage.setItem('fullName', data.userFullName);
-      localStorage.setItem('userId', data.userId);
       toast.success('Đăng nhập thành công!');
-      onSuccess();
+      onSuccess(data);
     } catch (err) {
       toast.error(err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!');
     } finally {
