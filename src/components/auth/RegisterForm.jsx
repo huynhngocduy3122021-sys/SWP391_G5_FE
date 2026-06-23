@@ -3,7 +3,7 @@ import authApi from '../../api/authApi';
 import { toast } from 'react-toastify';
 
 export default function RegisterForm({ onSuccess }) {
-  const [form, setForm] = useState({ name: '', emailOrPhone: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
@@ -17,20 +17,13 @@ export default function RegisterForm({ onSuccess }) {
       return;
     }
     setLoading(true);
-    let email = '';
-    let phone = '';
-    if (form.emailOrPhone.includes('@')) {
-      email = form.emailOrPhone;
-    } else {
-      phone = form.emailOrPhone;
-    }
 
     try {
       await authApi.register({
         userFullName: form.name, 
-        userEmail: email,
+        userEmail: form.email,
         userPassword: form.password, 
-        userPhone: phone, 
+        userPhone: form.phone, 
         userAddress: '',
       });
       toast.success('Đăng ký thành công! Hãy đăng nhập.');
@@ -56,9 +49,15 @@ export default function RegisterForm({ onSuccess }) {
       </div>
 
       <div className="mb-3">
-        <label className="form-label small fw-semibold text-dark">Email/Số điện thoại</label>
-        <input type="text" className="form-control bg-light text-dark border-0"
-          placeholder="Địa chỉ email hoặc SĐT" value={form.emailOrPhone} onChange={set('emailOrPhone')} required />
+        <label className="form-label small fw-semibold text-dark">Email</label>
+        <input type="email" className="form-control bg-light text-dark border-0"
+          placeholder="Nhập địa chỉ email" value={form.email} onChange={set('email')} required />
+      </div>
+
+      <div className="mb-3">
+        <label className="form-label small fw-semibold text-dark">Số điện thoại</label>
+        <input type="tel" className="form-control bg-light text-dark border-0"
+          placeholder="Nhập số điện thoại" value={form.phone} onChange={set('phone')} required />
       </div>
 
       <div className="row mb-3">
