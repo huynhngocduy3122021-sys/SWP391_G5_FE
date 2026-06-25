@@ -3,7 +3,7 @@ import authApi from '../../api/authApi';
 import { toast } from 'react-toastify';
 
 export default function LoginForm({ onSuccess, onForgot }) {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ identifier: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
@@ -11,11 +11,17 @@ export default function LoginForm({ onSuccess, onForgot }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await authApi.login({ userEmail: form.email, userPassword: form.password });
+      const data = await authApi.login({ identifier: form.identifier, userPassword: form.password });
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('email', data.userEmail);
+      localStorage.setItem('role', data.userRole);
+      localStorage.setItem('fullName', data.userFullName);
+      localStorage.setItem('userId', data.userId);
       toast.success('Đăng nhập thành công!');
       onSuccess(data);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!');
+      const errorMessage = err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại!';
+      toast.error(typeof errorMessage === 'string' ? errorMessage : 'Đăng nhập thất bại!');
     } finally {
       setLoading(false);
     }
@@ -29,10 +35,10 @@ export default function LoginForm({ onSuccess, onForgot }) {
       </div>
 
       <div className="mb-3">
-        <label className="form-label small fw-semibold text-dark">Email</label>
-        <input type="email" className="form-control"
-          placeholder="your@email.com" value={form.email}
-          onChange={e => setForm({ ...form, email: e.target.value })} required />
+        <label className="form-label small fw-semibold text-dark">Email / Số điện thoại</label>
+        <input type="text" className="form-control"
+          placeholder="Nhập email hoặc số điện thoại" value={form.identifier}
+          onChange={e => setForm({ ...form, identifier: e.target.value })} required />
       </div>
       <div className="mb-3">
         <label className="form-label small fw-semibold text-dark">Mật khẩu</label>
@@ -50,7 +56,7 @@ export default function LoginForm({ onSuccess, onForgot }) {
           Quên mật khẩu?
         </button>
       </div>
-      <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
+<button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
         {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
         {loading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
       </button>

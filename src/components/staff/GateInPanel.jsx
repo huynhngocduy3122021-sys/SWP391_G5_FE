@@ -9,8 +9,9 @@ const GATE_ID = 'GATE-04';
 // Màn "Vận hành Cổng VÀO" — khớp ảnh thiết kế (AI Smart Allocation + Issue Card)
 export default function GateInPanel() {
   // Dữ liệu camera AI trả về — mock theo ảnh, thay bằng staffApi.getLiveEntryDetection(GATE_ID)
-  const [detected, setDetected] = useState({ plateNumber: '30K - 888.88', entryTime: '14:42:05' });
+  const [detected, setDetected] = useState({ plateNumber: '30K-888.88', entryTime: '14:42:05' });
   const [vehicleType, setVehicleType] = useState('Sedan / SUV');
+  const [cardCode, setCardCode] = useState('CARD-123');
   const [suggestion, setSuggestion] = useState({
     slotCode: 'B1-A05', matchPercent: 98.4, location: 'Level B1 - Sector A (Premium)', proximity: 'Near Elevator #4 (12m)',
   });
@@ -20,8 +21,9 @@ export default function GateInPanel() {
     try {
       const res = await staffApi.suggestSlotAllocation(detected.plateNumber, vehicleType);
       setSuggestion(res);
-    } catch {
-      toast.error('Không lấy được gợi ý vị trí từ AI!');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Không lấy được gợi ý vị trí từ AI!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối AI!');
     }
   };
 
@@ -30,11 +32,12 @@ export default function GateInPanel() {
     try {
       await staffApi.confirmEntry({
         gateId: GATE_ID, plateNumber: detected.plateNumber, vehicleType,
-        entryTime: detected.entryTime, slotCode: suggestion.slotCode,
+        entryTime: detected.entryTime, slotCode: suggestion.slotCode, cardCode
       });
       toast.success(`Đã cấp thẻ & mở barie cho ${detected.plateNumber}!`);
-    } catch {
-      toast.error('Xác nhận vào cổng thất bại!');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Xác nhận vào cổng thất bại!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi server khi check-in!');
     } finally {
       setSubmitting(false);
     }
@@ -56,6 +59,15 @@ export default function GateInPanel() {
             <input
               value={detected.plateNumber}
               onChange={(e) => setDetected({ ...detected, plateNumber: e.target.value })}
+              style={{ fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
+            />
+          </div>
+
+          <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
+            <label>CARD CODE (QUẸT THẺ)</label>
+            <input
+              value={cardCode}
+              onChange={(e) => setCardCode(e.target.value)}
               style={{ fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
             />
           </div>

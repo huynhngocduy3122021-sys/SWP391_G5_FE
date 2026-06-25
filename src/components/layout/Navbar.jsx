@@ -5,9 +5,9 @@ import { useAuth } from '../../hooks/useAuth';
 
 const NAV_ITEMS = [
   { label: 'Trang chủ', to: '/' },
-  { label: 'Vị trí',    to: '/locations' },
-  { label: 'Bảng giá',  to: '/pricing' },
-  { label: 'Liên hệ',   to: '/contact' },
+  { label: 'Vị trí', to: '/locations' },
+  { label: 'Bảng giá', to: '/pricing' },
+  { label: 'Liên hệ', to: '/contact' },
 ];
 
 export default function Navbar() {
@@ -57,8 +57,8 @@ export default function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div className="nav-search">
           <span>🔍</span>
-          <input 
-            placeholder="Tìm bãi đỗ..." 
+          <input
+            placeholder="Tìm bãi đỗ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -113,8 +113,8 @@ export default function Navbar() {
                 <div style={{ padding: '0.5rem' }}>
                   {[
                     { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard' },
-                    { icon: '🚗', label: 'Phương tiện',    to: '/user-dashboard' },
-                    { icon: '💳', label: 'Ví của tôi',     to: '/user-dashboard' },
+                    { icon: '🚗', label: 'Phương tiện', to: '/user-dashboard' },
+                    { icon: '💳', label: 'Ví của tôi', to: '/user-dashboard' },
                   ].map((item) => (
                     <Link key={item.label} to={item.to}
                       onClick={() => setDropdownOpen(false)}
