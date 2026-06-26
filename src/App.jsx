@@ -20,15 +20,19 @@ import NotFoundPage from './pages/NotFoundPage';
 import DashboardPage from './pages/DashboardPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import BookingPage from './pages/BookingPage';
-import StaffEntryGate from './pages/staff/StaffEntryGate';
+import StaffEntryGate from './pages/staff/StaffEntryGate';    
 import StaffExitGate from './pages/staff/StaffExitGate';
 import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
 
 // --- Admin Portal Pages (MỚI THÊM) ---
-import AdminLayout from './layout/AdminLayout';
+import AdminLayout from './components/layout/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import SystemLogsPage from './pages/admin/SystemLogsPage';
-import PermissionsPage from './pages/admin/PermissionsPage';
+import SystemLogsPage from './components/admin/SystemLogsPage';
+import PermissionsPage from './components/admin/PermissionsPage';
+import UserAccountsPage from './components/admin/UserAccountsPage';
+import SystemSettingsPage from './components/admin/SystemSettingsPage';
+import PaymentsPage from './components/admin/PaymentsPage';
+import AIConfigPage from './components/admin/AIConfigPage';
 
 // RouteGuard based on Authentication and Roles
 function RoleRoute({ children, allowedRoles }) {
@@ -70,9 +74,7 @@ export default function App() {
           {/* User Routes */}
           <Route path="/booking" element={
             <RoleRoute allowedRoles={[ROLES.USER, ROLES.MANAGER, ROLES.STAFF]}>
-              <PublicLayout>
-                <BookingPage />
-              </PublicLayout>
+              <BookingPage />
             </RoleRoute>
           } />
           
@@ -116,8 +118,12 @@ export default function App() {
             {/* Các route con của Admin */}
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
-            <Route path="logs" element={<SystemLogsPage />} />
+            <Route path="users" element={<UserAccountsPage />} />
             <Route path="permissions" element={<PermissionsPage />} />
+            <Route path="settings" element={<SystemSettingsPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="ai-config" element={<AIConfigPage />} />
+            <Route path="logs" element={<SystemLogsPage />} />
           </Route>
 
           {/* Fallback */}

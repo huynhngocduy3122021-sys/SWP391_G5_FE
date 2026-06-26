@@ -100,8 +100,17 @@ export default function GateInPanel() {
       setSelectedFiles([]);
       setCardCode('');
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Xác nhận vào cổng thất bại!';
-      toast.error(typeof msg === 'string' ? msg : 'Lỗi server khi check-in!');
+      console.error("Check-in Error:", err.response?.data || err.message);
+      let errorStr = 'Lỗi server khi check-in!';
+      if (err.message === 'Network Error') {
+        errorStr = 'Không thể kết nối tới Backend. Hãy chắc chắn Spring Boot đang chạy ở port 8081!';
+      } else {
+        const msg = err.response?.data;
+        if (typeof msg === 'string' && msg.trim() !== '') {
+          errorStr = msg;
+        }
+      }
+      toast.error(errorStr);
     } finally {
       setSubmitting(false);
     }
