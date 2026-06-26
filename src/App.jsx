@@ -6,20 +6,33 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { hasRole, ROLES } from './utils/roleGuard';
 
+// --- Layouts & Public Pages ---
 import Navbar from './components/layout/Navbar';
 import Footer from './components/landing/Footer';
 import LandingPage from './pages/LandingPage';
 import SearchPage from './pages/SearchPage';
 import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
-import UserDashboardPage from './pages/UserDashboardPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+// --- User, Manager & Staff Pages ---
+import DashboardPage from './pages/DashboardPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import BookingPage from './pages/BookingPage';
-import StaffEntryGate from './pages/staff/StaffEntryGate';
+import StaffEntryGate from './pages/staff/StaffEntryGate';    
 import StaffExitGate from './pages/staff/StaffExitGate';
 import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
-import NotFoundPage from './pages/NotFoundPage';
+
+// --- Admin Portal Pages (MỚI THÊM) ---
+import AdminLayout from './components/layout/AdminLayout';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import SystemLogsPage from './components/admin/SystemLogsPage';
+import PermissionsPage from './components/admin/PermissionsPage';
+import UserAccountsPage from './components/admin/UserAccountsPage';
+import SystemSettingsPage from './components/admin/SystemSettingsPage';
+import PaymentsPage from './components/admin/PaymentsPage';
+import AIConfigPage from './components/admin/AIConfigPage';
 
 // RouteGuard based on Authentication and Roles
 function RoleRoute({ children, allowedRoles }) {
@@ -61,9 +74,7 @@ export default function App() {
           {/* User Routes */}
           <Route path="/booking" element={
             <RoleRoute allowedRoles={[ROLES.USER, ROLES.MANAGER, ROLES.STAFF]}>
-              <PublicLayout>
-                <BookingPage />
-              </PublicLayout>
+              <BookingPage />
             </RoleRoute>
           } />
           
@@ -97,6 +108,23 @@ export default function App() {
               <StaffExitGate />
             </RoleRoute>
           } />
+
+          {/* --- ADMIN PORTAL ROUTES (MỚI THÊM) --- */}
+          <Route path="/admin" element={
+            <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+              <AdminLayout />
+            </RoleRoute>
+          }>
+            {/* Các route con của Admin */}
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="users" element={<UserAccountsPage />} />
+            <Route path="permissions" element={<PermissionsPage />} />
+            <Route path="settings" element={<SystemSettingsPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="ai-config" element={<AIConfigPage />} />
+            <Route path="logs" element={<SystemLogsPage />} />
+          </Route>
 
           {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />
