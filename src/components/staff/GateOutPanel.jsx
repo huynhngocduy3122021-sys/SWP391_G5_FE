@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
 import { CameraFeed } from './GateInPanel';
@@ -6,25 +7,104 @@ import ZoneOccupancyTable, { MOCK_ZONES } from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
 const GATE_ID = 'GATE-04';
-const PAY_METHODS = ['VNPAY', 'CASH'];
+const PAY_METHODS = ['CASH', 'VNPAY'];
 
 // Màn "Cổng ra" — khớp ảnh thiết kế (Payment Summary + Captured Entry/Exit)
 export default function GateOutPanel() {
-  // Mock theo ảnh — thay bằng staffApi.getExitPaymentSummary(plateNumber)
-  const [summary, setSummary] = useState({
-    entryPlate: '30K-888.88', exitPlate: '30K-888.88', matchAccuracy: 99.8,
-    vehicleType: 'Sedan (Premium)', durationLabel: '02h 45m', rateLabel: '$2.00 / hour',
-    paid: true, totalFee: 6.0,
-  });
   const [cardCode, setCardCode] = useState('CARD-123');
+  const [exitPlate, setExitPlate] = useState('30K-888.88');
+  const [activeSession, setActiveSession] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState('CASH');
+  const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (searchParams.has('vnp_ResponseCode')) {
+      const verifyPayment = async () => {
+        try {
+          const params = Object.fromEntries(searchParams.entries());
+          const res = await staffApi.verifyVnPayReturn(params);
+          if (res.success) {
+            toast.success(`Thanh toán qua VNPay thành công! Phiên gửi xe đã kết thúc.`);
+          } else {
+            toast.error(`Thanh toán thất bại: ${res.message || 'Lỗi chưa xác định'}`);
+          }
+        } catch (err) {
+          console.error(err);
+          const msg = err.response?.data?.message || err.response?.data || 'Lỗi hệ thống khi xác thực thanh toán!';
+          toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+        } finally {
+          // Clear query params to clean URL and prevent double callbacks
+          navigate('/staff/exit', { replace: true });
+        }
+      };
+      verifyPayment();
+    }
+  }, [searchParams, navigate]);
+
+  const handleSearch = async () => {
+    if (!cardCode.trim()) {
+      toast.error('Vui lòng nhập mã thẻ để tìm kiếm!');
+      return;
+    }
+    setSearching(true);
+    try {
+      const session = await staffApi.getActiveSessionByCardCode(cardCode.trim());
+      setActiveSession(session);
+      setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
+      toast.success('Tìm thấy phiên gửi xe hoạt động!');
+    } catch (err) {
+      console.error(err);
+      setActiveSession(null);
+      const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho mã thẻ này!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleConfirm = async () => {
+    if (!cardCode.trim()) {
+      toast.error('Vui lòng nhập mã thẻ!');
+      return;
+    }
+    if (!exitPlate.trim()) {
+      toast.error('Vui lòng nhập biển số xe thực tế lúc ra!');
+      return;
+    }
+
+    // Cảnh báo nếu biển số lúc ra khác biển số lúc vào
+    if (activeSession && activeSession.licensePlate !== exitPlate.trim().toUpperCase()) {
+      const confirmDiff = window.confirm(
+        `Cảnh báo: Biển số lúc vào (${activeSession.licensePlate}) khác biển số thực tế lúc ra (${exitPlate.trim().toUpperCase()}). Bạn có chắc chắn muốn tiếp tục checkout?`
+      );
+      if (!confirmDiff) return;
+    }
+
     setConfirming(true);
     try {
-      await staffApi.confirmExit({ gateId: GATE_ID, plateNumber: summary.exitPlate, totalFee: summary.totalFee, cardCode, paymentMethod: selectedMethod });
-      toast.success(`Đã mở barie cho xe ${summary.exitPlate} ra!`);
+      const res = await staffApi.confirmExit({
+        cardCode: cardCode.trim(),
+        plateNumber: exitPlate.trim().toUpperCase(),
+        paymentMethod: selectedMethod
+      });
+
+      if (selectedMethod === 'CASH') {
+        toast.success(`Thanh toán tiền mặt thành công! Đã mở barie cho xe ${exitPlate} ra.`);
+        setActiveSession(null);
+        setCardCode('');
+        setExitPlate('');
+      } else if (selectedMethod === 'VNPAY') {
+        if (res.paymentUrl) {
+          toast.info('Đang mở trang thanh toán VNPay...');
+          window.open(res.paymentUrl, '_blank');
+        } else {
+          toast.success('Giao dịch VNPay đã được khởi tạo.');
+        }
+      }
     } catch (err) {
       console.error("Check-out Error:", err.response?.data || err.message);
       let errorStr = 'Lỗi server khi check-out!';
@@ -52,8 +132,18 @@ export default function GateOutPanel() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <CapturedShot title="CAPTURED ENTRY (REFERENCE)" plate={summary.entryPlate} vehicleType={summary.vehicleType} />
-          <CapturedShot title="CAPTURED EXIT (CURRENT)" plate={summary.exitPlate} matchAccuracy={summary.matchAccuracy} />
+          <CapturedShot 
+            title="CAPTURED ENTRY (REFERENCE - LÚC VÀO)" 
+            plate={activeSession ? activeSession.licensePlate : 'CHƯA CÓ DỮ LIỆU'} 
+            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor} (${activeSession.vehicleBrand})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
+            imageUrls={activeSession ? activeSession.imageUrls : []}
+          />
+          <CapturedShot 
+            title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)" 
+            plate={exitPlate || 'CHƯA NHẬP'} 
+            vehicleType="Ảnh camera thực tế tại cổng ra"
+            imageUrls={[]} 
+          />
         </div>
 
         <ZoneOccupancyTable zones={MOCK_ZONES} />
@@ -66,20 +156,52 @@ export default function GateOutPanel() {
             📋 THÔNG TIN CHECK-OUT
           </div>
 
-          <div className="vin-field" style={{ marginBottom: '1rem' }}>
-            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE</label>
-            <input
-              value={summary.exitPlate}
-              onChange={(e) => setSummary({ ...summary, exitPlate: e.target.value.toUpperCase() })}
-              style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-          </div>
-
           <div className="vin-field" style={{ marginBottom: '1.25rem' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>CARD CODE (MÃ THẺ)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                value={cardCode}
+                onChange={(e) => setCardCode(e.target.value)}
+                placeholder="Nhập mã thẻ..."
+                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              <button 
+                type="button"
+                className="vin-btn vin-btn--primary"
+                onClick={handleSearch}
+                disabled={searching}
+                style={{ padding: '0 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
+              >
+                {searching ? <span className="vin-spinner" /> : '🔍 Tìm'}
+              </button>
+            </div>
+          </div>
+
+          {activeSession ? (
+            <div style={{ background: 'rgba(34,197,94,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                🟢 ĐÃ TÌM THẤY PHIÊN GỬI XE
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
+                <div><strong>Biển số lúc vào:</strong> {activeSession.licensePlate}</div>
+                <div><strong>Loại xe:</strong> {activeSession.vehicleTypeName}</div>
+                <div><strong>Màu xe:</strong> {activeSession.vehicleColor || 'Không rõ'}</div>
+                <div><strong>Hiệu xe:</strong> {activeSession.vehicleBrand || 'Không rõ'}</div>
+                <div><strong>Giờ vào:</strong> {new Date(activeSession.checkInTime).toLocaleString()}</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: 'rgba(239,68,68,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#ef4444' }}>
+              ⚠️ Vui lòng tìm kiếm thẻ để nạp phiên gửi xe!
+            </div>
+          )}
+
+          <div className="vin-field" style={{ marginBottom: '1rem' }}>
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE THỰC TẾ LÚC RA</label>
             <input
-              value={cardCode}
-              onChange={(e) => setCardCode(e.target.value)}
+              value={exitPlate}
+              onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
+              placeholder="Nhập biển số xe thực tế..."
               style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
             />
           </div>
@@ -107,29 +229,36 @@ export default function GateOutPanel() {
           </button>
         </div>
 
-        <SupportPanel plateNumber={summary.exitPlate} gateId={GATE_ID} />
+        <SupportPanel plateNumber={exitPlate} gateId={GATE_ID} />
       </div>
     </div>
   );
 }
 
-function SummaryRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>{label}</span>
-      <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>{value}</span>
-    </div>
-  );
-}
-
-function CapturedShot({ title, plate, vehicleType, matchAccuracy }) {
+function CapturedShot({ title, plate, vehicleType, matchAccuracy, imageUrls }) {
   return (
     <div className="vin-card" style={{ padding: '0.75rem' }}>
       <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem' }}>{title}</div>
-      <div style={{
-        height: 90, borderRadius: 8, background: 'linear-gradient(135deg, #111827, #1f2937)',
-        marginBottom: '0.5rem',
-      }} />
+      {imageUrls && imageUrls.length > 0 ? (
+        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', marginBottom: '0.5rem', height: 240 }}>
+          {imageUrls.map((url, i) => (
+            <img 
+              key={i} 
+              src={url} 
+              alt={`captured-${i}`} 
+              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} 
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          height: 240, borderRadius: 8, background: 'linear-gradient(135deg, #111827, #1f2937)',
+          marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem'
+        }}>
+          Không có ảnh
+        </div>
+      )}
       <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{plate}</div>
       {vehicleType && <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{vehicleType}</div>}
       {matchAccuracy != null && (
