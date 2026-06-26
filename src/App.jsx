@@ -6,20 +6,29 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { hasRole, ROLES } from './utils/roleGuard';
 
+// --- Layouts & Public Pages ---
 import Navbar from './components/layout/Navbar';
 import Footer from './components/landing/Footer';
 import LandingPage from './pages/LandingPage';
 import SearchPage from './pages/SearchPage';
 import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
-import UserDashboardPage from './pages/UserDashboardPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+// --- User, Manager & Staff Pages ---
+import DashboardPage from './pages/DashboardPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import BookingPage from './pages/BookingPage';
 import StaffEntryGate from './pages/staff/StaffEntryGate';
 import StaffExitGate from './pages/staff/StaffExitGate';
 import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
-import NotFoundPage from './pages/NotFoundPage';
+
+// --- Admin Portal Pages (MỚI THÊM) ---
+import AdminLayout from './layout/AdminLayout';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import SystemLogsPage from './pages/admin/SystemLogsPage';
+import PermissionsPage from './pages/admin/PermissionsPage';
 
 // RouteGuard based on Authentication and Roles
 function RoleRoute({ children, allowedRoles }) {
@@ -98,6 +107,19 @@ export default function App() {
             </RoleRoute>
           } />
 
+          {/* --- ADMIN PORTAL ROUTES (MỚI THÊM) --- */}
+          <Route path="/admin" element={
+            <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+              <AdminLayout />
+            </RoleRoute>
+          }>
+            {/* Các route con của Admin */}
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="logs" element={<SystemLogsPage />} />
+            <Route path="permissions" element={<PermissionsPage />} />
+          </Route>
+
           {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
@@ -111,4 +133,5 @@ export default function App() {
       </AuthProvider>
     </BrowserRouter>
   );
+}
 }
