@@ -17,6 +17,7 @@ export default function GateInPanel() {
   const [vehicleTypeId, setVehicleTypeId] = useState('');
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
   const [suggestion, setSuggestion] = useState({
     slotCode: 'B1-A05', matchPercent: 98.4, location: 'Level B1 - Sector A (Premium)', proximity: 'Near Elevator #4 (12m)',
   });
@@ -43,6 +44,14 @@ export default function GateInPanel() {
       setLicensePlate(detected.plateNumber);
     }
   }, [detected.plateNumber]);
+
+  useEffect(() => {
+    const urls = selectedFiles.map(file => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => {
+      urls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [selectedFiles]);
 
   const handleSuggest = async () => {
     try {
@@ -102,7 +111,13 @@ export default function GateInPanel() {
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem' }}>
       {/* ── Cột trái: camera + form nhận xe ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <CameraFeed label={`LIVE ENTRY - ${GATE_ID}`} sub="CAM 01: PLATE RECOGNITION" status="READY" tone="success" />
+        <CameraFeed 
+          label={`LIVE ENTRY - ${GATE_ID}`} 
+          sub="CAM 01: PLATE RECOGNITION" 
+          status="READY" 
+          tone="success" 
+          imageUrl={previewUrls.length > 0 ? previewUrls[0] : null}
+        />
 
         <div className="vin-card">
           <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>
@@ -236,7 +251,7 @@ export default function GateInPanel() {
 }
 
 // Khung camera dùng chung cho cả entry/exit feed
-export function CameraFeed({ label, sub, status = 'READY', tone = 'success' }) {
+export function CameraFeed({ label, sub, status = 'READY', tone = 'success', imageUrl }) {
   return (
     <div className="vin-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{
@@ -247,11 +262,11 @@ export function CameraFeed({ label, sub, status = 'READY', tone = 'success' }) {
         <span className={`vin-badge ${tone === 'success' ? 'vin-badge--success' : 'vin-badge--info'}`}>{status}</span>
       </div>
       <div style={{
-        height: 220, background: 'linear-gradient(135deg, #0b1120, #111827)',
+        height: 220, background: imageUrl ? `url(${imageUrl}) center/cover no-repeat` : 'linear-gradient(135deg, #0b1120, #111827)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', borderTop: '1px solid var(--vin-border)',
       }}>
-        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.8rem' }}>{sub}</span>
+        {!imageUrl && <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.8rem' }}>{sub}</span>}
         <span style={{
           position: 'absolute', bottom: 10, left: 10, fontSize: '0.7rem',
           color: '#22c55e', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4,

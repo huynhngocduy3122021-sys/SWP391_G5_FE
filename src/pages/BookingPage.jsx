@@ -31,7 +31,7 @@ export default function BookingPage() {
   const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo', 'vnpay', 'card', 'cash', 'wallet'
+  const [paymentMethod, setPaymentMethod] = useState('vnpay'); // 'vnpay', 'card', 'cash', 'wallet'
 
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
@@ -40,21 +40,15 @@ export default function BookingPage() {
     return bal !== null ? Number(bal) : 1250000;
   });
 
-  // Countdown timer for success page (Step 4)
-  const [timeLeft, setTimeLeft] = useState(15 * 60);
-
-  useEffect(() => {
-    if (step !== 4) return;
-    const interval = setInterval(() => {
-      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [step]);
-
-  const formatTimeLeft = () => {
-    const mins = Math.floor(timeLeft / 60);
-    const secs = timeLeft % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  // Calculate expiration time (Arrival time + 20 minutes)
+  const getExpirationTime = () => {
+    if (!timeSlot) return '';
+    const [hours, minutes] = timeSlot.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes + 20, 0);
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
   };
 
   // Helper to format Vietnamese date nicely
@@ -487,50 +481,33 @@ export default function BookingPage() {
               <h5 className="fw-bold text-dark mb-1">Phương thức thanh toán</h5>
               <p className="text-muted small mb-4">Vui lòng chọn phương thức thanh toán phù hợp để hoàn tất đặt chỗ.</p>
 
-              {/* Suggested payment: Momo */}
+              {/* Suggested payment: VNPAY */}
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>PHƯƠNG THỨC GỢI Ý</h6>
               <label 
                 className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer mb-4" 
-                style={{ borderColor: paymentMethod === 'momo' ? '#db2777' : '#dee2e6', backgroundColor: paymentMethod === 'momo' ? '#fdf2f8' : 'transparent' }}
+                style={{ borderColor: paymentMethod === 'vnpay' ? '#164e63' : '#dee2e6', backgroundColor: paymentMethod === 'vnpay' ? '#f0f9ff' : 'transparent' }}
               >
                 <div className="d-flex align-items-center gap-3">
                   <div className="bg-light rounded p-1.5" style={{ width: '40px', height: '40px' }}>
-                    <img src="https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png" className="w-100 h-100 object-fit-contain" alt="Momo" />
+                    <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" className="w-100 h-100 object-fit-contain" alt="VNPay" />
                   </div>
                   <div>
-                    <h6 className="fw-bold text-dark mb-0">Ví MoMo <span className="badge bg-danger ms-1 small" style={{ fontSize: '0.6rem' }}>KHUYÊN DÙNG</span></h6>
-                    <small className="text-muted">Thanh toán nhanh chóng, an toàn</small>
+                    <h6 className="fw-bold text-dark mb-0">VNPAY QR <span className="badge bg-primary ms-1 small" style={{ fontSize: '0.6rem' }}>KHUYÊN DÙNG</span></h6>
+                    <small className="text-muted">Thanh toán quét mã QR nhanh chóng, an toàn</small>
                   </div>
                 </div>
                 <input 
                   type="radio" 
                   name="paymentChoice" 
                   className="form-check-input fs-5 cursor-pointer"
-                  checked={paymentMethod === 'momo'}
-                  onChange={() => setPaymentMethod('momo')}
+                  checked={paymentMethod === 'vnpay'}
+                  onChange={() => setPaymentMethod('vnpay')}
                 />
               </label>
 
               {/* Other payment options */}
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>CÁC PHƯƠNG THỨC KHÁC</h6>
               <div className="d-flex flex-column gap-2.5">
-                
-                {/* VNPAY */}
-                <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer" style={{ borderColor: paymentMethod === 'vnpay' ? '#164e63' : '#dee2e6' }}>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-light rounded p-1.5" style={{ width: '40px', height: '40px' }}>
-                      <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" className="w-100 h-100 object-fit-contain" alt="VNPay" />
-                    </div>
-                    <h6 className="fw-bold text-dark mb-0">VNPAY QR</h6>
-                  </div>
-                  <input 
-                    type="radio" 
-                    name="paymentChoice" 
-                    className="form-check-input fs-5"
-                    checked={paymentMethod === 'vnpay'}
-                    onChange={() => setPaymentMethod('vnpay')}
-                  />
-                </label>
 
                 {/* International card */}
                 <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer" style={{ borderColor: paymentMethod === 'card' ? '#164e63' : '#dee2e6' }}>
@@ -659,9 +636,9 @@ export default function BookingPage() {
             {/* Dotted Ticket Stub Container */}
             <div className="border border-dashed rounded-4 p-4 mb-4 bg-light position-relative">
               
-              {/* Timeout countdown */}
+              {/* Timeout expiration */}
               <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-1.5 fw-bold mb-4" style={{ fontSize: '0.75rem' }}>
-                ⏰ HẾT HẠN TRONG {formatTimeLeft()}
+                ⏰ HẾT HẠN LÚC {getExpirationTime()}
               </span>
 
               {/* QR Code Phone Display Mockup */}
