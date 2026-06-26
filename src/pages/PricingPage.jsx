@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { PARKING_LOTS } from '../data/parkingData';
+import { CheckCircle2, ChevronLeft, Bell, User, Info, MapPin, Car, Clock, ShieldCheck } from 'lucide-react';
 
 export default function PricingPage() {
   const navigate = useNavigate();
@@ -20,7 +21,15 @@ export default function PricingPage() {
   }, [location.state]);
 
   const [activeSubPlan, setActiveSubPlan] = useState(null);
+  const [subModalStep, setSubModalStep] = useState(1);
   const [selectedSubVehicleId, setSelectedSubVehicleId] = useState(1); // Default to VinFast VF8 (Car)
+  const [paymentMethod, setPaymentMethod] = useState('vnpay'); // 'vnpay', 'card', 'cash', 'momo'
+  const [walletBalance, setWalletBalance] = useState(() => {
+    const bal = localStorage.getItem('walletBalance');
+    return bal !== null ? Number(bal) : 1250000;
+  });
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState(0);
 
   const mockVehicles = [
     { id: 1, type: 'Car', name: 'VinFast VF8', plate: '51H-987.65' },
@@ -426,6 +435,7 @@ export default function PricingPage() {
                 onClick={() => {
                   setSelectedSubVehicleId(1); // Pre-select Car VinFast VF8
                   setActiveSubPlan({ name: 'Economic Monthly', baseType: 'Economic' });
+                  setSubModalStep(1);
                 }}
                 className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto animate-pulse"
                 style={{ backgroundColor: '#164e63' }}
@@ -488,6 +498,7 @@ export default function PricingPage() {
                 onClick={() => {
                   setSelectedSubVehicleId(1); // Pre-select Car VinFast VF8
                   setActiveSubPlan({ name: 'VIP Monthly', baseType: 'VIP' });
+                  setSubModalStep(1);
                 }}
                 className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto"
                 style={{ backgroundColor: '#164e63' }}
@@ -621,51 +632,59 @@ export default function PricingPage() {
           <div 
             className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
             style={{ backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 2000 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveSubPlan(null);
+                setSubModalStep(1);
+              }
+            }}
           >
             <div 
               className="bg-white rounded-4 shadow-lg p-4 p-md-5 overflow-auto w-100 m-3" 
-              style={{ maxWidth: '1000px', maxHeight: '90vh', border: '1px solid #e2e8f0', color: '#1e293b' }}
+              style={{ maxWidth: subModalStep === 2 ? '1000px' : '750px', maxHeight: '90vh', border: '1px solid #e2e8f0', color: '#1e293b' }}
             >
               {/* Header row matching figma */}
-              <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                <div className="d-flex align-items-center gap-2">
-                  <span style={{ fontSize: '1.5rem' }} className="text-teal">⚡</span>
-                  <strong className="text-dark fs-5">Vinparking</strong>
+              <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                <div className="d-flex align-items-center gap-3">
+                  {subModalStep > 1 && subModalStep < 3 && (
+                    <button type="button" onClick={() => setSubModalStep(step => step - 1)} className="btn btn-link text-dark p-0">
+                      <ChevronLeft size={24} />
+                    </button>
+                  )}
+                  <strong className="fs-5" style={{ color: '#164e63' }}>Vinparking</strong>
                 </div>
-                <div className="text-muted d-flex gap-3 small">
-                  <span style={{ cursor: 'pointer' }} className="fw-semibold">❓ Trợ giúp</span>
-                  <span style={{ cursor: 'pointer' }} className="fw-semibold">👤 Tài khoản</span>
+                <div className="text-muted d-flex gap-4">
+                  {/* Removed bell and user icons as requested */}
                 </div>
               </div>
 
-              {/* Title */}
-              <div className="mb-4">
-                <h4 className="fw-bold text-dark mb-1">Chi tiết đăng ký</h4>
-                <p className="text-muted small">Hoàn tất các thông tin bên dưới để kích hoạt gói dịch vụ của bạn.</p>
-              </div>
-
-              <div className="row g-4">
-                {/* Left Column */}
-                <div className="col-lg-8">
+              {subModalStep === 1 && (
+                <>
+                  {/* Title */}
+                  <div className="mb-4">
+                    <h4 className="fw-bold text-dark mb-1">Chi tiết đăng ký</h4>
+                    <p className="text-muted small">Hoàn tất các thông tin bên dưới để kích hoạt gói dịch vụ của bạn.</p>
+                  </div>
                   
                   {/* PLAN SELECTED */}
-                  <div className="border rounded-3 p-4 mb-4 bg-white position-relative">
-                    <div className="d-flex justify-content-between align-items-start">
+                  <div className="border rounded-3 p-4 mb-4 bg-white shadow-sm position-relative">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
                       <div>
-                        <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 mb-2 px-2.5 py-1 text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                        <span className="badge bg-info bg-opacity-10 text-info fw-bold mb-2 px-3 py-1 text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: '0.5px', borderRadius: '4px' }}>
                           PLAN SELECTED
                         </span>
-                        <h5 className="fw-bold text-dark mb-3">{activeSubPlan.name}</h5>
-                        <div className="d-flex flex-column flex-sm-row gap-3 text-muted small mt-2">
-                          <span>✓ Unlimited 24/7 parking</span>
-                          <span>✓ Plate recognition (LPR)</span>
-                          <span>✓ Automatic payment</span>
-                        </div>
+                        <h4 className="fw-bold text-dark mb-0">{activeSubPlan.name}</h4>
                       </div>
                       <div className="text-end">
-                        <h4 className="fw-bold text-dark m-0">{activePlanPrice.toLocaleString('vi-VN')} VNĐ</h4>
+                        <h4 className="fw-bold text-dark m-0">{activePlanPrice.toLocaleString('vi-VN')}</h4>
+                        <h4 className="fw-bold text-dark m-0">VNĐ</h4>
                         <small className="text-muted">/tháng</small>
                       </div>
+                    </div>
+                    <div className="d-flex flex-wrap gap-4 text-muted small border-top pt-3 mt-1">
+                      <span className="d-flex align-items-center gap-1"><CheckCircle2 size={14} className="text-secondary" /> Unlimited 24/7 parking</span>
+                      <span className="d-flex align-items-center gap-1"><CheckCircle2 size={14} className="text-secondary" /> Plate recognition (LPR)</span>
+                      <span className="d-flex align-items-center gap-1"><CheckCircle2 size={14} className="text-secondary" /> Automatic payment</span>
                     </div>
                   </div>
 
@@ -747,73 +766,231 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                </div>
+                  <div className="mt-4 text-end">
+                    <button 
+                      className="btn text-white px-5 py-2.5 rounded-3 fw-bold shadow-sm"
+                      style={{ backgroundColor: '#164e63' }}
+                      onClick={() => setSubModalStep(2)}
+                    >
+                      Tiếp tục thanh toán ➔
+                    </button>
+                  </div>
+            </>
+          )}
 
-                {/* Right Column */}
-                <div className="col-lg-4">
-                  
-                  {/* TÓM TẮT THANH TOÁN */}
-                  <div className="border rounded-3 p-4 bg-white h-100 d-flex flex-column justify-content-between">
-                    <div>
-                      <h6 className="fw-bold text-dark mb-3">Tóm tắt thanh toán</h6>
-                      
-                      <div className="d-flex justify-content-between align-items-center mb-2 small text-muted">
-                        <span>Tạm tính ({activeSubPlan.name})</span>
-                        <span className="fw-semibold text-dark">{activePlanPrice.toLocaleString('vi-VN')} VNĐ</span>
+              {subModalStep === 2 && (
+                <div className="d-flex flex-column h-100 position-relative pb-5">
+                  <div className="row g-5">
+                    {/* Left Column - Payment Methods */}
+                    <div className="col-lg-7">
+                      <h5 className="fw-bold text-dark mb-1">Thanh toán</h5>
+                      <p className="text-muted small mb-4">Vui lòng chọn phương thức thanh toán phù hợp để hoàn tất đặt chỗ.</p>
+
+                      <h6 className="text-muted fw-bold mb-3 mt-2" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>CÁC PHƯƠNG THỨC KHÁC</h6>
+                      <div className="d-flex flex-column gap-3">
+                        <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'vnpay' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'vnpay' ? '2px' : '1px' }}>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="bg-white rounded d-flex align-items-center justify-content-center p-1" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                              <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" className="w-100 h-100 object-fit-contain" alt="VNPay" />
+                            </div>
+                            <div>
+                              <h6 className="fw-bold text-dark mb-0">VNPAY QR</h6>
+                              <small className="text-muted" style={{ fontSize: '0.75rem' }}>Quét mã QR từ mọi ứng dụng ngân hàng</small>
+                            </div>
+                          </div>
+                          <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'vnpay' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                            {paymentMethod === 'vnpay' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                          </div>
+                          <input type="radio" className="d-none" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} />
+                        </label>
+
+                        <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'card' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'card' ? '2px' : '1px' }}>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="bg-white rounded d-flex align-items-center justify-content-center p-1 text-primary" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                              <span className="fs-4">💳</span>
+                            </div>
+                            <div>
+                              <h6 className="fw-bold text-dark mb-0">Thẻ Quốc tế</h6>
+                              <small className="text-muted" style={{ fontSize: '0.75rem' }}>Visa, Mastercard, JCB</small>
+                            </div>
+                          </div>
+                          <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'card' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                            {paymentMethod === 'card' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                          </div>
+                          <input type="radio" className="d-none" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+                        </label>
+
+                        <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'cash' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'cash' ? '2px' : '1px' }}>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="bg-white rounded d-flex align-items-center justify-content-center p-1 text-success" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                              <span className="fs-4">💵</span>
+                            </div>
+                            <div>
+                              <h6 className="fw-bold text-dark mb-0">Tiền mặt tại quầy</h6>
+                              <small className="text-muted" style={{ fontSize: '0.75rem' }}>Thanh toán khi đến nhận chỗ</small>
+                            </div>
+                          </div>
+                          <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'cash' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                            {paymentMethod === 'cash' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                          </div>
+                          <input type="radio" className="d-none" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} />
+                        </label>
                       </div>
-                      <div className="d-flex justify-content-between align-items-center mb-3 small text-muted">
-                        <span>VAT (10%)</span>
-                        <span className="fw-semibold text-dark">{Math.floor(activePlanPrice * 0.1).toLocaleString('vi-VN')} VNĐ</span>
-                      </div>
-                      
-                      <hr className="my-3 text-muted opacity-25" />
-
-                      <div className="d-flex justify-content-between align-items-center mb-4">
-                        <strong className="text-dark">Tổng cộng</strong>
-                        <strong className="fs-5 text-dark" style={{ color: '#164e63' }}>
-                          {Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')} VNĐ
-                        </strong>
-                      </div>
-
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          toast.success('Đăng ký gói thành viên dài hạn thành công!');
-                          setActiveSubPlan(null);
-                        }}
-                        className="btn text-white w-100 fw-bold py-2.5 rounded-3 mb-3 d-flex align-items-center justify-content-center gap-1 shadow-sm"
-                        style={{ backgroundColor: '#164e63' }}
-                      >
-                        Xác nhận đăng ký ➔
-                      </button>
-
-                      <button 
-                        type="button" 
-                        onClick={() => setActiveSubPlan(null)}
-                        className="btn btn-outline-danger w-100 fw-bold py-2.5 rounded-3 border-0 bg-transparent text-danger mb-4"
-                      >
-                        Hủy bỏ
-                      </button>
                     </div>
 
-                    {/* Box Image / Terms */}
-                    <div>
-                      <p className="text-muted small mt-4 m-0" style={{ fontSize: '0.72rem', lineHeight: '1.4' }}>
-                        Bằng cách xác nhận, bạn đồng ý với các Điều khoản & Chính sách của Vinparking Urban Solutions. Thuê bao sẽ tự động gia hạn vào mỗi tháng.
-                      </p>
+                    {/* Right Column - Order Summary & Coupon */}
+                    <div className="col-lg-5">
                       
-                      <div className="rounded-3 overflow-hidden mt-3 shadow-sm" style={{ height: '90px' }}>
-                        <img 
-                          src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&q=80" 
-                          alt="Vinparking Smart Network" 
-                          className="w-100 h-100 object-fit-cover" 
-                        />
+                      {/* Summary */}
+                      <div className="border rounded-3 p-4 bg-white shadow-sm mt-3">
+                        <h6 className="fw-bold text-dark mb-4 pb-3 border-bottom d-flex align-items-center gap-2">
+                          <span className="text-muted" style={{ fontSize: '1.2rem' }}>🧾</span> CHI TIẾT THANH TOÁN
+                        </h6>
+                        
+                        <div className="d-flex justify-content-between align-items-center mb-4 text-muted">
+                          <span style={{ fontSize: '0.9rem' }}>Tạm tính ({activeSubPlan.name})</span>
+                          <span className="fw-bold text-dark">{activePlanPrice.toLocaleString('vi-VN')}đ</span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-4 text-muted">
+                          <span style={{ fontSize: '0.9rem' }}>VAT (10%)</span>
+                          <span className="fw-bold text-dark">{Math.floor(activePlanPrice * 0.1).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                        
+                        <div className="border-bottom my-4"></div>
+
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                          <strong className="text-dark fs-6">Tổng cộng</strong>
+                          <div className="text-end">
+                            <strong className="fs-4 fw-bold" style={{ color: '#164e63' }}>
+                              {Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')}đ
+                            </strong>
+                            <div className="text-muted" style={{ fontSize: '0.7rem' }}>(Đã bao gồm VAT)</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 p-3 bg-light rounded-3 d-flex gap-2 align-items-start border">
+                        <ShieldCheck size={18} className="text-muted mt-1 flex-shrink-0" />
+                        <p className="text-muted small m-0" style={{ fontSize: '0.75rem', lineHeight: '1.4' }}>
+                          Giao dịch được bảo mật bởi chuẩn PCI DSS. Thông tin thẻ của bạn sẽ không được lưu trữ trên hệ thống.
+                        </p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Fixed Sticky Footer for Step 2 */}
+                  <div className="position-absolute bottom-0 start-0 w-100 bg-white border-top py-3 px-4 d-flex justify-content-between align-items-center" style={{ margin: '0 -2rem -2rem -2rem', width: 'calc(100% + 4rem)' }}>
+                    <div>
+                      <small className="text-muted d-block" style={{ fontSize: '0.8rem' }}>Tổng cộng</small>
+                      <strong className="fs-5" style={{ color: '#164e63' }}>
+                        {Math.floor(activePlanPrice * 1.1 - discount).toLocaleString('vi-VN')}đ
+                      </strong>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setSubModalStep(3)}
+                      className="btn text-white px-4 py-2.5 rounded-3 fw-bold d-flex align-items-center gap-2"
+                      style={{ backgroundColor: '#164e63' }}
+                    >
+                      <ShieldCheck size={18} /> Xác nhận thanh toán
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {subModalStep === 3 && (
+                <div className="d-flex flex-column align-items-center py-2">
+                  <div className="row w-100 max-w-4xl justify-content-center g-4">
+                    {/* QR Card */}
+                    <div className="col-md-6 col-lg-5">
+                      <div className="border rounded-4 bg-white overflow-hidden shadow-sm h-100 d-flex flex-column">
+                        <div className="bg-light text-center py-2 border-bottom">
+                          <span className="fw-bold text-dark" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>
+                            <span className="d-inline-block rounded-circle bg-dark me-2" style={{ width: '6px', height: '6px', marginBottom: '2px' }}></span>
+                            HẾT HẠN TRONG 14:58
+                          </span>
+                        </div>
+                        <div className="p-4 d-flex flex-column align-items-center justify-content-center flex-grow-1" style={{ backgroundColor: '#fafafa' }}>
+                          <div className="bg-dark rounded-4 p-2 shadow position-relative" style={{ width: '220px', height: '260px' }}>
+                            <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400" className="w-100 h-100 object-fit-cover rounded-3 opacity-25" alt="Phone" />
+                            <div className="position-absolute top-50 start-50 translate-middle bg-white p-2 rounded-3">
+                              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=VP-${Date.now()}`} alt="QR" style={{ width: '100px', height: '100px' }} />
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 text-center">
+                            <img src="https://www.cognex.com/api/Sitecore/Barcode/Get?text=VIN-1234-5678-90&type=Code128&width=200&height=50" alt="Barcode" style={{ height: '50px', filter: 'grayscale(100%)' }} />
+                            <div className="fw-bold mt-2 text-dark" style={{ letterSpacing: '4px', fontSize: '0.85rem' }}>VIN - 1 2 3 4 - 5 6 7 8 - 9 0</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info Card */}
+                    <div className="col-md-6 col-lg-5 d-flex flex-column gap-3">
+                      <div className="border rounded-3 p-4 bg-white">
+                        <h6 className="text-muted fw-bold mb-4" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>THÔNG TIN VÉ THÁNG</h6>
+                        
+                        <div className="d-flex align-items-start gap-3 mb-3">
+                          <MapPin size={18} className="text-muted mt-1" />
+                          <div>
+                            <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Bãi đỗ đăng ký</div>
+                            <strong className="text-dark d-block">Bãi đỗ {currentLot.name.replace('Bãi đỗ xe thông minh ', '')}</strong>
+                          </div>
+                        </div>
+
+                        <div className="d-flex align-items-start gap-3 mb-3">
+                          <Car size={18} className="text-muted mt-1" />
+                          <div>
+                            <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Phương tiện</div>
+                            <strong className="text-dark d-block">{selectedVehicle.type === 'Car' ? 'Ô tô' : 'Xe máy'} - {selectedVehicle.plate}</strong>
+                          </div>
+                        </div>
+
+                        <div className="d-flex align-items-start gap-3 mb-4">
+                          <Clock size={18} className="text-muted mt-1" />
+                          <div>
+                            <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Thời hạn sử dụng</div>
+                            <strong className="text-dark d-block">
+                              {new Date().toLocaleDateString('vi-VN')} - {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString('vi-VN')}
+                            </strong>
+                          </div>
+                        </div>
+
+                        <div className="bg-light rounded-3 p-3 d-flex justify-content-between align-items-center">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="badge bg-secondary p-1 rounded d-flex"><Car size={14}/></span>
+                            <span className="fw-semibold text-dark small">Phí thuê tháng</span>
+                          </div>
+                          <strong className="text-dark" style={{ color: '#164e63' }}>{Math.floor(activePlanPrice * 1.1 - discount).toLocaleString('vi-VN')}đ/tháng</strong>
+                        </div>
+                      </div>
+
+                      <div className="bg-light rounded-3 p-4 border text-center text-sm-start">
+                        <h6 className="text-muted fw-bold mb-3 d-flex align-items-center gap-2" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>
+                          <Info size={14} /> HƯỚNG DẪN CHECK-IN
+                        </h6>
+                        <div className="d-flex align-items-start gap-3">
+                          <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '20px', height: '20px', fontSize: '0.75rem' }}>!</div>
+                          <p className="text-muted small m-0" style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Sử dụng mã QR này để ra vào bãi xe không giới hạn trong thời hạn vé.</p>
+                        </div>
+                      </div>
+
+                      <button className="btn btn-outline-secondary w-100 fw-bold py-2.5 rounded-3 d-flex justify-content-center align-items-center gap-2" style={{ borderColor: '#164e63', color: '#164e63' }}>
+                        <MapPin size={18} /> Xem hướng dẫn đường đi
+                      </button>
+
+                      <button onClick={() => { setActiveSubPlan(null); navigate('/'); }} className="btn text-white w-100 fw-bold py-2.5 rounded-3 d-flex justify-content-center align-items-center gap-2 mt-2" style={{ backgroundColor: '#164e63' }}>
+                        Về trang chủ
+                      </button>
+
+                      <button onClick={() => {toast.info('Đã hủy đặt chỗ!'); setActiveSubPlan(null)}} className="btn btn-link text-danger text-decoration-none small mt-2 w-100">
+                        Hủy đặt chỗ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>
