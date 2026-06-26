@@ -43,9 +43,3 @@ src/
 └── index.css     # Global styles and design tokens
 ```
 
-## Test Accounts
-| Role | Email | Password |
-|------|-------|----------|
-| Manager | `manager@vinparking.com` | `123456` |
-| Staff | `staff1@vinparking.com` | `123456` |
-| User | `user@example.com` | `123456` |
