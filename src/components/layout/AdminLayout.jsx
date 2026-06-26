@@ -1,3 +1,7 @@
+import { Outlet } from 'react-router-dom';
+import AdminSidebar from '../admin/AdminSidebar';
+import AdminHeader from '../admin/AdminHeader';
+
 const AdminLayout = () => {
     return (
         <div style={{
@@ -19,3 +23,5 @@ const AdminLayout = () => {
         </div>
     );
 };
+
+export default AdminLayout;
