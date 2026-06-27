@@ -29,7 +29,7 @@ export default function BookingPage() {
   const [fullName, setFullName] = useState(localStorage.getItem('fullName') || 'Nguyễn Văn A');
   const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
 
-  const [paymentMethod, setPaymentMethod] = useState('momo');
+  const [paymentMethod, setPaymentMethod] = useState('vnpay');
 
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
   const [timeLeft, setTimeLeft] = useState(15 * 60);
@@ -80,22 +80,25 @@ export default function BookingPage() {
 
   return (
     <div className="min-vh-100 d-flex justify-content-center" style={{ backgroundColor: '#222', padding: '2rem 1rem' }}>
-      <div className="bg-white rounded shadow-lg d-flex flex-column" style={{ width: '100%', maxWidth: step === 4 ? '850px' : '700px', minHeight: '80vh', position: 'relative' }}>
+      <div className="bg-white rounded shadow-lg d-flex flex-column" style={{ width: '100%', maxWidth: step === 3 ? '1000px' : (step === 4 ? '850px' : '700px'), minHeight: '80vh', position: 'relative' }}>
         
         {/* Header */}
         <div className="d-flex justify-content-between align-items-center p-3 border-bottom">
           <button 
             onClick={() => step > 1 && step < 4 ? setStep(step - 1) : navigate('/')} 
-            className="btn btn-link text-decoration-none fw-bold d-flex align-items-center gap-2"
+            className="btn btn-link text-decoration-none fw-bold d-flex align-items-center gap-2 p-0"
             style={{ color: primaryColor, fontSize: '1rem' }}
           >
-            <span>←</span> Vinparking
+            <span className="me-2 text-dark">←</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+              </div>
+              <strong className="fs-5" style={{ color: '#164e63' }}>Vinparking</strong>
+            </div>
           </button>
           <div className="d-flex align-items-center gap-3">
-            <span style={{ fontSize: '1.2rem', color: '#64748b' }}>🔔</span>
-            <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 32, height: 32, backgroundColor: primaryColor, color: '#fff' }}>
-              <span style={{ fontSize: '0.9rem' }}>👤</span>
-            </div>
+            {/* Removed bell and user icons as requested */}
           </div>
         </div>
 
@@ -330,111 +333,101 @@ export default function BookingPage() {
 
           {/* STEP 3 */}
           {step === 3 && (
-            <div>
-              <h5 className="fw-bold mb-1">Phương thức thanh toán</h5>
-              <div className="text-muted mb-4" style={{ fontSize: '0.9rem' }}>Vui lòng chọn phương thức thanh toán phù hợp để hoàn tất đặt chỗ.</div>
+            <div className="d-flex flex-column h-100 position-relative pb-5">
+              <div className="row g-5">
+                {/* Left Column - Payment Methods */}
+                <div className="col-lg-7">
+                  <h5 className="fw-bold text-dark mb-1">Thanh toán</h5>
+                  <p className="text-muted small mb-4">Vui lòng chọn phương thức thanh toán phù hợp để hoàn tất đặt chỗ.</p>
 
-              <div className="row g-4">
-                <div className="col-md-7">
-                  <h6 className="fw-bold text-uppercase mb-3" style={{ fontSize: '0.8rem', color: primaryColor }}>Phương thức gợi ý</h6>
-                  
-                  <div 
-                    onClick={() => setPaymentMethod('momo')}
-                    className="border rounded p-3 d-flex justify-content-between align-items-center mb-4 cursor-pointer"
-                    style={{ borderColor: paymentMethod === 'momo' ? '#db2777' : '#e2e8f0', backgroundColor: paymentMethod === 'momo' ? '#fdf2f8' : '#fff' }}
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="bg-dark rounded p-2" style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#db2777', fontWeight: 'bold' }}>Mo</span>
-                      </div>
-                      <div>
-                        <div className="fw-bold d-flex align-items-center gap-2">Ví MoMo <span className="badge bg-danger rounded-pill" style={{ fontSize: '0.6rem' }}>KHUYÊN DÙNG</span></div>
-                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>Thanh toán nhanh chóng, an toàn</div>
-                      </div>
-                    </div>
-                    <div className="rounded-circle border" style={{ width: 20, height: 20, border: paymentMethod === 'momo' ? '6px solid #db2777' : '1px solid #cbd5e1' }}></div>
-                  </div>
-
-                  <h6 className="fw-bold text-uppercase mb-3" style={{ fontSize: '0.8rem', color: primaryColor }}>Các phương thức khác</h6>
+                  <h6 className="text-muted fw-bold mb-3 mt-2" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>CÁC PHƯƠNG THỨC KHÁC</h6>
                   <div className="d-flex flex-column gap-3">
-                    <div onClick={() => setPaymentMethod('vnpay')} className="border rounded p-3 d-flex justify-content-between align-items-center cursor-pointer">
+                    <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'vnpay' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'vnpay' ? '2px' : '1px' }}>
                       <div className="d-flex align-items-center gap-3">
-                        <div className="bg-light border rounded p-2 text-center" style={{ width: 40, height: 40 }}>QR</div>
+                        <div className="bg-white rounded d-flex align-items-center justify-content-center p-1" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                          <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" className="w-100 h-100 object-fit-contain" alt="VNPay" />
+                        </div>
                         <div>
-                          <div className="fw-bold">VNPAY QR</div>
-                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>Quét mã QR từ mọi ứng dụng ngân hàng</div>
+                          <h6 className="fw-bold text-dark mb-0">VNPAY QR</h6>
+                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>Quét mã QR từ mọi ứng dụng ngân hàng</small>
                         </div>
                       </div>
-                      <div className="rounded-circle border" style={{ width: 20, height: 20, border: paymentMethod === 'vnpay' ? `6px solid ${primaryColor}` : '1px solid #cbd5e1' }}></div>
-                    </div>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'vnpay' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                        {paymentMethod === 'vnpay' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                      </div>
+                      <input type="radio" className="d-none" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} />
+                    </label>
 
-                    <div onClick={() => setPaymentMethod('card')} className="border rounded p-3 d-flex justify-content-between align-items-center cursor-pointer">
+                    <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'card' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'card' ? '2px' : '1px' }}>
                       <div className="d-flex align-items-center gap-3">
-                        <div className="bg-light border rounded p-2 text-center" style={{ width: 40, height: 40 }}>💳</div>
+                        <div className="bg-white rounded d-flex align-items-center justify-content-center p-1 text-primary" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                          <span className="fs-4">💳</span>
+                        </div>
                         <div>
-                          <div className="fw-bold">Thẻ Quốc tế</div>
-                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>Visa, Mastercard, JCB</div>
+                          <h6 className="fw-bold text-dark mb-0">Thẻ Quốc tế</h6>
+                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>Visa, Mastercard, JCB</small>
                         </div>
                       </div>
-                      <div className="rounded-circle border" style={{ width: 20, height: 20, border: paymentMethod === 'card' ? `6px solid ${primaryColor}` : '1px solid #cbd5e1' }}></div>
-                    </div>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'card' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                        {paymentMethod === 'card' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                      </div>
+                      <input type="radio" className="d-none" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+                    </label>
 
-                    <div onClick={() => setPaymentMethod('cash')} className="border rounded p-3 d-flex justify-content-between align-items-center cursor-pointer">
+                    <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer shadow-sm transition-all" style={{ borderColor: paymentMethod === 'cash' ? '#0ea5e9' : '#e2e8f0', borderWidth: paymentMethod === 'cash' ? '2px' : '1px' }}>
                       <div className="d-flex align-items-center gap-3">
-                        <div className="bg-light border rounded p-2 text-center" style={{ width: 40, height: 40 }}>💵</div>
+                        <div className="bg-white rounded d-flex align-items-center justify-content-center p-1 text-success" style={{ width: '45px', height: '45px', border: '1px solid #f1f5f9' }}>
+                          <span className="fs-4">💵</span>
+                        </div>
                         <div>
-                          <div className="fw-bold">Tiền mặt tại quầy</div>
-                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>Thanh toán khi đến nhận chỗ</div>
+                          <h6 className="fw-bold text-dark mb-0">Tiền mặt tại quầy</h6>
+                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>Thanh toán khi đến nhận chỗ</small>
                         </div>
                       </div>
-                      <div className="rounded-circle border" style={{ width: 20, height: 20, border: paymentMethod === 'cash' ? `6px solid ${primaryColor}` : '1px solid #cbd5e1' }}></div>
-                    </div>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '22px', height: '22px', border: `2px solid ${paymentMethod === 'cash' ? '#0ea5e9' : '#cbd5e1'}`, padding: '2px' }}>
+                        {paymentMethod === 'cash' && <div className="rounded-circle w-100 h-100" style={{ backgroundColor: '#0ea5e9' }}></div>}
+                      </div>
+                      <input type="radio" className="d-none" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} />
+                    </label>
                   </div>
                 </div>
 
-                <div className="col-md-5">
-                  <div className="border rounded p-3 mb-3">
-                    <h6 className="fw-bold d-flex align-items-center gap-2 mb-3" style={{ fontSize: '0.85rem', color: primaryColor }}>
-                      <span>🎟️</span> MÃ GIẢM GIÁ
-                    </h6>
-                    <div className="d-flex gap-2">
-                      <input type="text" className="form-control" placeholder="Nhập mã ưu đãi" />
-                      <button className="btn text-white fw-bold" style={{ backgroundColor: primaryColor, whiteSpace: 'nowrap' }}>ÁP DỤNG</button>
-                    </div>
-                  </div>
-
-                  <div className="border rounded p-3">
-                    <h6 className="fw-bold d-flex align-items-center gap-2 mb-3" style={{ fontSize: '0.85rem', color: primaryColor }}>
-                      <span>🧾</span> CHI TIẾT THANH TOÁN
+                {/* Right Column - Order Summary & Coupon */}
+                <div className="col-lg-5">
+                  
+                  {/* Summary */}
+                  <div className="border rounded-3 p-4 bg-white shadow-sm mt-3">
+                    <h6 className="fw-bold text-dark mb-4 pb-3 border-bottom d-flex align-items-center gap-2">
+                      <span className="text-muted" style={{ fontSize: '1.2rem' }}>🧾</span> CHI TIẾT THANH TOÁN
                     </h6>
                     
-                    <div className="d-flex justify-content-between text-muted mb-2" style={{ fontSize: '0.9rem' }}>
-                      <span>Tạm tính</span>
+                    <div className="d-flex justify-content-between align-items-center mb-4 text-muted">
+                      <span style={{ fontSize: '0.9rem' }}>Tạm tính</span>
                       <span className="fw-bold text-dark">{bookingFee.toLocaleString('vi-VN')}đ</span>
                     </div>
-                    <div className="d-flex justify-content-between text-muted mb-2" style={{ fontSize: '0.9rem' }}>
-                      <span>VAT (10%)</span>
+                    <div className="d-flex justify-content-between align-items-center mb-4 text-muted">
+                      <span style={{ fontSize: '0.9rem' }}>VAT (10%)</span>
                       <span className="fw-bold text-dark">0đ</span>
                     </div>
-                    <div className="d-flex justify-content-between text-muted mb-3" style={{ fontSize: '0.9rem' }}>
-                      <span style={{ color: '#0f766e' }}>Giảm giá mã VP2024</span>
-                      <span className="fw-bold" style={{ color: '#0f766e' }}>-0đ</span>
-                    </div>
                     
-                    <hr className="text-muted opacity-25" />
-                    
+                    <div className="border-bottom my-4"></div>
+
                     <div className="d-flex justify-content-between align-items-center mt-3">
-                      <span className="fw-bold">Tổng cộng</span>
+                      <strong className="text-dark fs-6">Tổng cộng</strong>
                       <div className="text-end">
-                        <h4 className="fw-bold m-0" style={{ color: primaryColor }}>{finalPrice.toLocaleString('vi-VN')}đ</h4>
-                        <div className="text-muted" style={{ fontSize: '0.65rem' }}>(Đã bao gồm VAT)</div>
+                        <strong className="fs-4 fw-bold" style={{ color: '#164e63' }}>
+                          {finalPrice.toLocaleString('vi-VN')}đ
+                        </strong>
+                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>(Đã bao gồm VAT)</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-start gap-2 mt-3 text-muted p-2" style={{ fontSize: '0.7rem' }}>
-                    <span>🛡️</span>
-                    <span>Giao dịch được bảo mật bởi chuẩn PCI DSS. Thông tin thẻ của bạn sẽ không được lưu trữ trên hệ thống.</span>
+                  <div className="mt-3 p-3 bg-light rounded-3 d-flex gap-2 align-items-start border">
+                    <span style={{fontSize: '18px'}} className="text-muted mt-1 flex-shrink-0">🛡️</span>
+                    <p className="text-muted small m-0" style={{ fontSize: '0.75rem', lineHeight: '1.4' }}>
+                      Giao dịch được bảo mật bởi chuẩn PCI DSS. Thông tin thẻ của bạn sẽ không được lưu trữ trên hệ thống.
+                    </p>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
 import VehicleSection from '../components/user-dashboard/VehicleSection';
@@ -7,7 +8,14 @@ import ProfileSection from '../components/user-dashboard/ProfileSection';
 import HistorySection from '../components/user-dashboard/HistorySection';
 
 export default function UserDashboardPage() {
-  const [activeTab, setActiveTab] = useState('vehicles'); // 'profile', 'vehicles', 'wallet', 'history'
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history'
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
 
   const renderContent = () => {
     switch (activeTab) {

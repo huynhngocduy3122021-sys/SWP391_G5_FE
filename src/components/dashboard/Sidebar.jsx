@@ -10,9 +10,11 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
-        <span style={{ fontSize: '1.5rem' }}>⚡</span>
-        <span>Vinparking</span>
+      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+        </div>
+        <span style={{ color: '#164e63', fontWeight: 'bold' }}>Vinparking</span>
       </div>
 
       <nav className="sidebar-nav">

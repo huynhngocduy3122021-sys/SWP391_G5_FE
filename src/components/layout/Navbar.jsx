@@ -41,9 +41,11 @@ export default function Navbar() {
 
   return (
     <header className="glass-nav">
-      <Link to="/" className="nav-logo">
-        <span style={{ fontSize: '1.4rem' }}>⚡</span>
-        <span>Vinparking</span>
+      <Link to="/" className="nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+        <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+        </div>
+        <span style={{ color: '#164e63', fontWeight: 'bold' }}>Vinparking</span>
       </Link>
 
       <nav>
@@ -112,11 +114,12 @@ export default function Navbar() {
                 {/* Menu */}
                 <div style={{ padding: '0.5rem' }}>
                   {[
-                    { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard' },
-                    { icon: '🚗', label: 'Phương tiện', to: '/user-dashboard' },
-                    { icon: '💳', label: 'Ví của tôi', to: '/user-dashboard' },
+                    { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard', tab: 'profile' },
+                    { icon: '🚗', label: 'Phương tiện', to: '/user-dashboard', tab: 'vehicles' },
+                    { icon: '💳', label: 'Ví của tôi', to: '/user-dashboard', tab: 'wallet' },
+                    { icon: '🕒', label: 'Lịch sử giao dịch', to: '/user-dashboard', tab: 'history' },
                   ].map((item) => (
-                    <Link key={item.label} to={item.to}
+                    <Link key={item.label} to={item.to} state={{ tab: item.tab }}
                       onClick={() => setDropdownOpen(false)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.65rem',

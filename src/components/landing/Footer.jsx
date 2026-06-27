@@ -2,9 +2,11 @@ export default function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-left">
-        <div className="footer-logo">
-          <span style={{ fontSize: '1.3rem' }}>⚡</span>
-          <span>Vinparking</span>
+        <div className="footer-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+          </div>
+          <span style={{ color: '#164e63', fontWeight: 'bold' }}>Vinparking</span>
         </div>
         <span className="footer-copy">© 2026 Vinparking Smart Systems. Smart Harbor Engineering.</span>
       </div>

@@ -651,7 +651,12 @@ export default function PricingPage() {
                       <ChevronLeft size={24} />
                     </button>
                   )}
-                  <strong className="fs-5" style={{ color: '#164e63' }}>Vinparking</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+                    </div>
+                    <strong className="fs-5" style={{ color: '#164e63' }}>Vinparking</strong>
+                  </div>
                 </div>
                 <div className="text-muted d-flex gap-4">
                   {/* Removed bell and user icons as requested */}
