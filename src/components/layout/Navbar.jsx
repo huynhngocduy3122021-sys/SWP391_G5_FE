@@ -152,6 +152,22 @@ export default function Navbar() {
                     </Link>
                   )}
 
+                  {role === 'admin' && (
+                    <Link to="/admin/dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.65rem',
+                        padding: '0.6rem 0.75rem', borderRadius: 8,
+                        color: '#38bdf8', textDecoration: 'none',
+                        fontSize: '0.875rem', fontWeight: 700,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      🛡️ Admin Portal
+                    </Link>
+                  )}
+
                   {role === 'staff' && (
                     <>
                       <Link to="/staff/entry"
