@@ -9,11 +9,12 @@ import HistorySection from '../components/user-dashboard/HistorySection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history'
 
   useEffect(() => {
-    if (location.state?.tab) {
-      setActiveTab(location.state.tab);
+    const tabFromState = location.state?.activeTab || location.state?.tab;
+    if (tabFromState) {
+      setActiveTab(tabFromState);
     }
   }, [location.state]);
 

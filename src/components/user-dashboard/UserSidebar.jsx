@@ -57,7 +57,6 @@ export default function UserSidebar({ activeTab, onTabChange }) {
       {/* Bottom Actions */}
       <div className="mt-auto pt-4 border-top">
 
-        
         <div className="d-flex flex-column gap-1">
           <button className="btn text-start text-muted bg-transparent border-0 d-flex align-items-center gap-2 py-2">
             <span>❓</span> Trợ giúp

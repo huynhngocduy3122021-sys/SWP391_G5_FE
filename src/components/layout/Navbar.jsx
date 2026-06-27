@@ -41,11 +41,11 @@ export default function Navbar() {
 
   return (
     <header className="glass-nav">
-      <Link to="/" className="nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+      <Link to="/" className="nav-logo" style={{ textDecoration: 'none', gap: '8px' }}>
         <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem' }}>≡</span>
         </div>
-        <span style={{ color: '#164e63', fontWeight: 'bold' }}>Vinparking</span>
+        <span className="fw-bold m-0" style={{ color: '#164e63', fontSize: '1.4rem' }}>Vinparking</span>
       </Link>
 
       <nav>
@@ -115,11 +115,11 @@ export default function Navbar() {
                 <div style={{ padding: '0.5rem' }}>
                   {[
                     { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard', tab: 'profile' },
-                    { icon: '🚗', label: 'Phương tiện', to: '/user-dashboard', tab: 'vehicles' },
-                    { icon: '💳', label: 'Ví của tôi', to: '/user-dashboard', tab: 'wallet' },
+                    { icon: '🚗', label: 'Phương tiện & Gói cước', to: '/user-dashboard', tab: 'vehicles' },
+                    { icon: '💳', label: 'Ví và thanh toán', to: '/user-dashboard', tab: 'wallet' },
                     { icon: '🕒', label: 'Lịch sử giao dịch', to: '/user-dashboard', tab: 'history' },
                   ].map((item) => (
-                    <Link key={item.label} to={item.to} state={{ tab: item.tab }}
+                    <Link key={item.label} to={item.to} state={{ activeTab: item.tab }}
                       onClick={() => setDropdownOpen(false)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.65rem',
@@ -147,6 +147,22 @@ export default function Navbar() {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       📊 Quản lý hệ thống
+                    </Link>
+                  )}
+
+                  {role === 'admin' && (
+                    <Link to="/admin/dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.65rem',
+                        padding: '0.6rem 0.75rem', borderRadius: 8,
+                        color: '#38bdf8', textDecoration: 'none',
+                        fontSize: '0.875rem', fontWeight: 700,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      🛡️ Admin Portal
                     </Link>
                   )}
 

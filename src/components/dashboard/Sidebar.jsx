@@ -12,9 +12,9 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }) {
     <aside className="sidebar">
       <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem', lineHeight: 1 }}>≡</span>
+          <span className="fw-bold" style={{ letterSpacing: '2px', fontSize: '1.2rem' }}>≡</span>
         </div>
-        <span style={{ color: '#164e63', fontWeight: 'bold' }}>Vinparking</span>
+        <span className="fw-bold m-0" style={{ color: '#164e63', fontSize: '1.4rem' }}>Vinparking</span>
       </div>
 
       <nav className="sidebar-nav">
