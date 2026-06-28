@@ -42,4 +42,3 @@ src/
 ├── utils/        # Utilities (format, roleGuard)
 └── index.css     # Global styles and design tokens
 ```
-

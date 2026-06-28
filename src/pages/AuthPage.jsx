@@ -15,7 +15,9 @@ export default function AuthPage() {
   const handleLoginSuccess = (userData) => {
     login(userData);
     const role = userData.userRole?.toLowerCase();
-    if (role === 'manager') {
+    if (role === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (role === 'manager') {
       navigate('/manager-dashboard');
     } else if (role === 'staff') {
       navigate('/staff/entry');

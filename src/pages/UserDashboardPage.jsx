@@ -10,13 +10,14 @@ import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history', 'bookings'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history', 'bookings'
 
   useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
+    const tabFromState = location.state?.activeTab || location.state?.tab;
+    if (tabFromState) {
+      setActiveTab(tabFromState);
     }
-  }, [location.state?.activeTab]);
+  }, [location.state]);
 
   const renderContent = () => {
     switch (activeTab) {

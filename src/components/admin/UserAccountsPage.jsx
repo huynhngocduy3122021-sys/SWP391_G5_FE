@@ -1,10 +1,221 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Modal, Button, Form, Spinner, Badge } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import authApi from '../../api/authApi';
+import { MdAdd, MdPeople, MdPerson } from 'react-icons/md';
 
 const UserAccountsPage = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    userFullName: '',
+    userEmail: '',
+    userPhone: '',
+    userPassword: '',
+    userRole: 'STAFF',
+    userAddress: 'System'
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const data = await authApi.getAllUsers();
+      setUsers(data);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await authApi.adminCreateUser(formData);
+      toast.success('Account created successfully');
+      setShowModal(false);
+      setFormData({
+        userFullName: '',
+        userEmail: '',
+        userPhone: '',
+        userPassword: '',
+        userRole: 'STAFF',
+        userAddress: 'System'
+      });
+      fetchUsers(); // Refresh list
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Failed to create user';
+      toast.error(typeof msg === 'string' ? msg : 'Error creating account');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getRoleBadge = (role) => {
+    switch(role) {
+      case 'ADMIN': return <Badge bg="danger">ADMIN</Badge>;
+      case 'MANAGER': return <Badge bg="warning" text="dark">MANAGER</Badge>;
+      case 'STAFF': return <Badge bg="info">STAFF</Badge>;
+      default: return <Badge bg="secondary">USER</Badge>;
+    }
+  };
+
   return (
-    <div style={{ color: '#fff' }}>
-      <h2>User Accounts</h2>
-      <p>This is the placeholder for the User Accounts management page.</p>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>User Accounts</h2>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Manage all user roles and permissions in the system.</p>
+        </div>
+        <button 
+          onClick={() => setShowModal(true)}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px',
+            backgroundColor: '#1b6eff', color: '#fff', border: 'none', 
+            padding: '10px 16px', borderRadius: '8px', fontWeight: '600',
+            cursor: 'pointer', transition: 'background 0.2s'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1557cc'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1b6eff'}
+        >
+          <MdAdd size={20} /> Create Account
+        </button>
+      </div>
+
+      <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '0', overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+            <Spinner animation="border" size="sm" className="me-2" /> Loading users...
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #eef0f3' }}>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>User</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Contact Info</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Role</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.userId} style={{ borderBottom: '1px solid #eef0f3', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e => e.currentTarget.style.backgroundColor='transparent'}>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1b6eff' }}>
+                          <MdPerson size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px' }}>{u.userFullName}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>ID: {u.userId}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ fontSize: '14px', color: '#334155', marginBottom: '4px' }}>{u.userEmail}</div>
+                      <div style={{ fontSize: '13px', color: '#64748b' }}>{u.userPhone}</div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      {getRoleBadge(u.userRole)}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      {u.deleted ? (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#ef4444', backgroundColor: '#fee2e2', padding: '4px 8px', borderRadius: '4px' }}>DISABLED</span>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 8px', borderRadius: '4px' }}>ACTIVE</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      No users found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static">
+        <Modal.Header closeButton style={{ borderBottom: '1px solid #eef0f3' }}>
+          <Modal.Title style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
+            Create Staff/Manager Account
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateUser}>
+          <Modal.Body style={{ padding: '24px' }}>
+            <Form.Group className="mb-3">
+              <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Full Name</Form.Label>
+              <Form.Control 
+                type="text" required placeholder="John Doe"
+                value={formData.userFullName} onChange={e => setFormData({...formData, userFullName: e.target.value})}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Email</Form.Label>
+              <Form.Control 
+                type="email" required placeholder="name@company.com"
+                value={formData.userEmail} onChange={e => setFormData({...formData, userEmail: e.target.value})}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Phone Number</Form.Label>
+              <Form.Control 
+                type="text" required placeholder="09xxxxxxxx"
+                value={formData.userPhone} onChange={e => setFormData({...formData, userPhone: e.target.value})}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Password</Form.Label>
+              <Form.Control 
+                type="password" required minLength="6" placeholder="Minimum 6 characters"
+                value={formData.userPassword} onChange={e => setFormData({...formData, userPassword: e.target.value})}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Account Role</Form.Label>
+              <Form.Select 
+                value={formData.userRole} onChange={e => setFormData({...formData, userRole: e.target.value})}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              >
+                <option value="STAFF">Staff (Operations)</option>
+                <option value="MANAGER">Manager (Administration)</option>
+                <option value="ADMIN">Admin (Superuser)</option>
+                <option value="USER">User (Customer)</option>
+              </Form.Select>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer style={{ borderTop: '1px solid #eef0f3' }}>
+            <Button variant="light" onClick={() => setShowModal(false)} style={{ fontSize: '14px', fontWeight: '500' }}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={submitting} style={{ backgroundColor: '#1b6eff', border: 'none', fontSize: '14px', fontWeight: '500', padding: '8px 16px' }}>
+              {submitting ? <Spinner size="sm" animation="border" className="me-2"/> : null}
+              {submitting ? 'Creating...' : 'Create Account'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };

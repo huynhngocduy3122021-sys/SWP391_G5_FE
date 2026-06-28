@@ -16,12 +16,7 @@ export default function UserSidebar({ activeTab, onTabChange }) {
   return (
     <div className="d-flex flex-column h-100 p-3">
       {/* Logo */}
-      <div className="d-flex align-items-center gap-2 mb-4 px-2 mt-2">
-        <div style={{ background: '#164e63', color: '#fff', borderRadius: '4px', padding: '2px 8px' }}>
-          <span className="fw-bold" style={{ letterSpacing: '2px' }}>≡</span>
-        </div>
-        <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>Vinparking</h4>
-      </div>
+
 
       {/* User Info Card */}
       <div className="mb-4 p-3 rounded-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
@@ -62,6 +57,7 @@ export default function UserSidebar({ activeTab, onTabChange }) {
 
       {/* Bottom Actions */}
       <div className="mt-auto pt-4 border-top">
+
         <div className="d-flex flex-column gap-1">
           <button className="btn text-start text-muted bg-transparent border-0 d-flex align-items-center gap-2 py-2">
             <span>❓</span> Trợ giúp
