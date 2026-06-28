@@ -135,7 +135,7 @@ export default function GateOutPanel() {
           <CapturedShot 
             title="CAPTURED ENTRY (REFERENCE - LÚC VÀO)" 
             plate={activeSession ? activeSession.licensePlate : 'CHƯA CÓ DỮ LIỆU'} 
-            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor} (${activeSession.vehicleBrand})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
+            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor || 'Không rõ'} (${activeSession.vehicleBrand || 'Không rõ'})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
             imageUrls={activeSession ? activeSession.imageUrls : []}
           />
           <CapturedShot 

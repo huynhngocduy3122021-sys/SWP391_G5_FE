@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
+import parkingApi from '../../api/parkingApi';
 import ZoneOccupancyTable, { MOCK_ZONES } from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
@@ -8,6 +9,9 @@ const GATE_ID = 'GATE-04';
 
 // Màn "Vận hành Cổng VÀO" — khớp ảnh thiết kế (AI Smart Allocation + Issue Card)
 export default function GateInPanel() {
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingCode, setBookingCode] = useState('');
+  
   // Dữ liệu camera AI trả về — mock theo ảnh, thay bằng staffApi.getLiveEntryDetection(GATE_ID)
   const [detected, setDetected] = useState({ plateNumber: '30K-888.88', entryTime: '14:42:05' });
   const [licensePlate, setLicensePlate] = useState('30K-888.88');
@@ -65,7 +69,32 @@ export default function GateInPanel() {
     }
   };
 
+  const handleLookupBooking = async () => {
+    if (!bookingCode.trim()) {
+      toast.error('Vui lòng nhập mã đặt chỗ!');
+      return;
+    }
+    try {
+      const res = await parkingApi.getBookingByCode(bookingCode.trim());
+      if (res) {
+        setLicensePlate(res.licensePlate);
+        if (res.vehicleTypeId) {
+          setVehicleTypeId(res.vehicleTypeId);
+        }
+        toast.success(`Tìm thấy đặt chỗ xe ${res.licensePlate} (${res.vehicleTypeName})!`);
+      }
+    } catch (err) {
+      console.error("Lookup Booking Error:", err);
+      const msg = err.response?.data?.message || 'Không tìm thấy thông tin đặt chỗ!';
+      toast.error(msg);
+    }
+  };
+
   const handleConfirm = async () => {
+    if (isBooking && !bookingCode.trim()) {
+      toast.error('Vui lòng nhập mã đặt chỗ!');
+      return;
+    }
     if (!licensePlate) {
       toast.error('Vui lòng nhập biển số xe!');
       return;
@@ -80,18 +109,22 @@ export default function GateInPanel() {
     }
     setSubmitting(true);
     try {
-      // B1: Gọi API Check-in để tạo parkingSession
-      const checkInResult = await staffApi.confirmEntry({
-        licensePlate: licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
-        vehicleTypeId: Number(vehicleTypeId),
-        cardCode: cardCode.trim(),
-        vehicleColor: vehicleColor.trim(),
-        vehicleBrand: vehicleBrand.trim()
-      });
+      let parkingSessionId;
+      
+      if (isBooking) {
+        const checkInResult = await parkingApi.checkInBooking(bookingCode.trim(), cardCode.trim());
+        parkingSessionId = checkInResult.parkingSessionId;
+      } else {
+        const checkInResult = await staffApi.confirmEntry({
+          licensePlate: licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
+          vehicleTypeId: Number(vehicleTypeId),
+          cardCode: cardCode.trim(),
+          vehicleColor: vehicleColor.trim(),
+          vehicleBrand: vehicleBrand.trim()
+        });
+        parkingSessionId = checkInResult.parkingSessionId;
+      }
 
-      const parkingSessionId = checkInResult.parkingSessionId;
-
-      // B2: Nếu có chọn ảnh thì tải ảnh lên thông qua API 2
       if (selectedFiles.length > 0 && parkingSessionId) {
         await staffApi.uploadVehicleImages(parkingSessionId, 'CHECK_IN', selectedFiles);
       }
@@ -99,13 +132,16 @@ export default function GateInPanel() {
       toast.success(`Đã cấp thẻ & mở barie cho ${licensePlate}!`);
       setSelectedFiles([]);
       setCardCode('');
+      if (isBooking) {
+        setBookingCode('');
+      }
     } catch (err) {
       console.error("Check-in Error:", err.response?.data || err.message);
       let errorStr = 'Lỗi server khi check-in!';
       if (err.message === 'Network Error') {
         errorStr = 'Không thể kết nối tới Backend. Hãy chắc chắn Spring Boot đang chạy ở port 8081!';
       } else {
-        const msg = err.response?.data;
+        const msg = err.response?.data?.message || err.response?.data;
         if (typeof msg === 'string' && msg.trim() !== '') {
           errorStr = msg;
         }
@@ -129,9 +165,51 @@ export default function GateInPanel() {
         />
 
         <div className="vin-card">
-          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>
-            ⚙️ Vehicle Details
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+              ⚙️ Vehicle Details
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className={`vin-btn vin-btn--sm ${!isBooking ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
+                style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
+                onClick={() => setIsBooking(false)}
+              >
+                Khách vãng lai
+              </button>
+              <button
+                type="button"
+                className={`vin-btn vin-btn--sm ${isBooking ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
+                style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
+                onClick={() => setIsBooking(true)}
+              >
+                Đã đặt trước (Booking)
+              </button>
+            </div>
           </div>
+
+          {isBooking && (
+            <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
+              <label>BOOKING CODE (MÃ ĐẶT CHỖ)</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  value={bookingCode}
+                  onChange={(e) => setBookingCode(e.target.value)}
+                  placeholder="Nhập mã đặt chỗ..."
+                  style={{ flex: 1, fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
+                />
+                <button
+                  type="button"
+                  className="vin-btn vin-btn--primary"
+                  onClick={handleLookupBooking}
+                  style={{ whiteSpace: 'nowrap', padding: '0 1rem' }}
+                >
+                  Tra cứu
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
             <label>LICENSE PLATE (BIỂN SỐ XE)</label>

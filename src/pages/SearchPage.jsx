@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { PARKING_LOTS } from '../data/parkingData';
+import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import parkingApi from '../api/parkingApi';
 
 export default function SearchPage() {
+  const [lots, setLots] = useState([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const initialQuery = location.state?.searchQuery || '';
 
@@ -28,6 +31,25 @@ export default function SearchPage() {
       setAppliedSearch(prev => ({ ...prev, location: location.state.searchQuery }));
     }
   }, [location.state?.searchQuery]);
+
+  useEffect(() => {
+    const fetchLots = async () => {
+      try {
+        const branches = await parkingApi.getAllBranches();
+        if (branches && branches.length > 0) {
+          setLots(branches.map(mapBranchToParkingLot));
+        } else {
+          setLots(PARKING_LOTS);
+        }
+      } catch (error) {
+        console.error('Error fetching branches in SearchPage:', error);
+        setLots(PARKING_LOTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLots();
+  }, []);
 
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(50000);
@@ -69,7 +91,7 @@ export default function SearchPage() {
 
   // Derive filtered results inside render to keep state clean and reactive
   const keyword = appliedSearch.location.toLowerCase().trim();
-  const filtered = PARKING_LOTS.filter(lot => {
+  const filtered = lots.filter(lot => {
     // 1. Keyword search (Location matches name, area, address)
     if (keyword) {
       const matchKeyword = lot.name.toLowerCase().includes(keyword) ||

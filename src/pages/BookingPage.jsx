@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { PARKING_LOTS } from '../data/parkingData';
+import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import parkingApi from '../api/parkingApi';
 
 export default function BookingPage() {
   const location = useLocation();
@@ -12,14 +13,32 @@ export default function BookingPage() {
   const passedVehicle = location.state?.selectedVehicle || 'Ô tô';
 
   // Fallback to Landmark 81 if no lot was selected
-  const lot = passedLot || PARKING_LOTS[0];
+  const [lot, setLot] = useState(passedLot || PARKING_LOTS[0]);
+
+  useEffect(() => {
+    if (passedLot) {
+      setLot(passedLot);
+    } else {
+      const fetchDefaultLot = async () => {
+        try {
+          const branches = await parkingApi.getAllBranches();
+          if (branches && branches.length > 0) {
+            setLot(mapBranchToParkingLot(branches[0]));
+          }
+        } catch (error) {
+          console.error('Error fetching default branch in BookingPage:', error);
+        }
+      };
+      fetchDefaultLot();
+    }
+  }, [passedLot]);
 
   // 1. Wizard Step State: 1 (Select Slot), 2 (Details), 3 (Payment), 4 (Success)
   const [step, setStep] = useState(1);
 
   // 2. Booking Data State
   const [vehicle, setVehicle] = useState(passedVehicle);
-  const [arrivalDate, setArrivalDate] = useState('2024-10-24');
+  const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('14:00');
   const [customTime, setCustomTime] = useState('');
   const [showCustomTimeInput, setShowCustomTimeInput] = useState(false);
@@ -29,12 +48,15 @@ export default function BookingPage() {
   const [isEditingPlate, setIsEditingPlate] = useState(false);
   const [fullName, setFullName] = useState(localStorage.getItem('fullName') || 'Nguyễn Văn A');
   const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
+  const [vehicleColor, setVehicleColor] = useState('');
+  const [vehicleBrand, setVehicleBrand] = useState('');
 
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState('vnpay'); // 'vnpay', 'card', 'cash', 'wallet'
 
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
+  const [createdBookingId, setCreatedBookingId] = useState(null);
   const [walletBalance, setWalletBalance] = useState(() => {
     const bal = localStorage.getItem('walletBalance');
     return bal !== null ? Number(bal) : 1250000;
@@ -97,42 +119,64 @@ export default function BookingPage() {
   };
 
   // Complete Payment and Generate Ticket (Step 3 -> Step 4)
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     // Check wallet balance if user uses Vinparking Wallet (custom logic integration)
     if (paymentMethod === 'wallet' && walletBalance < finalPrice) {
       toast.error('Số dư ví Vinparking không đủ!');
       return;
     }
 
-    const bookingId = `VP-${Math.floor(10000 + Math.random() * 90000)}`;
-    setConfirmedBookingId(bookingId);
+    try {
+      const vehicleTypeId = vehicle === 'Xe máy' ? 2 : 3;
+      const expectedArrivalTime = `${arrivalDate}T${timeSlot}:00`;
+      
+      const payload = {
+        parkingBranchId: lot.id,
+        vehicleTypeId: vehicleTypeId,
+        licensePlate: licensePlate,
+        expectedArrivalTime: expectedArrivalTime,
+        vehicleColor: vehicleColor.trim(),
+        vehicleBrand: vehicleBrand.trim()
+      };
+      
+      const response = await parkingApi.createBooking(payload);
+      
+      // Save actual booking code and ID returned from database
+      const actualBookingCode = response.bookingCode || `BK-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      setConfirmedBookingId(actualBookingCode);
+      setCreatedBookingId(response.bookingId);
 
-    // Deduct wallet if selected
-    if (paymentMethod === 'wallet') {
-      const newBal = walletBalance - finalPrice;
-      setWalletBalance(newBal);
-      localStorage.setItem('walletBalance', String(newBal));
-      window.dispatchEvent(new Event('storage'));
+      // Deduct wallet if selected
+      if (paymentMethod === 'wallet') {
+        const newBal = walletBalance - finalPrice;
+        setWalletBalance(newBal);
+        localStorage.setItem('walletBalance', String(newBal));
+        window.dispatchEvent(new Event('storage'));
+      }
+
+      // Save transaction to local storage
+      const newTransaction = {
+        id: actualBookingCode,
+        date: `${arrivalDate} ${timeSlot}`,
+        lotName: lot.title,
+        plate: licensePlate,
+        amount: finalPrice,
+        status: 'Thành công',
+        service: `Đặt giữ chỗ ${vehicle}`,
+        duration: '1h',
+      };
+
+      const existingTxStr = localStorage.getItem('customTransactions');
+      const existingTx = existingTxStr ? JSON.parse(existingTxStr) : [];
+      localStorage.setItem('customTransactions', JSON.stringify([newTransaction, ...existingTx]));
+
+      setStep(4);
+      toast.success('Đặt giữ chỗ thành công!');
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      const errMsg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo mã đặt chỗ trên hệ thống!';
+      toast.error(errMsg);
     }
-
-    // Save transaction to local storage
-    const newTransaction = {
-      id: bookingId,
-      date: `${arrivalDate} ${timeSlot}`,
-      lotName: lot.title,
-      plate: licensePlate,
-      amount: finalPrice,
-      status: 'Thành công',
-      service: `Đặt giữ chỗ ${vehicle}`,
-      duration: '1h',
-    };
-
-    const existingTxStr = localStorage.getItem('customTransactions');
-    const existingTx = existingTxStr ? JSON.parse(existingTxStr) : [];
-    localStorage.setItem('customTransactions', JSON.stringify([newTransaction, ...existingTx]));
-
-    setStep(4);
-    toast.success('Đặt chỗ thành công!');
   };
 
   // Steps breadcrumb data
@@ -397,6 +441,29 @@ export default function BookingPage() {
                     </div>
                   )}
 
+                  <div className="row g-2 mt-2">
+                    <div className="col-6">
+                      <label className="text-muted small mb-1" style={{ fontSize: '0.75rem' }}>Màu xe</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ví dụ: Xanh, Đỏ"
+                        className="form-control form-control-sm text-dark fw-medium"
+                        value={vehicleColor}
+                        onChange={e => setVehicleColor(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="text-muted small mb-1" style={{ fontSize: '0.75rem' }}>Hiệu xe</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ví dụ: VinFast"
+                        className="form-control form-control-sm text-dark fw-medium"
+                        value={vehicleBrand}
+                        onChange={e => setVehicleBrand(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
                   <p className="text-muted mt-2 m-0" style={{ fontSize: '0.75rem', lineHeight: '1.3' }}>
                     💡 Hệ thống AI sẽ tự động nhận diện biển số này khi xe vào bãi.
                   </p>
@@ -648,7 +715,7 @@ export default function BookingPage() {
                   style={{ width: '220px', minHeight: '260px' }}
                 >
                   <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${confirmedBookingId}|${licensePlate}|${lot.id}`} 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${confirmedBookingId}`} 
                     alt="Ticket QR Code" 
                     className="img-fluid"
                     style={{ width: '130px', height: '130px', objectFit: 'contain' }}
@@ -674,6 +741,11 @@ export default function BookingPage() {
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>🚗 PHƯƠNG TIỆN</span>
                   <strong className="text-dark">{vehicle} - {licensePlate}</strong>
+                  {(vehicleColor || vehicleBrand) && (
+                    <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
+                      ({[vehicleBrand, vehicleColor].filter(Boolean).join(' - ')})
+                    </span>
+                  )}
                 </div>
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>📅 THỜI GIAN ĐẾN</span>
@@ -719,18 +791,29 @@ export default function BookingPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/user-dashboard')}
+                onClick={() => navigate('/user-dashboard', { state: { activeTab: 'bookings' } })}
                 className="btn text-white fw-bold py-2.5 rounded-3 w-100"
                 style={{ backgroundColor: '#164e63' }}
               >
-                Quản lý Thẻ & Lịch sử đỗ
+                Quản lý lịch đặt giữ chỗ
               </button>
               
-              <button 
+               <button 
                 type="button" 
-                onClick={() => {
-                  toast.info('Đã gửi yêu cầu hủy đặt chỗ!');
-                  navigate('/');
+                onClick={async () => {
+                  if (createdBookingId) {
+                    if (window.confirm('Bạn có chắc chắn muốn hủy lượt đặt giữ chỗ này?')) {
+                      try {
+                        await parkingApi.cancelBooking(createdBookingId);
+                        toast.success('Hủy đặt chỗ thành công!');
+                        navigate('/user-dashboard', { state: { activeTab: 'bookings' } });
+                      } catch (err) {
+                        toast.error('Không thể hủy đặt giữ chỗ vào lúc này!');
+                      }
+                    }
+                  } else {
+                    navigate('/');
+                  }
                 }}
                 className="btn btn-link text-danger text-decoration-none fw-bold mt-2 small"
               >
