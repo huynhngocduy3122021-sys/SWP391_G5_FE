@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { PARKING_LOTS } from '../data/parkingData';
+import bookingApi from '../api/bookingApi';
 
 export default function BookingPage() {
   const location = useLocation();
@@ -33,6 +34,7 @@ export default function BookingPage() {
 
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
   const [timeLeft, setTimeLeft] = useState(15 * 60);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -62,11 +64,53 @@ export default function BookingPage() {
     }
   };
 
-  const handleConfirmPayment = () => {
-    const bookingId = `VP-${Math.floor(10000 + Math.random() * 90000)}`;
-    setConfirmedBookingId(bookingId);
-    setStep(4);
-    toast.success('Đặt chỗ thành công!');
+  // Map tên loại xe (UI) → vehicleTypeId (BE)
+  // Điều chỉnh mapping này cho khớp với dữ liệu vehicleTypeId thực tế trong DB của bạn
+  const VEHICLE_TYPE_MAP = {
+    'Xe máy': 1,
+    'Ô tô':   2,
+    'Xe tải': 3,
+    'Xe đạp': 4,
+  };
+
+  const handleConfirmPayment = async () => {
+    const parkingBranchId = lot?.parkingBranchId || lot?.id || null;
+    const vehicleTypeId   = VEHICLE_TYPE_MAP[vehicle] || 1;
+
+    if (!parkingBranchId) {
+      toast.error('Không xác định được chi nhánh bãi xe. Vui lòng chọn lại!');
+      return;
+    }
+    if (!licensePlate.trim()) {
+      toast.error('Vui lòng nhập biển số xe!');
+      return;
+    }
+    if (!arrivalDate || !timeSlot) {
+      toast.error('Vui lòng chọn ngày và giờ đến!');
+      return;
+    }
+
+    const expectedArrivalTime = `${arrivalDate}T${timeSlot}:00`;
+
+    const payload = {
+      parkingBranchId,
+      vehicleTypeId,
+      licensePlate:        licensePlate.trim().toUpperCase(),
+      expectedArrivalTime,
+    };
+
+    setSubmitting(true);
+    try {
+      const res = await bookingApi.createBooking(payload);
+      setConfirmedBookingId(res.bookingCode || res.bookingId || 'N/A');
+      setStep(4);
+      toast.success('Đặt chỗ thành công!');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || 'Đặt chỗ thất bại!';
+      toast.error(String(msg));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const stepsList = [

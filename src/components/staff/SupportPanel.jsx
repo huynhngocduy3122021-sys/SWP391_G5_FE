@@ -2,22 +2,52 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
 
-const INCIDENT_TYPES = ['Mất thẻ', 'Sai biển số', 'Barie kẹt', 'Khách không thanh toán', 'Khác'];
+// Phải khớp với enum IncidentType ở backend
+const INCIDENT_TYPES = [
+  { label: 'Mất thẻ',                  enum: 'LOST_CARD' },
+  { label: 'Sai biển số',              enum: 'OTHER' },
+  { label: 'Barie kẹt',               enum: 'BARRIER_ERROR' },
+  { label: 'Khách không thanh toán',   enum: 'PAYMENT_ERROR' },
+  { label: 'Lỗi kỹ thuật',            enum: 'TECHNICAL_ERROR' },
+  { label: 'Khác',                     enum: 'OTHER' },
+];
 
 // Panel "XỬ LÝ CÁC NGOẠI LỆ KHÁC" — xuất hiện ở cả màn Cổng VÀO và Cổng RA
 export default function SupportPanel({ plateNumber, gateId }) {
-  const [type, setType] = useState(INCIDENT_TYPES[0]);
-  const [note, setNote] = useState('');
+  const [type,    setType]    = useState(INCIDENT_TYPES[0].enum);
+  const [label,   setLabel]   = useState(INCIDENT_TYPES[0].label);
+  const [note,    setNote]    = useState('');
   const [sending, setSending] = useState(false);
 
+  const handleTypeChange = (e) => {
+    const idx = e.target.selectedIndex;
+    setType(INCIDENT_TYPES[idx].enum);
+    setLabel(INCIDENT_TYPES[idx].label);
+  };
+
   const handleSend = async () => {
+    if (!note.trim()) {
+      toast.warn('Vui lòng nhập mô tả chi tiết sự cố!');
+      return;
+    }
+
+    const plateInfo = plateNumber ? ` — Biển số: ${plateNumber}` : '';
+
+    const payload = {
+      title:        `${label}${plateInfo}`,
+      description:  note.trim(),
+      incidentType: type,
+      priority:     'MEDIUM',
+    };
+
     setSending(true);
     try {
-      await staffApi.reportIncident({ type, note, plateNumber, gateId });
+      await staffApi.reportIncident(payload);
       toast.success('Đã gửi yêu cầu hỗ trợ!');
       setNote('');
-    } catch {
-      toast.error('Gửi yêu cầu thất bại!');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || 'Gửi yêu cầu thất bại!';
+      toast.error(String(msg));
     } finally {
       setSending(false);
     }
@@ -34,13 +64,15 @@ export default function SupportPanel({ plateNumber, gateId }) {
 
       <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
         <label>LOẠI NGOẠI LỆ</label>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        <select onChange={handleTypeChange}>
+          {INCIDENT_TYPES.map((t, i) => (
+            <option key={i} value={t.enum}>{t.label}</option>
+          ))}
         </select>
       </div>
 
       <div className="vin-field" style={{ marginBottom: '1rem' }}>
-        <label>GHI CHÚ VẬN HÀNH</label>
+        <label>GHI CHÚ VẬN HÀNH <span style={{ color: '#f87171' }}>*</span></label>
         <textarea
           rows={4}
           placeholder="Nhập chi tiết sự cố tại đây..."

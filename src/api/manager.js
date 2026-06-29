@@ -46,6 +46,9 @@ const managerApi = {
   createIncidentReport:     async (data)        => (await API.post('/api/incidents', data)).data,
   resolveIncident:          async (id, data)    => (await API.put(`/api/incidents/${id}/resolve`, data)).data,
   cancelIncident:           async (id, data)    => (await API.put(`/api/incidents/${id}/cancel`, data)).data,
+
+  // ── Parking Sessions (dùng cho Overview) ──────────────────
+  getAllSessions:            async ()            => (await API.get('/api/parking-sessions')).data,
 };
 
 export default managerApi;

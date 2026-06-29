@@ -5,14 +5,16 @@ import ZoneOverviewPanel from './ZoneOverviewPanel';
 import ReportsPanel from './ReportsPanel';
 import SettingsPanel from './SettingsPanel';
 import OverviewPanel from './OverviewPanel';
+import IncidentPanel from './IncidentPanel';
 import { mt } from './managerTheme';
 
 const NAV_ITEMS = [
-  { key: 'overview', label: 'Dashboard', icon: '\u25A6' },
-  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '\u25A3' },
-  { key: 'staff', label: 'Quản lý Nhân sự', icon: '\u263A' },
-  { key: 'reports', label: 'Báo cáo doanh thu', icon: '\u25B2' },
-  { key: 'settings', label: 'Cấu hình hệ thống', icon: '\u2699' },
+  { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
+  { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
+  { key: 'staff',     label: 'Quản lý Nhân sự',   icon: '\u263A' },
+  { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
+  { key: 'reports',   label: 'Báo cáo doanh thu',  icon: '\u25B2' },
+  { key: 'settings',  label: 'Cấu hình hệ thống', icon: '\u2699' },
 ];
 
 export default function ManagerDashboard() {
@@ -30,11 +32,12 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
-      case 'zones': return <ZoneOverviewPanel />;
-      case 'staff': return <StaffManagementPanel />;
-      case 'reports': return <ReportsPanel />;
-      case 'settings': return <SettingsPanel />;
-      default: return <OverviewPanel onNavigate={setTab} />;
+      case 'zones':     return <ZoneOverviewPanel />;
+      case 'staff':     return <StaffManagementPanel />;
+      case 'incidents': return <IncidentPanel />;
+      case 'reports':   return <ReportsPanel />;
+      case 'settings':  return <SettingsPanel />;
+      default:          return <OverviewPanel onNavigate={setTab} />;
     }
   };
 
