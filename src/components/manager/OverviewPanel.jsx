@@ -49,7 +49,11 @@ export default function OverviewPanel({ onNavigate }) {
   /* ── derived ── */
   const totalSlots = zones.reduce((a, z) => a + zoneCap(z), 0);
   const totalUsed  = zones.reduce((a, z) => a + zoneUsed(z), 0);
-  const occupancy  = totalSlots > 0 ? Math.round(totalUsed / totalSlots * 100) : 0;
+  
+  // Đếm tổng số lượng tất cả các loại xe hiện đang gửi trong bãi (sessionStatus = ACTIVE)
+  const activeVehicles = sessions.filter(s => s.sessionStatus === 'ACTIVE').length;
+
+  const occupancy  = totalSlots > 0 ? Math.round((activeVehicles / totalSlots) * 100) : 0;
 
   // Lượt vào/ra và doanh thu hôm nay
   const today = new Date().toDateString();
@@ -71,7 +75,7 @@ export default function OverviewPanel({ onNavigate }) {
   const STATS = [
     { label: 'DOANH THU HÔM NAY', value: fmt(revenueToday) + 'đ', color: mt.success },
     { label: 'LƯỢT VÀO / RA',     value: `${checkinsToday} / ${checkoutsToday}`, sub: 'Hôm nay', color: mt.warning },
-    { label: 'TỶ LỆ LẤP ĐẦY',    value: `${occupancy}%`, sub: `${totalUsed} / ${totalSlots} chỗ`, color: mt.text },
+    { label: 'TỶ LỆ LẤP ĐẦY',    value: `${occupancy}%`, sub: `${activeVehicles} / ${totalSlots} chỗ`, color: mt.text },
     { label: 'CẢNH BÁO HỆ THỐNG', value: String(openIncidents), sub: 'Sự cố chưa xử lý', color: openIncidents > 0 ? mt.danger : mt.success },
   ];
 

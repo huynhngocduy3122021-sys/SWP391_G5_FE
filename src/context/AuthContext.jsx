@@ -11,7 +11,9 @@ export function AuthProvider({ children }) {
       email: localStorage.getItem('email'),
       role: localStorage.getItem('role')?.toLowerCase() || 'user',
       fullName: localStorage.getItem('fullName'),
-      userId: localStorage.getItem('userId')
+      userId: localStorage.getItem('userId'),
+      parkingBranchId: localStorage.getItem('parkingBranchId'),
+      parkingBranchName: localStorage.getItem('parkingBranchName')
     } : null;
   });
 
@@ -27,7 +29,9 @@ export function AuthProvider({ children }) {
           email: localStorage.getItem('email'),
           role: localStorage.getItem('role')?.toLowerCase() || 'user',
           fullName: localStorage.getItem('fullName'),
-          userId: localStorage.getItem('userId')
+          userId: localStorage.getItem('userId'),
+          parkingBranchId: localStorage.getItem('parkingBranchId'),
+          parkingBranchName: localStorage.getItem('parkingBranchName')
         });
       } else {
         setUser(null);
@@ -44,13 +48,21 @@ export function AuthProvider({ children }) {
     localStorage.setItem('role', userData.userRole);
     localStorage.setItem('fullName', userData.userFullName);
     localStorage.setItem('userId', userData.userId);
+    if (userData.parkingBranchId) {
+      localStorage.setItem('parkingBranchId', String(userData.parkingBranchId));
+    }
+    if (userData.parkingBranchName) {
+      localStorage.setItem('parkingBranchName', userData.parkingBranchName);
+    }
     
     setUser({
       token: userData.token,
       email: userData.userEmail,
       role: userData.userRole?.toLowerCase() || 'user',
       fullName: userData.userFullName,
-      userId: userData.userId
+      userId: userData.userId,
+      parkingBranchId: userData.parkingBranchId,
+      parkingBranchName: userData.parkingBranchName
     });
     
     window.dispatchEvent(new Event('storage'));
@@ -62,6 +74,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('role');
     localStorage.removeItem('fullName');
     localStorage.removeItem('userId');
+    localStorage.removeItem('parkingBranchId');
+    localStorage.removeItem('parkingBranchName');
     setUser(null);
     window.dispatchEvent(new Event('storage'));
     navigate('/');

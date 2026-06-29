@@ -60,6 +60,7 @@ export default function ZoneOverviewPanel() {
   const [floors,   setFloors]   = useState([]);
   const [zones,    setZones]    = useState([]);
   const [vtypes,   setVtypes]   = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [loading,  setLoading]  = useState(false);
 
   // modal visibility
@@ -83,14 +84,21 @@ export default function ZoneOverviewPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fl, zo, vt] = await Promise.all([
-        managerApi.getAllFloors(), managerApi.getAllZones(), managerApi.getVehicleTypes(),
+      const [fl, zo, vt, se] = await Promise.all([
+        managerApi.getAllFloors(),
+        managerApi.getAllZones(),
+        managerApi.getVehicleTypes(),
+        managerApi.getAllSessions(),
       ]);
       setFloors(Array.isArray(fl) ? fl : []);
       setZones(Array.isArray(zo) ? zo : []);
       setVtypes(Array.isArray(vt) ? vt : []);
-    } catch { setFloors([]); setZones([]); setVtypes([]); }
-    finally { setLoading(false); }
+      setSessions(Array.isArray(se) ? se : []);
+    } catch { 
+      setFloors([]); setZones([]); setVtypes([]); setSessions([]); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -104,17 +112,51 @@ export default function ZoneOverviewPanel() {
   }, [floors, zones, vtypes]);
 
   /* ── derived ── */
+  // Gom nhóm số lượng xe đang gửi thực tế (sessionStatus = ACTIVE) theo vehicleTypeId
+  const activeCountByVt = {};
+  sessions.forEach(s => {
+    const isAct = (s.sessionStatus || s.status) === 'ACTIVE';
+    const vtIdOfSession = s.vehicleTypeId;
+    if (isAct && vtIdOfSession) {
+      activeCountByVt[vtIdOfSession] = (activeCountByVt[vtIdOfSession] || 0) + 1;
+    }
+  });
+
+  // Sao chép số lượng để phân bổ dần vào các phân khu của loại xe đó
+  const remainingCountByVt = { ...activeCountByVt };
+  const zoneOccupancyMap = {};
+
+  // Sắp xếp phân khu theo ID để đảm bảo phân bổ nhất quán
+  const sortedZones = [...zones].sort((a, b) => zoneId(a) - zoneId(b));
+  sortedZones.forEach(z => {
+    const zid = zoneId(z);
+    const vt = z.vehicleTypeId || (z.vehicleType && vtId(z.vehicleType));
+    const cap = zoneCap(z);
+
+    if (vt && remainingCountByVt[vt] !== undefined) {
+      const activeForVt = remainingCountByVt[vt];
+      const used = Math.min(cap, activeForVt);
+      zoneOccupancyMap[zid] = used;
+      remainingCountByVt[vt] -= used;
+    } else {
+      zoneOccupancyMap[zid] = 0;
+    }
+  });
+
   const dFloors = floors.map(f => {
     const fid = floorId(f);
     const fz  = zones.filter(z => sid(zoneFlId(z), fid));
     const slots = Number(f.capacity || fz.reduce((s, z) => s + zoneCap(z), 0));
-    const used  = Number(f.usedSlots || fz.reduce((s, z) => s + zoneUsed(z), 0));
+    // Tính tổng số xe đang đỗ thực tế trong các phân khu của tầng này từ zoneOccupancyMap
+    const used  = fz.reduce((s, z) => s + (zoneOccupancyMap[zoneId(z)] || 0), 0);
     const pct   = slots > 0 ? Math.round(used / slots * 100) : 0;
     return { code: f.floorCode || String(fid), name: floorName(f), pct, slots, used, id: fid };
   });
 
   const dZones = zones.map(z => {
-    const total = zoneCap(z); const used = zoneUsed(z);
+    const total = zoneCap(z);
+    // Lấy số slot đã dùng được tính toán động từ database sessions
+    const used = zoneOccupancyMap[zoneId(z)] || 0;
     const pct   = total > 0 ? Math.round(used / total * 100) : 0;
     const fl    = dFloors.find(f => sid(f.id, zoneFlId(z)));
     return { id: zoneId(z), name: zoneName(z), used, total, pct, floor: fl?.code || String(zoneFlId(z)),

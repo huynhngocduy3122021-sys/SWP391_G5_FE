@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
+import API from '../../api/config';
 
 // Phải khớp với enum IncidentType ở backend
 const INCIDENT_TYPES = [
@@ -18,6 +19,30 @@ export default function SupportPanel({ plateNumber, gateId }) {
   const [label,   setLabel]   = useState(INCIDENT_TYPES[0].label);
   const [note,    setNote]    = useState('');
   const [sending, setSending] = useState(false);
+  
+  const [branchId, setBranchId] = useState(() => {
+    const cached = localStorage.getItem('parkingBranchId');
+    return cached ? Number(cached) : null;
+  });
+
+  useEffect(() => {
+    if (!branchId) {
+      // Fallback: Fetch branches if staff branch is not cached or linked
+      const fetchFallbackBranch = async () => {
+        try {
+          const res = await API.get('/api/parking-branches');
+          const list = res.data || [];
+          if (list.length > 0) {
+            const firstBranchId = list[0].parkingBranchId || list[0].id;
+            setBranchId(Number(firstBranchId));
+          }
+        } catch (err) {
+          console.error('Failed to fetch fallback branches for support panel', err);
+        }
+      };
+      fetchFallbackBranch();
+    }
+  }, [branchId]);
 
   const handleTypeChange = (e) => {
     const idx = e.target.selectedIndex;
@@ -38,6 +63,8 @@ export default function SupportPanel({ plateNumber, gateId }) {
       description:  note.trim(),
       incidentType: type,
       priority:     'MEDIUM',
+      parkingBranchId: branchId,
+      locationDetails: gateId || 'Cổng kiểm soát',
     };
 
     setSending(true);
