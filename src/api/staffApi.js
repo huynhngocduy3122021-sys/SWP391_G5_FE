@@ -2,17 +2,7 @@ import API from './config';
 
 const staffApi = {
   suggestSlotAllocation: async (plateNumber, vehicleType) => {
-    // Simulate API call for AI suggestion
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          slotCode: 'B1-A05',
-          matchPercent: 98.4,
-          location: 'Level B1 - Sector A (Premium)',
-          proximity: 'Near Elevator #4 (12m)'
-        });
-      }, 500);
-    });
+    return (await API.post('/api/slot-allocation/suggest', { plateNumber, vehicleType })).data;
   },
   getVehicleTypes: async () => {
     return (await API.get('/api/vehicle-types')).data;
@@ -52,7 +42,7 @@ const staffApi = {
     return (await API.post('/api/parking-sessions/guest/check-out', payload)).data;
   },
   reportIncident: async (data) => {
-    return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 500));
+    return (await API.post('/api/incidents', data)).data;
   }
 };
 

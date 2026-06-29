@@ -17,6 +17,16 @@ const NAV_ITEMS = [
 
 export default function ManagerDashboard() {
   const [tab, setTab] = useState('overview');
+  const managerName = localStorage.getItem('fullName') || 'Manager';
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('email');
+    localStorage.removeItem('fullName');
+    localStorage.removeItem('userId');
+    window.location.href = '/auth';
+  };
 
   const renderPanel = () => {
     switch (tab) {
@@ -42,7 +52,7 @@ export default function ManagerDashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
           }}>P</div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: mt.text, lineHeight: 1.1 }}>Vincom Center</div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: mt.text, lineHeight: 1.1 }}>{managerName}</div>
             <div style={{ fontSize: '0.65rem', color: mt.textMuted, letterSpacing: '0.05em' }}>PARKING MANAGEMENT</div>
           </div>
         </div>
@@ -77,7 +87,7 @@ export default function ManagerDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('role'); window.location.href = '/auth'; }}
+            onClick={handleLogout}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem',
               borderRadius: 8, border: 'none', background: 'transparent', color: mt.danger,

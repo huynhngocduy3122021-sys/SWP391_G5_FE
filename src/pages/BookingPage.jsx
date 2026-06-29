@@ -21,13 +21,13 @@ export default function BookingPage() {
   const [step, setStep] = useState(1);
 
   const [vehicle, setVehicle] = useState(passedVehicle);
-  const [arrivalDate, setArrivalDate] = useState('2024-05-24');
-  const [timeSlot, setTimeSlot] = useState('14:00');
+  const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [timeSlot, setTimeSlot] = useState('');
   
-  const [licensePlate, setLicensePlate] = useState('51H-123.45');
+  const [licensePlate, setLicensePlate] = useState('');
   const [isEditingPlate, setIsEditingPlate] = useState(false);
-  const [fullName, setFullName] = useState(localStorage.getItem('fullName') || 'Nguyễn Văn A');
-  const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
+  const [fullName, setFullName] = useState(localStorage.getItem('fullName') || '');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState('vnpay');
 

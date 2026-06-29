@@ -1,4 +1,3 @@
-// Bảng "ZONE OCCUPANCY STATUS" — dùng chung cho cả màn Cổng VÀO và Cổng RA
 export default function ZoneOccupancyTable({ zones = [] }) {
   return (
     <div className="vin-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -7,7 +6,7 @@ export default function ZoneOccupancyTable({ zones = [] }) {
         padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--vin-border)',
       }}>
         <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>
-          📋 ZONE OCCUPANCY STATUS
+          ZONE OCCUPANCY STATUS
         </span>
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
           <span><span style={{ color: 'var(--vin-success)' }}>●</span> Normal</span>
@@ -26,7 +25,13 @@ export default function ZoneOccupancyTable({ zones = [] }) {
             </tr>
           </thead>
           <tbody>
-            {zones.map((z) => (
+            {zones.length === 0 ? (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '1rem' }}>
+                  Chua co du lieu khu vuc tu backend
+                </td>
+              </tr>
+            ) : zones.map((z) => (
               <tr key={z.category}>
                 <td style={{ fontWeight: 600, color: '#fff' }}>{z.category}</td>
                 <td style={{ color: 'rgba(255,255,255,0.7)' }}>{z.current} / {z.max}</td>
@@ -44,11 +49,3 @@ export default function ZoneOccupancyTable({ zones = [] }) {
     </div>
   );
 }
-
-// Dữ liệu mặc định khớp với mock trong 2 ảnh thiết kế — thay bằng kết quả
-// staffApi.getZoneOccupancy() khi backend có endpoint thật.
-export const MOCK_ZONES = [
-  { category: 'Motorbikes',     current: 1995, max: 2000, status: 'FULL',    flowPerHour: 42 },
-  { category: 'Cars (Standard)', current: 254,  max: 300,  status: 'STABLE', flowPerHour: 15 },
-  { category: 'VIP Members',    current: 22,   max: 50,   status: 'STABLE', flowPerHour: 2 },
-];
