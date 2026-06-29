@@ -51,15 +51,18 @@ export default function OverviewPanel({ onNavigate }) {
   const totalUsed  = zones.reduce((a, z) => a + zoneUsed(z), 0);
   const occupancy  = totalSlots > 0 ? Math.round(totalUsed / totalSlots * 100) : 0;
 
-  // Lượt vào/ra hôm nay
+  // Lượt vào/ra và doanh thu hôm nay
   const today = new Date().toDateString();
-  const todaySessions = sessions.filter(s => s.checkInTime && new Date(s.checkInTime).toDateString() === today);
-  const checkinsToday  = todaySessions.length;
-  const checkoutsToday = todaySessions.filter(s => s.checkOutTime).length;
+  
+  // Xe đi vào hôm nay (so khớp ngày check-in)
+  const checkinsToday = sessions.filter(s => s.checkInTime && new Date(s.checkInTime).toDateString() === today).length;
+  
+  // Xe đi ra hôm nay (so khớp ngày check-out)
+  const checkoutsToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === today).length;
 
-  // Doanh thu hôm nay
-  const revenueToday = todaySessions
-    .filter(s => s.checkOutTime && s.totalAmount)
+  // Doanh thu hôm nay (Tính trên các xe thực hiện thanh toán và đi ra hôm nay - checkOutTime)
+  const revenueToday = sessions
+    .filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === today && s.totalAmount)
     .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
 
   // Cảnh báo: incidents chưa resolve

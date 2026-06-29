@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Modal, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import authApi from '../../api/authApi';
+import adminApi from '../../api/admin';
 import { MdAdd, MdPeople, MdPerson } from 'react-icons/md';
 
 const UserAccountsPage = () => {
@@ -9,6 +10,7 @@ const UserAccountsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     userFullName: '',
@@ -21,11 +23,17 @@ const UserAccountsPage = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    
+    // Check if redirecting from dashboard to auto-open modal
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('addNew') === 'true') {
+      setShowModal(true);
+    }
+  }, [location.search]);
 
   const fetchUsers = async () => {
     try {
-      const data = await authApi.getAllUsers();
+      const data = await adminApi.getAllUsers();
       setUsers(data);
     } catch (err) {
       toast.error('Failed to load users');
@@ -38,7 +46,7 @@ const UserAccountsPage = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await authApi.adminCreateUser(formData);
+      await adminApi.adminCreateUser(formData);
       toast.success('Account created successfully');
       setShowModal(false);
       setFormData({
