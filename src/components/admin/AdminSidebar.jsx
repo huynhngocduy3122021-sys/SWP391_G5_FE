@@ -8,7 +8,6 @@ const AdminSidebar = () => {
     { path: '/admin/users', name: 'User Accounts', icon: <MdPeople /> },
     { path: '/admin/permissions', name: 'Permissions', icon: <MdLock /> },
     { path: '/admin/settings', name: 'System Settings', icon: <MdSettings /> },
-    { path: '/admin/payments', name: 'Payments', icon: <MdPayment /> },
     { path: '/admin/ai-config', name: 'AI Configuration', icon: <MdComputer /> },
     { path: '/admin/logs', name: 'System Logs', icon: <MdListAlt /> },
   ];

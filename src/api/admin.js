@@ -36,6 +36,16 @@ const adminApi = {
     return (await API.get('/api/incidents')).data;
   },
 
+  // Resolve an incident
+  resolveIncident: async (id, resolveData) => {
+    return (await API.put(`/api/incidents/${id}/resolve`, resolveData)).data;
+  },
+
+  // Cancel an incident
+  cancelIncident: async (id, cancelData) => {
+    return (await API.put(`/api/incidents/${id}/cancel`, cancelData)).data;
+  },
+
   // Get permission matrix (persisted in localStorage to act like a real database API)
   getRolePermissions: async () => {
     await new Promise(resolve => setTimeout(resolve, 200));

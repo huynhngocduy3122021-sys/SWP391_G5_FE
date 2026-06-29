@@ -1,11 +1,95 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import managerApi from '../../api/manager';
+import bookingApi from '../../api/bookingApi';
 
 // Topbar "PARK-OPS PRO" — giống header trong cả 2 ảnh thiết kế
-export default function StaffTopbar({ mode, onModeChange, stats }) {
+export default function StaffTopbar({ mode, onModeChange }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  
+  const [liveStats, setLiveStats] = useState({
+    totalVehicles: 0,
+    maxVehicles: 2000,
+    todayRevenue: 0,
+    bookings: 0,
+    exited: 0,
+    slotsLeft: 2000
+  });
+
+  const branchIdStr = localStorage.getItem('parkingBranchId');
+  const branchId = branchIdStr ? Number(branchIdStr) : null;
+
+  const fetchLiveStats = async () => {
+    try {
+      const [sessionsData, bookingsData, zonesData] = await Promise.all([
+        managerApi.getAllSessions().catch(() => []),
+        bookingApi.getAllBookings().catch(() => []),
+        managerApi.getAllZones().catch(() => [])
+      ]);
+
+      const branchSessions = branchId 
+        ? sessionsData.filter(s => s.parkingBranchId === branchId)
+        : sessionsData;
+      const branchBookings = branchId
+        ? bookingsData.filter(b => b.parkingBranchId === branchId)
+        : bookingsData;
+      const branchZones = branchId
+        ? zonesData.filter(z => z.parkingBranchId === branchId)
+        : zonesData;
+
+      const maxVehicles = branchZones.reduce((sum, z) => sum + Number(z.capacity || 0), 0) || 2000;
+      const totalVehicles = branchSessions.filter(s => String(s.sessionStatus || '').toUpperCase() === 'ACTIVE').length;
+
+      const getRefDate = () => {
+        if (branchSessions.length === 0) return new Date();
+        const dates = branchSessions
+          .map(s => s.checkOutTime || s.checkInTime ? new Date(s.checkOutTime || s.checkInTime) : null)
+          .filter(Boolean);
+        if (dates.length === 0) return new Date();
+        return new Date(Math.max(...dates));
+      };
+
+      const refDate = getRefDate();
+      const todayStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+      const todayEnd = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), 23, 59, 59, 999);
+
+      const todayCompletedSessions = branchSessions.filter(s => {
+        if (!s.checkOutTime) return false;
+        const outDate = new Date(s.checkOutTime);
+        return outDate >= todayStart && outDate <= todayEnd;
+      });
+
+      const exited = todayCompletedSessions.length;
+      const todayRevenue = todayCompletedSessions.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+
+      const todayBookings = branchBookings.filter(b => {
+        if (!b.expectedArrivalTime) return false;
+        const arrDate = new Date(b.expectedArrivalTime);
+        return arrDate >= todayStart && arrDate <= todayEnd;
+      }).length;
+
+      const slotsLeft = Math.max(0, maxVehicles - totalVehicles);
+
+      setLiveStats({
+        totalVehicles,
+        maxVehicles,
+        todayRevenue,
+        bookings: todayBookings,
+        exited,
+        slotsLeft
+      });
+    } catch (err) {
+      console.error('Failed to fetch live stats for StaffTopbar:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveStats();
+    const interval = setInterval(fetchLiveStats, 10000);
+    return () => clearInterval(interval);
+  }, [branchId]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -34,11 +118,11 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TOTAL VEHICLES" value={`${stats.totalVehicles} / ${stats.maxVehicles}`} />
-        <StatItem label="TODAY'S REVENUE" value={`$${stats.todayRevenue.toLocaleString()}`} color="var(--vin-success)" />
-        <StatItem label="BOOKINGS" value={stats.bookings} />
-        <StatItem label="EXITED" value={stats.exited} />
-        <StatItem label="SLOTS LEFT" value={stats.slotsLeft} color="var(--vin-success)" />
+        <StatItem label="TOTAL VEHICLES" value={`${liveStats.totalVehicles} / ${liveStats.maxVehicles}`} />
+        <StatItem label="TODAY'S REVENUE" value={`${liveStats.todayRevenue.toLocaleString('vi-VN')} đ`} color="var(--vin-success)" />
+        <StatItem label="BOOKINGS" value={liveStats.bookings} />
+        <StatItem label="EXITED" value={liveStats.exited} />
+        <StatItem label="SLOTS LEFT" value={liveStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}

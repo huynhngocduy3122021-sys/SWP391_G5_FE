@@ -18,7 +18,6 @@ export default function GateInPanel() {
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
-  const [suggestion, setSuggestion] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -51,17 +50,7 @@ export default function GateInPanel() {
     };
   }, [selectedFiles]);
 
-  const handleSuggest = async () => {
-    try {
-      const selectedType = vehicleTypes.find(t => String(t.vehicleTypeId) === String(vehicleTypeId));
-      const vehicleTypeName = selectedType ? selectedType.typeName : 'Sedan / SUV';
-      const res = await staffApi.suggestSlotAllocation(licensePlate, vehicleTypeName);
-      setSuggestion(res);
-    } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Không lấy được gợi ý vị trí từ AI!';
-      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối AI!');
-    }
-  };
+
 
   const handleConfirm = async () => {
     if (!licensePlate) {
@@ -228,30 +217,12 @@ export default function GateInPanel() {
           </button>
         </div>
 
-        <ZoneOccupancyTable zones={[]} />
       </div>
 
-      {/* ── Cột phải: AI suggestion + support ── */}
+      {/* ── Cột phải: support + occupancy ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div className="ai-card">
-          <div className="ai-card__title" style={{ justifyContent: 'space-between' }}>
-            <span>🤖 AI SMART ALLOCATION</span>
-            <span className="vin-badge vin-badge--success">{suggestion?.matchPercent ?? 0}% MATCH</span>
-          </div>
-          <div className="ai-card__desc">SUGGESTED SLOT</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.75rem' }}>
-            {suggestion?.slotCode || 'CHUA CO'}
-          </div>
-          <div className="ai-card__row"><span>📍 LOCATION</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{suggestion?.location || 'Chua co du lieu goi y'}</div>
-          <div className="ai-card__row"><span>🚶 PROXIMITY</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '1rem' }}>{suggestion?.proximity || 'Chua co du lieu goi y'}</div>
-          <button className="vin-btn vin-btn--full vin-btn--primary" onClick={handleSuggest}>
-            ✅ CONFIRM ALLOCATION
-          </button>
-        </div>
-
         <SupportPanel plateNumber={detected.plateNumber} gateId={GATE_ID} />
+        <ZoneOccupancyTable />
       </div>
     </div>
   );

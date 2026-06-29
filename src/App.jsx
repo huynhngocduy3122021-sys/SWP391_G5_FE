@@ -31,7 +31,6 @@ import SystemLogsPage from './components/admin/SystemLogsPage';
 import PermissionsPage from './components/admin/PermissionsPage';
 import UserAccountsPage from './components/admin/UserAccountsPage';
 import SystemSettingsPage from './components/admin/SystemSettingsPage';
-import PaymentsPage from './components/admin/PaymentsPage';
 import AIConfigPage from './components/admin/AIConfigPage';
 
 // RouteGuard based on Authentication and Roles
@@ -121,7 +120,6 @@ export default function App() {
             <Route path="users" element={<UserAccountsPage />} />
             <Route path="permissions" element={<PermissionsPage />} />
             <Route path="settings" element={<SystemSettingsPage />} />
-            <Route path="payments" element={<PaymentsPage />} />
             <Route path="ai-config" element={<AIConfigPage />} />
             <Route path="logs" element={<SystemLogsPage />} />
           </Route>
