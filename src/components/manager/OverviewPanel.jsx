@@ -11,7 +11,8 @@ export default function OverviewPanel({ onNavigate }) {
     totalCapacity: 0,
     incidentsCount: 0,
     zones: [],
-    recentSessions: []
+    recentSessions: [],
+    hourlyBars: new Array(24).fill(0)
   });
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +29,16 @@ export default function OverviewPanel({ onNavigate }) {
         const todaySessions = sessions.filter(s => s.checkOutTime && s.checkOutTime.startsWith(todayStr));
         const revenue = todaySessions.reduce((sum, s) => sum + (s.totalFee || 0), 0);
         
-        const checkInCount = sessions.filter(s => s.checkInTime && s.checkInTime.startsWith(todayStr)).length;
+        let checkInCount = 0;
+        const newHourlyBars = new Array(24).fill(0);
+        sessions.forEach(s => {
+          if (s.checkInTime && s.checkInTime.startsWith(todayStr)) {
+            checkInCount++;
+            const date = new Date(s.checkInTime);
+            newHourlyBars[date.getHours()]++;
+          }
+        });
+        
         const checkOutCount = todaySessions.length;
 
         const totalCapacity = zones.reduce((sum, z) => sum + z.capacity, 0);
@@ -68,7 +78,8 @@ export default function OverviewPanel({ onNavigate }) {
           totalCapacity,
           incidentsCount: pendingIncidents,
           zones: formattedZones,
-          recentSessions: recent
+          recentSessions: recent,
+          hourlyBars: newHourlyBars
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -89,6 +100,10 @@ export default function OverviewPanel({ onNavigate }) {
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải dữ liệu...</div>;
   }
+
+  const checkinsToday = data.checkInCount;
+  const hourlyBars = data.hourlyBars;
+  const maxBar = Math.max(...hourlyBars, 1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -144,19 +159,16 @@ export default function OverviewPanel({ onNavigate }) {
                   <span style={{ color: z.pct > 85 ? mt.danger : mt.text, fontWeight: 700 }}>{z.pct}%</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9' }}>
-                  <div style={{ width: `${z.pct}%`, height: '100%', borderRadius: 4, background: z.color }} />
+                  <div style={{ width: `${z.pct}%`, height: '100%', borderRadius: 4, background: z.color, transition: 'width 0.5s' }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: mt.textMuted, marginTop: 2 }}>
                   <span>Đang đỗ: {z.used}</span>
                   <span>Trống: {z.free}</span>
                 </div>
               </div>
-              <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9' }}>
-                <div style={{ width: `${z.pct}%`, height: '100%', borderRadius: 4, background: z.color, transition: 'width 0.5s' }} />
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
+      </div>
       </div>
 
       {/* Bảng lượt xe gần nhất */}

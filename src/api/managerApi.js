@@ -15,6 +15,15 @@ const managerApi = {
   },
   cancelIncident: async (id, data) => {
     return (await API.put(`/api/incidents/${id}/cancel`, data)).data;
+  },
+  assignIncident: async (incidentId, staffId) => {
+    const payload = {
+      staffId: Number(staffId),
+      assignedStaffId: Number(staffId),
+      id: Number(staffId),
+      userId: Number(staffId)
+    };
+    return (await API.put(`/api/incidents/${incidentId}/assign`, payload)).data;
   }
 };
 
