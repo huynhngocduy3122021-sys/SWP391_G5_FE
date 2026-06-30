@@ -13,10 +13,10 @@ const INCIDENT_TYPES = [
 ];
 
 // Panel "XỬ LÝ CÁC NGOẠI LỆ KHÁC" — xuất hiện ở cả màn Cổng VÀO và Cổng RA
-export default function SupportPanel({ plateNumber, gateId }) {
-  const [type,    setType]    = useState(INCIDENT_TYPES[0].enum);
-  const [label,   setLabel]   = useState(INCIDENT_TYPES[0].label);
-  const [note,    setNote]    = useState('');
+export default function SupportPanel({ plateNumber, gateId, activeSession }) {
+  const [type, setType] = useState(INCIDENT_TYPES[0].enum);
+  const [label, setLabel] = useState(INCIDENT_TYPES[0].label);
+  const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
 
   const handleTypeChange = (e) => {
@@ -42,12 +42,25 @@ export default function SupportPanel({ plateNumber, gateId }) {
 
     setSending(true);
     try {
-      await staffApi.reportIncident(payload);
+      if (type === 'LOST_CARD') {
+        if (!activeSession) {
+           toast.error('Vui lòng tìm kiếm phiên gửi xe trước khi báo mất thẻ!');
+           setSending(false);
+           return;
+        }
+        await staffApi.reportLostCard({
+          description: note || 'Báo mất thẻ cho xe ' + plateNumber,
+          parkingSessionId: activeSession.parkingSessionId,
+          cardCode: activeSession.cardCode || activeSession.parkingCard?.cardCode
+        });
+      } else {
+        await staffApi.reportIncident({ type: label, note, plateNumber, gateId });
+      }
       toast.success('Đã gửi yêu cầu hỗ trợ!');
       setNote('');
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.response?.data || 'Gửi yêu cầu thất bại!';
-      toast.error(String(msg));
+      const msg = err.response?.data?.message || err.response?.data || 'Gửi yêu cầu thất bại!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
     } finally {
       setSending(false);
     }
@@ -64,7 +77,7 @@ export default function SupportPanel({ plateNumber, gateId }) {
 
       <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
         <label>LOẠI NGOẠI LỆ</label>
-        <select onChange={handleTypeChange}>
+        <select value={type} onChange={handleTypeChange}>
           {INCIDENT_TYPES.map((t, i) => (
             <option key={i} value={t.enum}>{t.label}</option>
           ))}

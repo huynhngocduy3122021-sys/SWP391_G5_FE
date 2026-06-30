@@ -14,6 +14,7 @@ export default function GateOutPanel() {
   const [cardCode, setCardCode] = useState('');
   const [exitPlate, setExitPlate] = useState('');
   const [activeSession, setActiveSession] = useState(null);
+  const [exitImages, setExitImages] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -55,11 +56,44 @@ export default function GateOutPanel() {
       const session = await staffApi.getActiveSessionByCardCode(cardCode.trim());
       setActiveSession(session);
       setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
+      
+      // Call mock API to simulate capturing camera images at the exit
+      // Fake exit images by using the session's images from the database
+      setExitImages(session.imageUrls || []);
+
       toast.success('Tìm thấy phiên gửi xe hoạt động!');
     } catch (err) {
       console.error(err);
       setActiveSession(null);
+      setExitImages([]);
       const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho mã thẻ này!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchByPlate = async () => {
+    if (!exitPlate.trim()) {
+      toast.error('Vui lòng nhập biển số xe để tìm kiếm!');
+      return;
+    }
+    setSearching(true);
+    try {
+      const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim());
+      setActiveSession(session);
+      setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
+      
+      // Call mock API to simulate capturing camera images at the exit
+      // Fake exit images by using the session's images from the database
+      setExitImages(session.imageUrls || []);
+
+      toast.success('Tìm thấy phiên gửi xe bằng biển số!');
+    } catch (err) {
+      console.error(err);
+      setActiveSession(null);
+      setExitImages([]);
+      const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho biển số này!';
       toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
     } finally {
       setSearching(false);
@@ -97,6 +131,7 @@ export default function GateOutPanel() {
         setActiveSession(null);
         setCardCode('');
         setExitPlate('');
+        setExitImages([]);
       } else if (selectedMethod === 'VNPAY') {
         if (res.paymentUrl) {
           toast.info('Đang mở trang thanh toán VNPay...');
@@ -135,14 +170,14 @@ export default function GateOutPanel() {
           <CapturedShot 
             title="CAPTURED ENTRY (REFERENCE - LÚC VÀO)" 
             plate={activeSession ? activeSession.licensePlate : 'CHƯA CÓ DỮ LIỆU'} 
-            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor} (${activeSession.vehicleBrand})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
+            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor || 'Không rõ'} (${activeSession.vehicleBrand || 'Không rõ'})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
             imageUrls={activeSession ? activeSession.imageUrls : []}
           />
           <CapturedShot 
             title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)" 
             plate={exitPlate || 'CHƯA NHẬP'} 
             vehicleType="Ảnh camera thực tế tại cổng ra"
-            imageUrls={[]} 
+            imageUrls={exitImages} 
           />
         </div>
 
@@ -197,13 +232,24 @@ export default function GateOutPanel() {
           )}
 
           <div className="vin-field" style={{ marginBottom: '1rem' }}>
-            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE THỰC TẾ LÚC RA</label>
-            <input
-              value={exitPlate}
-              onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
-              placeholder="Nhập biển số xe thực tế..."
-              style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE THỰC TẾ LÚC RA (TÌM KHI MẤT THẺ)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                value={exitPlate}
+                onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
+                placeholder="Nhập biển số xe thực tế..."
+                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              <button 
+                type="button"
+                className="vin-btn vin-btn--primary"
+                onClick={handleSearchByPlate}
+                disabled={searching}
+                style={{ padding: '0 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', background: '#3b82f6' }}
+              >
+                {searching ? <span className="vin-spinner" /> : '🔍 Tìm Biển Số'}
+              </button>
+            </div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
@@ -229,7 +275,7 @@ export default function GateOutPanel() {
           </button>
         </div>
 
-        <SupportPanel plateNumber={exitPlate} gateId={GATE_ID} />
+        <SupportPanel plateNumber={exitPlate} gateId={GATE_ID} activeSession={activeSession} />
       </div>
     </div>
   );
