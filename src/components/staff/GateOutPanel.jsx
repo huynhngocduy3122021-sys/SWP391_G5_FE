@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
 import { CameraFeed } from './GateInPanel';
-import ZoneOccupancyTable, { MOCK_ZONES } from './ZoneOccupancyTable';
+import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
 const GATE_ID = 'GATE-04';
@@ -11,8 +11,8 @@ const PAY_METHODS = ['CASH', 'VNPAY'];
 
 // Màn "Cổng ra" — khớp ảnh thiết kế (Payment Summary + Captured Entry/Exit)
 export default function GateOutPanel() {
-  const [cardCode, setCardCode] = useState('CARD-123');
-  const [exitPlate, setExitPlate] = useState('30K-888.88');
+  const [cardCode, setCardCode] = useState('');
+  const [exitPlate, setExitPlate] = useState('');
   const [activeSession, setActiveSession] = useState(null);
   const [exitImages, setExitImages] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState('CASH');
@@ -181,7 +181,7 @@ export default function GateOutPanel() {
           />
         </div>
 
-        <ZoneOccupancyTable zones={MOCK_ZONES} />
+        <ZoneOccupancyTable zones={[]} />
       </div>
 
       {/* ── Cột phải: payment summary + support ── */}

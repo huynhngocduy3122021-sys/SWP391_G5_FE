@@ -92,42 +92,47 @@ export default function OverviewPanel({ onNavigate }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
         {STATS.map((s) => (
-          <div key={s.label} style={{
-            ...card,
-            background: s.alert ? '#fef2f2' : '#fff',
-            borderColor: s.alert ? '#fecaca' : mt.border,
-          }}>
+          <div key={s.label} style={card}>
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, letterSpacing: '0.03em', marginBottom: 8 }}>
               {s.label}
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.alert ? mt.danger : s.color }}>{s.value}</div>
-            {s.delta && <div style={{ fontSize: '0.75rem', color: mt.success, marginTop: 6 }}>&#8599; {s.delta}</div>}
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color }}>{loading ? '...' : s.value}</div>
             {s.sub && <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginTop: 6 }}>{s.sub}</div>}
           </div>
         ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-        {/* Traffic placeholder chart */}
+
+        {/* Biểu đồ lưu lượng 24h */}
         <div style={card}>
-          <div style={{ fontWeight: 700, color: mt.text, marginBottom: 12 }}>Lưu lượng xe theo giờ (24h)</div>
-          <div style={{
-            height: 220, borderRadius: 8, background: 'linear-gradient(180deg, #ecfdf5 0%, #f8fafc 100%)',
-            display: 'flex', alignItems: 'flex-end', gap: 6, padding: '0.75rem',
-          }}>
-            {[40, 55, 70, 85, 65, 50, 60, 95, 100, 70, 45, 35].map((h, i) => (
-              <div key={i} style={{
-                flex: 1, height: `${h}%`, borderRadius: 4,
-                background: h === 100 ? mt.accent : '#a7e3d6',
-              }} />
+          <div style={{ fontWeight: 700, color: mt.text, marginBottom: 4 }}>Lưu lượng xe theo giờ (hôm nay)</div>
+          <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginBottom: 12 }}>Tổng {checkinsToday} lượt vào trong ngày</div>
+          <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 3, padding: '0 4px' }}>
+            {hourlyBars.map((count, h) => (
+              <div key={h} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div
+                  style={{
+                    width: '100%', borderRadius: '3px 3px 0 0',
+                    height: `${Math.max((count / maxBar) * 180, count > 0 ? 4 : 0)}px`,
+                    background: count > 0 ? mt.primary : '#e2e8f0',
+                    transition: 'height 0.3s',
+                  }}
+                  title={`${h}:00 — ${count} xe`}
+                />
+                {h % 4 === 0 && (
+                  <div style={{ fontSize: '0.55rem', color: mt.textMuted }}>{h}h</div>
+                )}
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Zone density */}
+        {/* Mật độ zone */}
         <div style={card}>
           <div style={{ fontWeight: 700, color: mt.text, marginBottom: 12 }}>Mật độ theo khu vực</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -146,18 +151,22 @@ export default function OverviewPanel({ onNavigate }) {
                   <span>Trống: {z.free}</span>
                 </div>
               </div>
-            ))}
-          </div>
+              <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9' }}>
+                <div style={{ width: `${z.pct}%`, height: '100%', borderRadius: 4, background: z.color, transition: 'width 0.5s' }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Recent activity */}
+      {/* Bảng lượt xe gần nhất */}
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 700, color: mt.text }}>Lượt xe ra vào gần nhất</div>
-          <button type="button" onClick={() => onNavigate && onNavigate('zones')} style={{
-            border: 'none', background: 'transparent', color: mt.accent, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-          }}>Xem tất cả &rarr;</button>
+          <button type="button" onClick={() => onNavigate && onNavigate('zones')}
+            style={{ border: 'none', background: 'transparent', color: mt.accent, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+            Xem sơ đồ &rarr;
+          </button>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>

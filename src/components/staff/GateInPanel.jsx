@@ -13,18 +13,16 @@ export default function GateInPanel() {
   const [bookingCode, setBookingCode] = useState('');
   
   // Dữ liệu camera AI trả về — mock theo ảnh, thay bằng staffApi.getLiveEntryDetection(GATE_ID)
-  const [detected, setDetected] = useState({ plateNumber: '30K-888.88', entryTime: '14:42:05' });
-  const [licensePlate, setLicensePlate] = useState('30K-888.88');
-  const [cardCode, setCardCode] = useState('CARD-123');
-  const [vehicleColor, setVehicleColor] = useState('Xanh');
-  const [vehicleBrand, setVehicleBrand] = useState('Xe Dien');
+  const [detected] = useState({ plateNumber: '', entryTime: '' });
+  const [licensePlate, setLicensePlate] = useState('');
+  const [cardCode, setCardCode] = useState('');
+  const [vehicleColor, setVehicleColor] = useState('');
+  const [vehicleBrand, setVehicleBrand] = useState('');
   const [vehicleTypeId, setVehicleTypeId] = useState('');
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
-  const [suggestion, setSuggestion] = useState({
-    slotCode: 'B1-A05', matchPercent: 98.4, location: 'Level B1 - Sector A (Premium)', proximity: 'Near Elevator #4 (12m)',
-  });
+  const [suggestion, setSuggestion] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -313,7 +311,7 @@ export default function GateInPanel() {
           </button>
         </div>
 
-        <ZoneOccupancyTable zones={MOCK_ZONES} />
+        <ZoneOccupancyTable zones={[]} />
       </div>
 
       {/* ── Cột phải: AI suggestion + support ── */}
@@ -321,16 +319,16 @@ export default function GateInPanel() {
         <div className="ai-card">
           <div className="ai-card__title" style={{ justifyContent: 'space-between' }}>
             <span>🤖 AI SMART ALLOCATION</span>
-            <span className="vin-badge vin-badge--success">{suggestion.matchPercent}% MATCH</span>
+            <span className="vin-badge vin-badge--success">{suggestion?.matchPercent ?? 0}% MATCH</span>
           </div>
           <div className="ai-card__desc">SUGGESTED SLOT</div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.75rem' }}>
-            {suggestion.slotCode}
+            {suggestion?.slotCode || 'CHUA CO'}
           </div>
           <div className="ai-card__row"><span>📍 LOCATION</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{suggestion.location}</div>
+          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{suggestion?.location || 'Chua co du lieu goi y'}</div>
           <div className="ai-card__row"><span>🚶 PROXIMITY</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '1rem' }}>{suggestion.proximity}</div>
+          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '1rem' }}>{suggestion?.proximity || 'Chua co du lieu goi y'}</div>
           <button className="vin-btn vin-btn--full vin-btn--primary" onClick={handleSuggest}>
             ✅ CONFIRM ALLOCATION
           </button>

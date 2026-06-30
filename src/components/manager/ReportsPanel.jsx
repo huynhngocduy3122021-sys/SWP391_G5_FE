@@ -81,7 +81,7 @@ export default function ReportsPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        {STATS.map((s) => (
+        {EMPTY_STATS.map((s) => (
           <div key={s.label} style={card}>
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, marginBottom: 8 }}>{s.label}</div>
             <div style={{ fontSize: '1.4rem', fontWeight: 800, color: mt.text }}>{s.value}</div>
@@ -106,7 +106,7 @@ export default function ReportsPanel() {
       </div>
 
       <div style={card}>
-        <div style={{ fontWeight: 700, color: mt.text, marginBottom: 12 }}>Chi tiết doanh thu hàng ngày</div>
+        <div style={{ fontWeight: 700, color: mt.text, marginBottom: 12 }}>Chi tiet doanh thu hang ngay</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
             <tr style={{ color: mt.textMuted, textAlign: 'left' }}>
