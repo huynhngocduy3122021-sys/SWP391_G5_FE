@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
 import parkingApi from '../../api/parkingApi';
-import ZoneOccupancyTable, { MOCK_ZONES } from './ZoneOccupancyTable';
+import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
 const GATE_ID = 'GATE-04';
