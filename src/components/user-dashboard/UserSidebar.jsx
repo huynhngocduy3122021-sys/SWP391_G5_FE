@@ -8,9 +8,7 @@ export default function UserSidebar({ activeTab, onTabChange }) {
   const menuItems = [
     { id: 'profile', label: 'Hồ sơ của tôi', icon: '👤' },
     { id: 'vehicles', label: 'Phương tiện & Gói cước', icon: '🚗' },
-    { id: 'wallet', label: 'Ví và thanh toán', icon: '💳' },
     { id: 'bookings', label: 'Lịch đặt giữ chỗ', icon: '📅' },
-    { id: 'history', label: 'Lịch sử giao dịch', icon: '🕒' },
   ];
 
   return (
