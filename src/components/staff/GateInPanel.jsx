@@ -26,9 +26,10 @@ export default function GateInPanel() {
   const [suggestion, setSuggestion] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [zones, setZones] = useState([]);
+  const [recentSessions, setRecentSessions] = useState([]);
 
   useEffect(() => {
-    const fetchZones = async () => {
+    const fetchStatsData = async () => {
       try {
         const data = await managerApi.getAllZones();
         if (Array.isArray(data)) {
@@ -47,9 +48,21 @@ export default function GateInPanel() {
       } catch (err) {
         console.error("Failed to fetch zones for table:", err);
       }
+
+      try {
+        const data = await managerApi.getAllSessions();
+        if (Array.isArray(data)) {
+          const sorted = data
+            .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+            .slice(0, 6);
+          setRecentSessions(sorted);
+        }
+      } catch (err) {
+        console.error("Failed to fetch recent sessions:", err);
+      }
     };
-    fetchZones();
-    const interval = setInterval(fetchZones, 10000);
+    fetchStatsData();
+    const interval = setInterval(fetchStatsData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -342,27 +355,61 @@ export default function GateInPanel() {
         <ZoneOccupancyTable zones={zones} />
       </div>
 
-      {/* ── Cột phải: AI suggestion + support ── */}
+      {/* ── Cột phải: Hỗ trợ ngoại lệ + Lượt xe gần đây ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div className="ai-card">
-          <div className="ai-card__title" style={{ justifyContent: 'space-between' }}>
-            <span>🤖 AI SMART ALLOCATION</span>
-            <span className="vin-badge vin-badge--success">{suggestion?.matchPercent ?? 0}% MATCH</span>
-          </div>
-          <div className="ai-card__desc">SUGGESTED SLOT</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.75rem' }}>
-            {suggestion?.slotCode || 'CHUA CO'}
-          </div>
-          <div className="ai-card__row"><span>📍 LOCATION</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{suggestion?.location || 'Chua co du lieu goi y'}</div>
-          <div className="ai-card__row"><span>🚶 PROXIMITY</span></div>
-          <div style={{ color: '#fff', fontSize: '0.85rem', marginBottom: '1rem' }}>{suggestion?.proximity || 'Chua co du lieu goi y'}</div>
-          <button className="vin-btn vin-btn--full vin-btn--primary" onClick={handleSuggest}>
-            ✅ CONFIRM ALLOCATION
-          </button>
-        </div>
+        {/* SupportPanel (Exception Handling) */}
+        <SupportPanel plateNumber={detected.plateNumber || licensePlate} gateId={GATE_ID} />
 
-        <SupportPanel plateNumber={detected.plateNumber} gateId={GATE_ID} />
+        {/* Bảng các lượt gửi xe gần đây */}
+        <div className="vin-card" style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid var(--vin-border)', paddingBottom: '0.5rem' }}>
+            <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.85rem' }}>
+              🚗 LƯỢT XE GỬI GẦN ĐÂY
+            </span>
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>
+              Mới nhất
+            </span>
+          </div>
+
+          <div className="vin-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="vin-table" style={{ fontSize: '0.75rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '6px' }}>BIỂN SỐ</th>
+                  <th style={{ padding: '6px' }}>THỜI GIAN</th>
+                  <th style={{ padding: '6px' }}>LOẠI XE</th>
+                  <th style={{ padding: '6px' }}>TRẠNG THÁI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSessions.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '1rem' }}>
+                      Chưa có lượt gửi xe nào gần đây
+                    </td>
+                  </tr>
+                ) : (
+                  recentSessions.map((s, idx) => {
+                    const checkInTimeStr = s.checkInTime ? new Date(s.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—';
+                    const isActive = s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime);
+                    return (
+                      <tr key={s.parkingSessionId || idx}>
+                        <td style={{ padding: '8px 6px', fontWeight: 700, color: '#38bdf8' }}>{s.licensePlate}</td>
+                        <td style={{ padding: '8px 6px', color: 'rgba(255,255,255,0.6)' }}>{checkInTimeStr}</td>
+                        <td style={{ padding: '8px 6px', color: 'rgba(255,255,255,0.6)' }}>{s.vehicleTypeName || s.vehicleType?.typeName || 'Xe máy'}</td>
+                        <td style={{ padding: '8px 6px' }}>
+                          <span className={`vin-badge ${isActive ? 'vin-badge--success' : 'vin-badge--info'}`} style={{ fontSize: '0.6rem', padding: '1px 4px' }}>
+                            {isActive ? 'Đang đỗ' : 'Đã ra'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
