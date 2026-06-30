@@ -381,7 +381,7 @@ export default function SystemSettingsPage() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ systemName, primaryColor, secondaryColor, timestamp: new Date().toISOString() }));
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ systemName, primaryColor, userColor, managerColor, staffColor, timestamp: new Date().toISOString() }));
                     const downloadAnchor = document.createElement('a');
                     downloadAnchor.setAttribute("href",     dataStr);
                     downloadAnchor.setAttribute("download", `vinparking_backup_${new Date().toLocaleDateString()}.json`);
@@ -454,7 +454,7 @@ export default function SystemSettingsPage() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', backgroundColor: '#fff' }}>
-                      <div style={{ height: '14px', width: '20px', backgroundColor: secondaryColor, borderRadius: '4px', marginBottom: '4px' }} />
+                      <div style={{ height: '14px', width: '20px', backgroundColor: userColor, borderRadius: '4px', marginBottom: '4px' }} />
                       <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '3px' }} />
                     </div>
 
