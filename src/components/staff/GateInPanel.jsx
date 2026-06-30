@@ -12,8 +12,16 @@ export default function GateInPanel() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
   
-  // Dữ liệu camera AI trả về — mock theo ảnh, thay bằng staffApi.getLiveEntryDetection(GATE_ID)
   const [detected] = useState({ plateNumber: '', entryTime: '' });
+  const [currentTime, setCurrentTime] = useState('');
+  
+  useEffect(() => {
+    setCurrentTime(new Date().toLocaleString('vi-VN'));
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleString('vi-VN'));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [licensePlate, setLicensePlate] = useState('');
   const [cardCode, setCardCode] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
@@ -235,22 +243,23 @@ export default function GateInPanel() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <div className="vin-field">
               <label>VEHICLE COLOR (MÀU XE)</label>
-              <input value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} />
+              <input value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder="VD: Trắng, Đen..." />
             </div>
             <div className="vin-field">
               <label>VEHICLE BRAND (HIỆU XE)</label>
-              <input value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} />
+              <input value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} placeholder="VD: Honda, Toyota..." />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <div className="vin-field">
               <label>ENTRY TIME (THỜI GIAN VÀO)</label>
-              <input value={detected.entryTime} readOnly style={{ opacity: 0.7 }} />
+              <input value={currentTime} readOnly style={{ opacity: 0.7, background: 'rgba(255,255,255,0.02)' }} />
             </div>
             <div className="vin-field">
               <label>VEHICLE TYPE (LOẠI XE)</label>
               <select value={vehicleTypeId} onChange={(e) => setVehicleTypeId(e.target.value)}>
+                <option value="">-- Chọn loại xe --</option>
                 {vehicleTypes.map((type) => (
                   <option key={type.vehicleTypeId} value={type.vehicleTypeId}>
                     {type.typeName}

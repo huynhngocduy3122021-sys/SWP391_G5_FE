@@ -24,6 +24,10 @@ API.interceptors.response.use(
       localStorage.removeItem('email');
       localStorage.removeItem('fullName');
       localStorage.removeItem('userId');
+      localStorage.removeItem('phone');
+      localStorage.removeItem('userPhone');
+      localStorage.removeItem('address');
+      localStorage.removeItem('userAddress');
       window.dispatchEvent(new Event('storage'));
       window.location.href = '/auth'; // Redirect to login
     }

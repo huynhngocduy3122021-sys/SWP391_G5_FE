@@ -11,7 +11,9 @@ export function AuthProvider({ children }) {
       email: localStorage.getItem('email'),
       role: localStorage.getItem('role')?.toLowerCase() || 'user',
       fullName: localStorage.getItem('fullName'),
-      userId: localStorage.getItem('userId')
+      userId: localStorage.getItem('userId'),
+      phone: localStorage.getItem('phone') || localStorage.getItem('userPhone'),
+      address: localStorage.getItem('address') || localStorage.getItem('userAddress')
     } : null;
   });
 
@@ -27,7 +29,9 @@ export function AuthProvider({ children }) {
           email: localStorage.getItem('email'),
           role: localStorage.getItem('role')?.toLowerCase() || 'user',
           fullName: localStorage.getItem('fullName'),
-          userId: localStorage.getItem('userId')
+          userId: localStorage.getItem('userId'),
+          phone: localStorage.getItem('phone') || localStorage.getItem('userPhone'),
+          address: localStorage.getItem('address') || localStorage.getItem('userAddress')
         });
       } else {
         setUser(null);
@@ -44,13 +48,19 @@ export function AuthProvider({ children }) {
     localStorage.setItem('role', userData.userRole);
     localStorage.setItem('fullName', userData.userFullName);
     localStorage.setItem('userId', userData.userId);
+    localStorage.setItem('phone', userData.userPhone || '');
+    localStorage.setItem('userPhone', userData.userPhone || '');
+    localStorage.setItem('address', userData.userAddress || '');
+    localStorage.setItem('userAddress', userData.userAddress || '');
     
     setUser({
       token: userData.token,
       email: userData.userEmail,
       role: userData.userRole?.toLowerCase() || 'user',
       fullName: userData.userFullName,
-      userId: userData.userId
+      userId: userData.userId,
+      phone: userData.userPhone || '',
+      address: userData.userAddress || ''
     });
     
     window.dispatchEvent(new Event('storage'));
@@ -62,6 +72,10 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('role');
     localStorage.removeItem('fullName');
     localStorage.removeItem('userId');
+    localStorage.removeItem('phone');
+    localStorage.removeItem('userPhone');
+    localStorage.removeItem('address');
+    localStorage.removeItem('userAddress');
     setUser(null);
     window.dispatchEvent(new Event('storage'));
     navigate('/');

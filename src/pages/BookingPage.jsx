@@ -4,6 +4,11 @@ import { toast } from 'react-toastify';
 import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
 import parkingApi from '../api/parkingApi';
 
+const isMotorbikeType = (typeName = '') => {
+  const normalizedName = typeName.toLowerCase();
+  return normalizedName.includes('motorbike') || normalizedName.includes('xe máy') || normalizedName.includes('xe may');
+};
+
 export default function BookingPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -15,6 +20,7 @@ export default function BookingPage() {
   // Selected state
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
+  const bookableVehicleTypes = vehicleTypes.filter(v => !isMotorbikeType(v.typeName));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,8 +39,9 @@ export default function BookingPage() {
           setSelectedBranchId(branchesData[0].parkingBranchId || branchesData[0].branchId || branchesData[0].id);
         }
         if (vtData.length > 0) {
-          const carType = vtData.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
-          setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : vtData[0].vehicleTypeId);
+          const filteredTypes = vtData.filter(v => !isMotorbikeType(v.typeName));
+          const carType = filteredTypes.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
+          setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : filteredTypes[0]?.vehicleTypeId || '');
         }
       } catch (error) {
         console.error('Error fetching booking data:', error);
@@ -290,7 +297,7 @@ export default function BookingPage() {
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>LOẠI PHƯƠNG TIỆN</h6>
               <div className="row g-3">
-                {vehicleTypes.map(v => {
+                {bookableVehicleTypes.map(v => {
                   const isSelected = String(selectedVehicleTypeId) === String(v.vehicleTypeId);
                   return (
                     <div className="col-6" key={v.vehicleTypeId}>

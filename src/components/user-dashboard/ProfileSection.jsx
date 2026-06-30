@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import authApi from '../../api/authApi';
 
 export default function ProfileSection() {
   const initialFullName = localStorage.getItem('fullName') || '';
@@ -7,36 +8,93 @@ export default function ProfileSection() {
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initialFullName)}&background=164e63&color=fff&size=128`;
   
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     fullName: initialFullName,
     email: initialEmail,
-    phone: localStorage.getItem('phone') || '',
+    phone: localStorage.getItem('phone') || localStorage.getItem('userPhone') || '',
     apartment: localStorage.getItem('apartment') || '',
-    address: localStorage.getItem('address') || ''
+    address: localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
   });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const userId = localStorage.getItem('userId');
+      const email = localStorage.getItem('email');
+
+      try {
+        const users = await authApi.getAllUsers();
+        const currentUser = users.find(user =>
+          String(user.userId) === String(userId) || user.userEmail === email
+        );
+
+        if (!currentUser) return;
+
+        const nextProfile = {
+          fullName: currentUser.userFullName || localStorage.getItem('fullName') || '',
+          email: currentUser.userEmail || email || '',
+          phone: currentUser.userPhone || '',
+          apartment: localStorage.getItem('apartment') || '',
+          address: currentUser.userAddress || localStorage.getItem('address') || ''
+        };
+
+        localStorage.setItem('fullName', nextProfile.fullName);
+        localStorage.setItem('email', nextProfile.email);
+        localStorage.setItem('phone', nextProfile.phone);
+        localStorage.setItem('userPhone', nextProfile.phone);
+        localStorage.setItem('address', nextProfile.address);
+        localStorage.setItem('userAddress', nextProfile.address);
+        setFormData(nextProfile);
+      } catch {
+        // Keep the local profile visible if the account list endpoint is unavailable.
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    localStorage.setItem('fullName', formData.fullName);
-    localStorage.setItem('phone', formData.phone);
-    localStorage.setItem('apartment', formData.apartment);
-    localStorage.setItem('address', formData.address);
-    
-    setIsEditing(false);
-    toast.success('Cập nhật thông tin thành công!');
-    setTimeout(() => window.location.reload(), 1000);
+  const handleSave = async () => {
+    setIsSaving(true);
+
+    try {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        await authApi.updateUser(userId, {
+          userFullName: formData.fullName,
+          userEmail: formData.email,
+          userPhone: formData.phone,
+          userAddress: formData.address
+        });
+      }
+
+      localStorage.setItem('fullName', formData.fullName);
+      localStorage.setItem('phone', formData.phone);
+      localStorage.setItem('userPhone', formData.phone);
+      localStorage.setItem('apartment', formData.apartment);
+      localStorage.setItem('address', formData.address);
+      localStorage.setItem('userAddress', formData.address);
+      
+      setIsEditing(false);
+      toast.success('Cập nhật thông tin thành công!');
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.response?.data || 'Cập nhật thông tin thất bại!');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setFormData({
       fullName: localStorage.getItem('fullName') || '',
       email: localStorage.getItem('email') || '',
-      phone: localStorage.getItem('phone') || '',
+      phone: localStorage.getItem('phone') || localStorage.getItem('userPhone') || '',
       apartment: localStorage.getItem('apartment') || '',
-      address: localStorage.getItem('address') || ''
+      address: localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
     });
     setIsEditing(false);
   };
@@ -81,7 +139,9 @@ export default function ProfileSection() {
               {isEditing ? (
                 <div className="d-flex gap-2">
                   <button className="btn btn-outline-secondary btn-sm fw-bold" onClick={handleCancel}>Hủy</button>
-                  <button className="btn btn-sm fw-bold text-white" style={{ backgroundColor: '#164e63' }} onClick={handleSave}>Lưu thông tin</button>
+                  <button className="btn btn-sm fw-bold text-white" style={{ backgroundColor: '#164e63' }} onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? 'Đang lưu...' : 'Lưu thông tin'}
+                  </button>
                 </div>
               ) : (
                 <button className="btn btn-link text-decoration-none fw-bold p-0" style={{ color: '#164e63' }} onClick={() => setIsEditing(true)}>Cập nhật</button>

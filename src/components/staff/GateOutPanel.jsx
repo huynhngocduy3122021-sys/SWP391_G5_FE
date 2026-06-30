@@ -1,13 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
+import parkingApi from '../../api/parkingApi';
 import { CameraFeed } from './GateInPanel';
 import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
 const GATE_ID = 'GATE-04';
 const PAY_METHODS = ['CASH', 'VNPAY'];
+
+const fmtMoney = (amount) => Number(amount || 0).toLocaleString('vi-VN');
+
+const getVehicleTypeId = (item) =>
+  item?.vehicleTypeId || item?.vehicleType?.vehicleTypeId || item?.vehicleType?.id;
+
+const getVehicleTypeName = (item) =>
+  item?.vehicleTypeName || item?.typeName || item?.vehicleType?.vehicleTypeName || item?.vehicleType?.typeName || item?.vehicleType?.name;
+
+const getBranchId = (item) =>
+  item?.parkingBranchId || item?.parkingBranch?.parkingBranchId || item?.parkingBranch?.branchId || item?.parkingBranch?.id;
+
+const getSessionAmount = (session) => {
+  const amount = session?.totalAmount ?? session?.parkingFee ?? session?.parkingFeeAmount ?? session?.amount ?? session?.fee;
+  return amount === undefined || amount === null || amount === '' ? null : Number(amount);
+};
+
+const isPackagePolicy = (policy) => {
+  const name = policy?.policyName || '';
+  return name.startsWith('[Gói Tháng]') || name.startsWith('[Gói VIP President]');
+};
+
+const calculateParkingFee = (policy, durationMinutes) => {
+  if (!policy) return null;
+
+  const basePrice = Number(policy.basePrice ?? policy.hourlyRate ?? policy.price ?? policy.firstBlockPrice ?? 0);
+  const baseDuration = Number(policy.baseDurationMinutes || 60);
+  const extraHourPrice = Number(policy.extraHourPrice ?? policy.hourlyRate ?? basePrice);
+
+  if (!basePrice || !durationMinutes) return 0;
+  if (durationMinutes <= baseDuration) return basePrice;
+
+  const extraMinutes = durationMinutes - baseDuration;
+  return basePrice + Math.ceil(extraMinutes / 60) * extraHourPrice;
+};
 
 // Màn "Cổng ra" — khớp ảnh thiết kế (Payment Summary + Captured Entry/Exit)
 export default function GateOutPanel() {
@@ -18,9 +54,23 @@ export default function GateOutPanel() {
   const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [pricePolicies, setPricePolicies] = useState([]);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadPricePolicies = async () => {
+      try {
+        const policies = await parkingApi.getAllPricePolicies();
+        setPricePolicies(Array.isArray(policies) ? policies : []);
+      } catch (err) {
+        console.error('Error loading price policies:', err);
+      }
+    };
+
+    loadPricePolicies();
+  }, []);
 
   useEffect(() => {
     if (searchParams.has('vnp_ResponseCode')) {
@@ -125,9 +175,10 @@ export default function GateOutPanel() {
         plateNumber: exitPlate.trim().toUpperCase(),
         paymentMethod: selectedMethod
       });
+      const paidAmount = getSessionAmount(res) ?? parkingCharge?.amount;
 
       if (selectedMethod === 'CASH') {
-        toast.success(`Thanh toán tiền mặt thành công! Đã mở barie cho xe ${exitPlate} ra.`);
+        toast.success(`Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`);
         setActiveSession(null);
         setCardCode('');
         setExitPlate('');
@@ -156,6 +207,42 @@ export default function GateOutPanel() {
       setConfirming(false);
     }
   };
+
+  const parkingCharge = useMemo(() => {
+    if (!activeSession) return null;
+
+    const checkIn = activeSession.checkInTime ? new Date(activeSession.checkInTime) : null;
+    const durationMinutes = checkIn && !Number.isNaN(checkIn.getTime())
+      ? Math.max(1, Math.ceil((Date.now() - checkIn.getTime()) / 60000))
+      : 0;
+
+    const sessionAmount = getSessionAmount(activeSession);
+    const sessionVehicleTypeId = getVehicleTypeId(activeSession);
+    const sessionVehicleTypeName = (getVehicleTypeName(activeSession) || '').toLowerCase();
+    const sessionBranchId = getBranchId(activeSession);
+
+    const hourlyPolicies = pricePolicies.filter(policy => !isPackagePolicy(policy));
+    const matchedPolicy =
+      hourlyPolicies.find(policy =>
+        String(getVehicleTypeId(policy)) === String(sessionVehicleTypeId) &&
+        getBranchId(policy) &&
+        String(getBranchId(policy)) === String(sessionBranchId)
+      ) ||
+      hourlyPolicies.find(policy => String(getVehicleTypeId(policy)) === String(sessionVehicleTypeId)) ||
+      hourlyPolicies.find(policy => {
+        const policyVehicleTypeName = (getVehicleTypeName(policy) || '').toLowerCase();
+        return sessionVehicleTypeName && policyVehicleTypeName === sessionVehicleTypeName;
+      });
+
+    const calculatedAmount = calculateParkingFee(matchedPolicy, durationMinutes);
+
+    return {
+      amount: sessionAmount ?? calculatedAmount,
+      durationMinutes,
+      policy: matchedPolicy,
+      isBackendAmount: sessionAmount !== null,
+    };
+  }, [activeSession, pricePolicies]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem' }}>
@@ -253,6 +340,35 @@ export default function GateOutPanel() {
           </div>
 
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
+
+          {activeSession && (
+            <div style={{ background: 'rgba(14,165,233,0.08)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(14,165,233,0.25)', marginBottom: '1rem' }}>
+              <div style={{ color: '#38bdf8', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+                💵 TẠM TÍNH PHÍ ĐẬU XE
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.75rem' }}>
+                <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', lineHeight: 1.6 }}>
+                  <div>Thời gian gửi: <strong style={{ color: '#fff' }}>{parkingCharge?.durationMinutes || 0} phút</strong></div>
+                  <div>Chính sách: <strong style={{ color: '#fff' }}>{parkingCharge?.policy?.policyName || 'Chưa có bảng giá'}</strong></div>
+                  {!parkingCharge?.isBackendAmount && parkingCharge?.policy && (
+                    <div>
+                      Giá cơ bản: {fmtMoney(parkingCharge.policy.basePrice)}đ / {parkingCharge.policy.baseDurationMinutes || 60} phút
+                    </div>
+                  )}
+                </div>
+                <div style={{ color: '#fff', fontWeight: 900, fontSize: '1.5rem', whiteSpace: 'nowrap' }}>
+                  {parkingCharge?.amount !== null && parkingCharge?.amount !== undefined
+                    ? `${fmtMoney(parkingCharge.amount)}đ`
+                    : 'Chưa có giá'}
+                </div>
+              </div>
+              {!parkingCharge?.policy && parkingCharge?.amount === null && (
+                <div style={{ marginTop: '0.6rem', color: '#fbbf24', fontSize: '0.78rem' }}>
+                  Chưa tìm thấy chính sách giá cho loại xe này. Vui lòng cấu hình trong Manager &gt; Settings.
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginBottom: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>
             PHƯƠNG THỨC THANH TOÁN
