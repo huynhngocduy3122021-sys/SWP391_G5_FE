@@ -28,39 +28,40 @@ export default function GateInPanel() {
   const [zones, setZones] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
 
-  useEffect(() => {
-    const fetchStatsData = async () => {
-      try {
-        const data = await managerApi.getAllZones();
-        if (Array.isArray(data)) {
-          const formatted = data.map(z => {
-            const used = z.capacity - z.availableCapacity;
-            return {
-              category: z.zoneName,
-              current: used,
-              max: z.capacity,
-              status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
-              flowPerHour: Math.max(1, Math.round(used / 4))
-            };
-          });
-          setZones(formatted);
-        }
-      } catch (err) {
-        console.error("Failed to fetch zones for table:", err);
+  const fetchStatsData = async () => {
+    try {
+      const data = await managerApi.getAllZones();
+      if (Array.isArray(data)) {
+        const formatted = data.map(z => {
+          const used = z.capacity - z.availableCapacity;
+          return {
+            category: z.zoneName,
+            current: used,
+            max: z.capacity,
+            status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
+            flowPerHour: Math.max(1, Math.round(used / 4))
+          };
+        });
+        setZones(formatted);
       }
+    } catch (err) {
+      console.error("Failed to fetch zones for table:", err);
+    }
 
-      try {
-        const data = await managerApi.getAllSessions();
-        if (Array.isArray(data)) {
-          const sorted = data
-            .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
-            .slice(0, 6);
-          setRecentSessions(sorted);
-        }
-      } catch (err) {
-        console.error("Failed to fetch recent sessions:", err);
+    try {
+      const data = await managerApi.getAllSessions();
+      if (Array.isArray(data)) {
+        const sorted = data
+          .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+          .slice(0, 6);
+        setRecentSessions(sorted);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch recent sessions:", err);
+    }
+  };
+
+  useEffect(() => {
     fetchStatsData();
     const interval = setInterval(fetchStatsData, 10000);
     return () => clearInterval(interval);
@@ -176,9 +177,11 @@ export default function GateInPanel() {
       toast.success(`Đã cấp thẻ & mở barie cho ${licensePlate}!`);
       setSelectedFiles([]);
       setCardCode('');
+      setLicensePlate('');
       if (isBooking) {
         setBookingCode('');
       }
+      fetchStatsData();
     } catch (err) {
       console.error("Check-in Error:", err.response?.data || err.message);
       let errorStr = 'Lỗi server khi check-in!';
