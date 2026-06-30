@@ -1,173 +1,410 @@
 import { useState, useEffect } from 'react';
-import { mt, card } from './managerTheme';
-import managerApi from '../../api/managerApi';
+import { Modal, Button, Form, ProgressBar, Badge } from 'react-bootstrap';
+import { Plus, Trash2, Building2, Layers, Loader2 } from 'lucide-react';
+import { mt } from './managerTheme';
+import managerApi from '../../api/manager';
 
+/* ── helpers ─────────────────────────────────────────────── */
+const gId   = (o, ...ks) => { for (const k of ks) if (o?.[k]) return o[k]; return ''; };
+const gName = (o, ...ks) => { for (const k of ks) if (o?.[k]) return o[k]; return ''; };
+const sid   = (a, b) => String(a || '') === String(b || '');
+
+const floorId   = (f) => gId(f,   'parkingFloorId', 'id');
+const floorName = (f) => gName(f, 'floorName', 'name', 'floorCode') || String(floorId(f));
+const zoneId    = (z) => gId(z,   'parkingZoneId', 'id', 'zoneId');
+const zoneName  = (z) => gName(z, 'zoneName', 'name') || `Zone ${zoneId(z)}`;
+const zoneCap   = (z) => Number(z?.capacity || z?.totalSlots || z?.total || 0);
+const zoneUsed  = (z) => Number(z?.usedSlots || z?.occupiedSlots || z?.currentOccupancy || z?.used || 0);
+const zoneFlId  = (z) => gId(z,   'parkingFloorId', 'floorId');
+const vtId      = (v) => gId(v,   'vehicleTypeId', 'id');
+const vtName    = (v) => gName(v, 'typeName', 'vehicleTypeName', 'name') || `Loại xe ${vtId(v)}`;
+
+const apiErr = (err) => {
+  const msg = err?.response?.data?.message || err?.response?.data || '';
+  const map = {
+    'Parking floor already has a parking zone': 'Tầng này đã có phân khu.',
+    'Parking floor is inactive': 'Tầng đang ngưng hoạt động.',
+    'Parking branch is inactive': 'Chi nhánh đang ngưng hoạt động.',
+    'Parking floor not found': 'Không tìm thấy tầng bãi xe.',
+    'Vehicle type not found': 'Không tìm thấy loại phương tiện.',
+  };
+  return map[msg] || msg || 'Có lỗi xảy ra. Vui lòng thử lại.';
+};
+
+/* ── sub-components ──────────────────────────────────────── */
+function GradientModalHeader({ icon: Icon, title, subtitle, gradient, onClose, disabled }) {
+  return (
+    <div className="d-flex justify-content-between align-items-center px-4 py-3"
+      style={{ background: gradient }}>
+      <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center justify-content-center rounded-3"
+          style={{ width: 42, height: 42, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
+          <Icon size={20} color="#fff" />
+        </div>
+        <div>
+          <h5 className="mb-0 fw-bold text-white">{title}</h5>
+          <small style={{ color: 'rgba(255,255,255,0.65)' }}>{subtitle}</small>
+        </div>
+      </div>
+      <button className="btn btn-sm rounded-3" onClick={onClose} disabled={disabled}
+        style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.8)' }}>
+        <i className="bi bi-x-lg" />
+      </button>
+    </div>
+  );
+}
+
+/* ── main component ──────────────────────────────────────── */
 export default function ZoneOverviewPanel() {
-  const [zones, setZones] = useState([]);
-  const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [selFloor, setSelFloor] = useState('ALL');
+  const [floors,   setFloors]   = useState([]);
+  const [zones,    setZones]    = useState([]);
+  const [vtypes,   setVtypes]   = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading,  setLoading]  = useState(false);
+
+  // modal visibility
+  const [modZone,   setModZone]  = useState(false);
+  const [modFloor,  setModFloor] = useState(false);
+  const [modDel,    setModDel]   = useState(null); // { id, name }
+
+  // form states
+  const emptyZone  = { name: '', total: '', floorId: '', vtId: '' };
+  const emptyFloor = { name: '', code: '', capacity: '' };
+  const [zForm, setZForm] = useState(emptyZone);
+  const [fForm, setFForm] = useState(emptyFloor);
+
+  // error / saving
+  const [zErr, setZErr] = useState('');
+  const [fErr, setFErr] = useState('');
+  const [dErr, setDErr] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  /* ── fetch ── */
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [fl, zo, vt, se] = await Promise.all([
+        managerApi.getAllFloors(),
+        managerApi.getAllZones(),
+        managerApi.getVehicleTypes(),
+        managerApi.getAllSessions(),
+      ]);
+      setFloors(Array.isArray(fl) ? fl : []);
+      setZones(Array.isArray(zo) ? zo : []);
+      setVtypes(Array.isArray(vt) ? vt : []);
+      setSessions(Array.isArray(se) ? se : []);
+    } catch { 
+      setFloors([]); setZones([]); setVtypes([]); setSessions([]); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const first = floors.find(f => !zones.some(z => sid(zoneFlId(z), floorId(f))));
+    setZForm(p => ({ ...p,
+      floorId: p.floorId && !zones.some(z => sid(zoneFlId(z), p.floorId)) ? p.floorId : floorId(first) || '',
+      vtId: p.vtId || vtId(vtypes[0]) || '',
+    }));
+  }, [floors, zones, vtypes]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [zonesRes, incidentsRes] = await Promise.all([
-        managerApi.getZones(),
-        managerApi.getIncidents()
-      ]);
-      setZones(zonesRes);
-      setIncidents(incidentsRes.content || incidentsRes || []);
-    } catch (err) {
-      console.error('Lỗi khi tải dữ liệu phân khu:', err);
-    } finally {
-      setLoading(false);
+  /* ── derived ── */
+  // Gom nhóm số lượng xe đang gửi thực tế (sessionStatus = ACTIVE) theo vehicleTypeId
+  const activeCountByVt = {};
+  sessions.forEach(s => {
+    const isAct = (s.sessionStatus || s.status) === 'ACTIVE';
+    const vtIdOfSession = s.vehicleTypeId;
+    if (isAct && vtIdOfSession) {
+      activeCountByVt[vtIdOfSession] = (activeCountByVt[vtIdOfSession] || 0) + 1;
     }
+  });
+
+  // Sao chép số lượng để phân bổ dần vào các phân khu của loại xe đó
+  const remainingCountByVt = { ...activeCountByVt };
+  const zoneOccupancyMap = {};
+
+  // Sắp xếp phân khu theo ID để đảm bảo phân bổ nhất quán
+  const sortedZones = [...zones].sort((a, b) => zoneId(a) - zoneId(b));
+  sortedZones.forEach(z => {
+    const zid = zoneId(z);
+    const vt = z.vehicleTypeId || (z.vehicleType && vtId(z.vehicleType));
+    const cap = zoneCap(z);
+
+    if (vt && remainingCountByVt[vt] !== undefined) {
+      const activeForVt = remainingCountByVt[vt];
+      const used = Math.min(cap, activeForVt);
+      zoneOccupancyMap[zid] = used;
+      remainingCountByVt[vt] -= used;
+    } else {
+      zoneOccupancyMap[zid] = 0;
+    }
+  });
+
+  const dFloors = floors.map(f => {
+    const fid = floorId(f);
+    const fz  = zones.filter(z => sid(zoneFlId(z), fid));
+    const slots = Number(f.capacity || fz.reduce((s, z) => s + zoneCap(z), 0));
+    // Tính tổng số xe đang đỗ thực tế trong các phân khu của tầng này từ zoneOccupancyMap
+    const used  = fz.reduce((s, z) => s + (zoneOccupancyMap[zoneId(z)] || 0), 0);
+    const pct   = slots > 0 ? Math.round(used / slots * 100) : 0;
+    return { code: f.floorCode || String(fid), name: floorName(f), pct, slots, used, id: fid };
+  });
+
+  const dZones = zones.map(z => {
+    const total = zoneCap(z);
+    // Lấy số slot đã dùng được tính toán động từ database sessions
+    const used = zoneOccupancyMap[zoneId(z)] || 0;
+    const pct   = total > 0 ? Math.round(used / total * 100) : 0;
+    const fl    = dFloors.find(f => sid(f.id, zoneFlId(z)));
+    return { id: zoneId(z), name: zoneName(z), used, total, pct, floor: fl?.code || String(zoneFlId(z)),
+      status: pct >= 100 ? 'Full' : 'Available', color: pct >= 100 ? 'danger' : 'success' };
+  });
+
+  const filtered = selFloor === 'ALL' ? dZones : dZones.filter(b => b.floor === selFloor);
+  const avFloors = dFloors.filter(f => !zones.some(z => sid(zoneFlId(z), f.id)));
+  const totalSlots = dFloors.reduce((a, f) => a + f.slots, 0);
+  const totalUsed  = dFloors.reduce((a, f) => a + f.used,  0);
+  const totalPct   = totalSlots > 0 ? Math.round(totalUsed / totalSlots * 100) : 0;
+  const canSaveZone = avFloors.length > 0 && vtypes.length > 0 && !saving;
+
+  /* ── handlers ── */
+  const handleAddZone = async () => {
+    setZErr('');
+    if (!zForm.name.trim())  return setZErr('Vui lòng nhập tên phân khu.');
+    if (!zForm.floorId)      return setZErr('Vui lòng chọn tầng.');
+    if (!zForm.vtId)         return setZErr('Vui lòng chọn loại phương tiện.');
+    if (Number(zForm.total) <= 0) return setZErr('Tổng slots phải lớn hơn 0.');
+    try {
+      setSaving(true);
+      await managerApi.createZone({ zoneName: zForm.name.trim(), capacity: Number(zForm.total), parkingFloorId: Number(zForm.floorId), vehicleTypeId: Number(zForm.vtId) });
+      setModZone(false); setZForm(emptyZone); fetchData();
+    } catch (e) { setZErr(apiErr(e)); } finally { setSaving(false); }
   };
 
-  const handleResolve = async (incident) => {
-    const notes = prompt("Nhập ghi chú khắc phục sự cố (Bắt buộc):");
-    if (!notes) return;
-    
-    let lostCardFee = 0;
-    if (incident.incidentType === 'LOST_CARD') {
-      const feeInput = prompt("Nhập phụ phí đền bù thẻ mất (VNĐ):", "50000");
-      if (feeInput !== null && !isNaN(feeInput)) {
-        lostCardFee = Number(feeInput);
-      }
-    }
-
+  const handleAddFloor = async () => {
+    setFErr('');
+    if (!fForm.name.trim()) return setFErr('Vui lòng nhập tên tầng.');
     try {
-      await managerApi.resolveIncident(incident.incidentId, { resolutionNotes: notes, lostCardFee });
-      alert("Đã giải quyết sự cố!");
-      fetchData(); // Tải lại danh sách
-    } catch (err) {
-      const errorMsg = typeof err.response?.data === 'string' 
-        ? err.response.data 
-        : err.response?.data?.message || err.message;
-      alert("Lỗi khi giải quyết sự cố: " + errorMsg);
-    }
+      setSaving(true);
+      const payload = { floorName: fForm.name.trim(), ...(fForm.code && { floorCode: fForm.code }), ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }) };
+      await managerApi.createFloor(payload);
+      setModFloor(false); setFForm(emptyFloor); fetchData();
+    } catch (e) { setFErr(apiErr(e)); } finally { setSaving(false); }
   };
 
-  const totalCapacity = zones.reduce((sum, z) => sum + z.capacity, 0);
-  const totalUsed = totalCapacity - zones.reduce((sum, z) => sum + z.availableCapacity, 0);
-  const totalPct = totalCapacity === 0 ? 0 : Math.round((totalUsed / totalCapacity) * 100);
+  const handleDeleteZone = async () => {
+    setDErr('');
+    try {
+      setSaving(true);
+      await managerApi.deleteZone(modDel.id);
+      setModDel(null); fetchData();
+    } catch (e) { setDErr(apiErr(e)); } finally { setSaving(false); }
+  };
 
-  // Remove filter to show all incidents including RESOLVED
-  const allIncidents = Array.isArray(incidents) ? incidents : [];
-
-  if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải dữ liệu...</div>;
-  }
-
+  /* ── render ── */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr', gap: '1rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-          {zones.map((b) => {
-            const used = b.capacity - b.availableCapacity;
-            const pct = b.capacity === 0 ? 0 : Math.round((used / b.capacity) * 100);
-            let status = 'Còn chỗ';
-            let statusColor = mt.success;
-            if (pct >= 100) {
-              status = 'Đầy';
-              statusColor = mt.danger;
-            } else if (!b.active) {
-              status = 'Bảo trì';
-              statusColor = mt.textMuted;
-            }
-            return (
-              <div key={b.parkingZoneId || b.zoneName} style={card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 700, color: mt.text }}>{b.zoneName}</span>
-                  <span style={{
-                    fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                    background: `${statusColor}1A`, color: statusColor,
-                  }}>{status}</span>
+    <div className="d-flex flex-column gap-3">
+
+      {/* Filter bar */}
+      <div className="d-flex flex-wrap align-items-center gap-2 bg-white px-3 py-2 rounded-3 border">
+        <span className="fw-bold small me-2">Chọn tầng / phân khu:</span>
+        {[{ code: 'ALL', name: 'Tất cả' }, ...dFloors].map(f => (
+          <Button key={f.code} size="sm" variant={selFloor === f.code ? 'dark' : 'outline-secondary'}
+            onClick={() => setSelFloor(f.code)} className="rounded-3 fw-semibold" style={{ fontSize: '0.75rem' }}>
+            {f.name}
+          </Button>
+        ))}
+        <div className="ms-auto">
+          <Button size="sm" variant="outline-secondary" className="rounded-3 fw-bold d-flex align-items-center gap-1"
+            onClick={() => setModFloor(true)} style={{ fontSize: '0.75rem' }}>
+            <Building2 size={13} /> Thêm tầng
+          </Button>
+        </div>
+      </div>
+
+      {/* Main grid */}
+      <div className="row g-3">
+        {/* Zone cards */}
+        <div className="col-9">
+          <div className="row row-cols-3 g-3">
+            {loading ? (
+              <div className="col-12 text-center text-muted py-4">Đang tải dữ liệu sơ đồ...</div>
+            ) : filtered.length === 0 ? (
+              <div className="col-12 text-center text-muted py-4 border rounded-3">Chưa có dữ liệu phân khu.</div>
+            ) : filtered.map(b => (
+              <div key={b.id} className="col">
+                <div className="card border rounded-3 h-100 position-relative p-3">
+                  <button className="btn btn-sm position-absolute top-0 end-0 m-2 p-1 rounded-2 border text-muted"
+                    style={{ lineHeight: 1 }} title="Xóa phân khu"
+                    onClick={() => setModDel({ id: b.id, name: b.name })}>
+                    <Trash2 size={13} />
+                  </button>
+                  <div className="d-flex justify-content-between align-items-start mb-1 pe-4">
+                    <span className="fw-bold small">{b.name}</span>
+                    <Badge bg={b.color} className="ms-1" style={{ fontSize: '0.6rem' }}>{b.status}</Badge>
+                  </div>
+                  <div className="text-muted mb-1" style={{ fontSize: '0.7rem' }}>Đã dùng {b.pct}%</div>
+                  <ProgressBar now={b.pct} variant="dark" style={{ height: 5 }} className="mb-1" />
+                  <div className="text-muted" style={{ fontSize: '0.7rem' }}>{b.used} / {b.total} slots</div>
                 </div>
-                <div style={{ fontSize: '0.7rem', color: mt.textMuted, marginBottom: 10 }}>Đã dùng {pct}%</div>
-                <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9', marginBottom: 6 }}>
-                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: mt.primary }} />
-                </div>
-                <div style={{ fontSize: '0.7rem', color: mt.textMuted }}>{used} / {b.capacity} slots</div>
               </div>
-            );
-          })}
-          <button type="button" style={{
-            ...card, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: `2px dashed ${mt.border}`, color: mt.textMuted, cursor: 'pointer', fontWeight: 600,
-            background: 'transparent',
-          }}>
-            + Thêm phân khu mới
-          </button>
+            ))}
+
+            {/* Add zone card */}
+            <div className="col">
+              <button className="card border-2 border-dashed rounded-3 w-100 h-100 bg-transparent text-muted d-flex flex-column align-items-center justify-content-center gap-1 p-3"
+                style={{ minHeight: 110, cursor: 'pointer', borderStyle: 'dashed' }}
+                onClick={() => setModZone(true)}>
+                <Plus size={20} />
+                <span className="small fw-semibold">Thêm phân khu mới</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ ...card, background: mt.primary, color: '#fff' }}>
-            <div style={{ fontSize: '0.7rem', opacity: 0.8, marginBottom: 6 }}>TỔNG CÔNG SUẤT</div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{totalPct}%</div>
-            <div style={{ fontSize: '0.7rem', opacity: 0.8, marginBottom: 12 }}>{totalUsed} / {totalCapacity} vị trí</div>
+        {/* Sidebar stats */}
+        <div className="col-3 d-flex flex-column gap-3">
+          <div className="rounded-3 p-3 text-white" style={{ background: mt.primary }}>
+            <div style={{ fontSize: '0.65rem', opacity: 0.8 }} className="mb-1">TỔNG CÔNG SUẤT BÃI XE</div>
+            <div className="fw-bold mb-1" style={{ fontSize: '1.8rem' }}>{totalPct}%</div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.8 }}>{totalUsed.toLocaleString()} / {totalSlots.toLocaleString()} vị trí</div>
           </div>
-          <div style={card}>
-            <div style={{ fontWeight: 700, marginBottom: 10 }}>Chi tiết hiện trạng</div>
-            {zones.map((r) => {
-              const used = r.capacity - r.availableCapacity;
-              const pct = r.capacity === 0 ? 0 : Math.round((used / r.capacity) * 100);
-              return (
-                <div key={r.parkingZoneId || r.zoneName} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.8rem' }}>
-                  <span style={{ color: mt.textMuted }}>{r.zoneName}</span>
-                  <span style={{ fontWeight: 700, color: pct > 85 ? mt.danger : mt.text }}>{pct}%</span>
+
+          <div className="card border rounded-3 p-3">
+            <div className="fw-bold mb-2 small">Chi tiết hiện trạng</div>
+            {dFloors.length === 0 ? (
+              <div className="text-muted small">Chưa có dữ liệu tầng.</div>
+            ) : dFloors.map(r => (
+              <div key={r.code} onClick={() => setSelFloor(r.code)}
+                className={`d-flex justify-content-between align-items-center px-2 py-1 rounded-2 mb-1 ${selFloor === r.code ? 'bg-dark bg-opacity-10 fw-semibold' : ''}`}
+                style={{ cursor: 'pointer', fontSize: '0.8rem' }}>
+                <span style={{ color: selFloor === r.code ? mt.primary : mt.textMuted }}>{r.code}&nbsp;{r.name}</span>
+                <span className="fw-bold" style={{ color: r.pct > 85 ? mt.danger : (selFloor === r.code ? mt.primary : mt.text) }}>{r.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════ MODAL: Thêm phân khu ════ */}
+      <Modal show={modZone} onHide={() => !saving && (setModZone(false), setZErr(''))} centered>
+        <GradientModalHeader icon={Layers} title="Thêm phân khu mới" subtitle="Cấu hình thông tin phân khu bãi xe"
+          gradient="linear-gradient(135deg, #0f172a 0%, #0d9488 100%)"
+          onClose={() => { setModZone(false); setZErr(''); }} disabled={saving} />
+        <Modal.Body className="p-4">
+          {zErr && <div className="alert alert-danger py-2 small d-flex align-items-center gap-2"><i className="bi bi-exclamation-circle-fill" />{zErr}</div>}
+          {(!floors.length || avFloors.length === 0) && !loading && (
+            <div className="alert alert-warning py-2 small d-flex align-items-center gap-2">
+              <i className="bi bi-info-circle-fill" />
+              {!floors.length ? 'Cần có ít nhất một tầng trước khi thêm phân khu.' : 'Tất cả tầng đã có phân khu. Mỗi tầng chỉ được tạo 1 phân khu.'}
+            </div>
+          )}
+          <Form className="d-flex flex-column gap-3">
+            {[
+              { label: 'Tên phân khu', icon: 'bi-tag', field: 'name', placeholder: 'Nhập tên phân khu...', type: 'text' },
+              { label: 'Tổng số slots', icon: 'bi-hash', field: 'total', placeholder: 'Nhập số slot...', type: 'number' },
+            ].map(({ label, icon, field, placeholder, type }) => (
+              <Form.Group key={field}>
+                <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">{label}</Form.Label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0"><i className={`bi ${icon}`} /></span>
+                  <Form.Control type={type} placeholder={placeholder} value={zForm[field]} min={type === 'number' ? 1 : undefined}
+                    onChange={e => { setZErr(''); setZForm({ ...zForm, [field]: e.target.value }); }}
+                    className="border-start-0" />
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+              </Form.Group>
+            ))}
+            <Form.Group>
+              <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">Thuộc tầng / khu vực</Form.Label>
+              <div className="input-group">
+                <span className="input-group-text bg-light border-end-0"><i className="bi bi-layers" /></span>
+                <Form.Select value={zForm.floorId} disabled={avFloors.length === 0} className="border-start-0"
+                  onChange={e => { setZErr(''); setZForm({ ...zForm, floorId: e.target.value }); }}>
+                  <option value="">{avFloors.length ? 'Chọn tầng...' : 'Không còn tầng trống'}</option>
+                  {avFloors.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </Form.Select>
+              </div>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">Loại phương tiện</Form.Label>
+              <div className="input-group">
+                <span className="input-group-text bg-light border-end-0"><i className="bi bi-car-front" /></span>
+                <Form.Select value={zForm.vtId} className="border-start-0"
+                  onChange={e => { setZErr(''); setZForm({ ...zForm, vtId: e.target.value }); }}>
+                  <option value="">Chọn loại xe...</option>
+                  {vtypes.map(v => <option key={vtId(v)} value={vtId(v)}>{vtName(v)}</option>)}
+                </Form.Select>
+              </div>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer className="bg-light border-top">
+          <Button variant="outline-secondary" onClick={() => { setModZone(false); setZErr(''); }} disabled={saving}>Hủy</Button>
+          <Button disabled={!canSaveZone} onClick={handleAddZone}
+            style={{ background: canSaveZone ? 'linear-gradient(135deg,#0f172a,#0d9488)' : undefined, border: 'none' }}>
+            {saving ? <><Loader2 size={15} className="spin me-1" />Đang lưu...</> : 'Lưu lại'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-      <div style={card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ fontWeight: 700, color: mt.danger }}>&#9888; Nhật ký xử lý ngoại lệ &amp; Sự cố khẩn cấp</div>
-          <button type="button" style={{ border: 'none', background: 'transparent', color: mt.accent, fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>Xem tất cả</button>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-          <thead>
-            <tr style={{ color: mt.textMuted, textAlign: 'left' }}>
-              <th style={{ padding: '6px 8px' }}>THỜI GIAN</th>
-              <th style={{ padding: '6px 8px' }}>LOẠI SỰ CỐ</th>
-              <th style={{ padding: '6px 8px' }}>TIÊU ĐỀ</th>
-              <th style={{ padding: '6px 8px' }}>TRẠNG THÁI</th>
-              <th style={{ padding: '6px 8px' }}>THAO TÁC</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allIncidents.length === 0 ? (
-              <tr><td colSpan="5" style={{ padding: '10px', textAlign: 'center', color: mt.textMuted }}>Không có sự cố nào</td></tr>
-            ) : allIncidents.map((l) => {
-              const isResolved = l.status === 'RESOLVED' || l.status === 'CLOSED';
-              return (
-              <tr key={l.incidentId} style={{ borderTop: `1px solid ${mt.border}` }}>
-                <td style={{ padding: '8px' }}>{new Date(l.createdAt).toLocaleString('vi-VN')}</td>
-                <td style={{ padding: '8px', color: l.incidentType === 'LOST_CARD' ? mt.danger : mt.text }}>&#9679; {l.incidentType}</td>
-                <td style={{ padding: '8px', fontWeight: 600 }}>{l.title}</td>
-                <td style={{ padding: '8px', color: isResolved ? mt.success : mt.warning, fontWeight: 600 }}>{l.status}</td>
-                <td style={{ padding: '8px' }}>
-                  {!isResolved ? (
-                    <button type="button" onClick={() => handleResolve(l)} style={{
-                      border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 6,
-                      padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', color: mt.success, fontWeight: 600
-                    }}>Giải quyết</button>
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', color: mt.textMuted }}>Đã đóng</span>
-                  )}
-                </td>
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* ════ MODAL: Thêm tầng ════ */}
+      <Modal show={modFloor} onHide={() => !saving && (setModFloor(false), setFErr(''))} centered>
+        <GradientModalHeader icon={Building2} title="Thêm tầng mới" subtitle="Tạo tầng bãi xe mới cho hệ thống"
+          gradient="linear-gradient(135deg, #1e3a5f 0%, #0d9488 100%)"
+          onClose={() => { setModFloor(false); setFErr(''); }} disabled={saving} />
+        <Modal.Body className="p-4">
+          {fErr && <div className="alert alert-danger py-2 small d-flex align-items-center gap-2"><i className="bi bi-exclamation-circle-fill" />{fErr}</div>}
+          <Form className="d-flex flex-column gap-3">
+            {[
+              { label: 'Tên tầng *', icon: 'bi-building', field: 'name', placeholder: 'Ví dụ: Tầng 1, Tầng trệt...' },
+              { label: 'Mã tầng (tuỳ chọn)', icon: 'bi-tag', field: 'code', placeholder: 'Ví dụ: F1, G0, B1...' },
+              { label: 'Sức chứa (tuỳ chọn)', icon: 'bi-hash', field: 'capacity', placeholder: 'Tổng số chỗ đỗ...', type: 'number' },
+            ].map(({ label, icon, field, placeholder, type }) => (
+              <Form.Group key={field}>
+                <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">{label}</Form.Label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0"><i className={`bi ${icon}`} /></span>
+                  <Form.Control type={type || 'text'} placeholder={placeholder} value={fForm[field]} min={type === 'number' ? 1 : undefined}
+                    onChange={e => { setFErr(''); setFForm({ ...fForm, [field]: e.target.value }); }}
+                    className="border-start-0" />
+                </div>
+              </Form.Group>
+            ))}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer className="bg-light border-top">
+          <Button variant="outline-secondary" onClick={() => { setModFloor(false); setFErr(''); }} disabled={saving}>Hủy</Button>
+          <Button disabled={saving || !fForm.name.trim()} onClick={handleAddFloor}
+            style={{ background: fForm.name.trim() ? 'linear-gradient(135deg,#1e3a5f,#0d9488)' : undefined, border: 'none' }}>
+            {saving ? <><Loader2 size={15} className="spin me-1" />Đang tạo...</> : 'Tạo tầng'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ════ MODAL: Xác nhận xóa ════ */}
+      <Modal show={!!modDel} onHide={() => !saving && (setModDel(null), setDErr(''))} centered>
+        <GradientModalHeader icon={Trash2} title="Xóa phân khu" subtitle="Hành động này không thể hoàn tác"
+          gradient="linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)"
+          onClose={() => { setModDel(null); setDErr(''); }} disabled={saving} />
+        <Modal.Body className="p-4">
+          {dErr && <div className="alert alert-danger py-2 small">{dErr}</div>}
+          <p className="mb-1">Bạn có chắc muốn xóa phân khu <strong className="text-danger">"{modDel?.name}"</strong>?</p>
+          <p className="text-muted small mb-0">Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.</p>
+        </Modal.Body>
+        <Modal.Footer className="bg-light border-top">
+          <Button variant="outline-secondary" onClick={() => { setModDel(null); setDErr(''); }} disabled={saving}>Hủy</Button>
+          <Button variant="danger" onClick={handleDeleteZone} disabled={saving}
+            className="d-flex align-items-center gap-2">
+            {saving ? <Loader2 size={15} className="spin" /> : <Trash2 size={15} />}
+            {saving ? 'Đang xóa...' : 'Xóa phân khu'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

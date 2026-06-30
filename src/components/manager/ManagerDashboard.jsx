@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import ManagerTopbar from './ManagerTopbar';
-import StaffManagementPanel from './StaffManagementPanel';
 import ZoneOverviewPanel from './ZoneOverviewPanel';
-import ReportsPanel from './ReportsPanel';
 import SettingsPanel from './SettingsPanel';
 import OverviewPanel from './OverviewPanel';
 import IncidentPanel from './IncidentPanel';
+import BookingPanel from './BookingPanel';
+import MemberPanel from './MemberPanel';
+import IotPanel from './IotPanel';
 import { mt } from './managerTheme';
 
 const NAV_ITEMS = [
   { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
+  { key: 'bookings',  label: 'Quản lý Booking',    icon: '\u2637' },
+  { key: 'members',   label: 'Thẻ Thành viên',   icon: '\u25EB' },
   { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
-  { key: 'staff',     label: 'Quản lý Nhân sự',   icon: '\u263A' },
+  { key: 'iot',       label: 'IoT',                icon: '\u25C9' },
   { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
-  { key: 'reports',   label: 'Báo cáo doanh thu',  icon: '\u25B2' },
   { key: 'settings',  label: 'Cấu hình hệ thống', icon: '\u2699' },
 ];
 
@@ -32,10 +34,11 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
+      case 'bookings':  return <BookingPanel />;
+      case 'members':   return <MemberPanel />;
       case 'zones':     return <ZoneOverviewPanel />;
-      case 'staff':     return <StaffManagementPanel />;
+      case 'iot':       return <IotPanel />;
       case 'incidents': return <IncidentPanel />;
-      case 'reports':   return <ReportsPanel />;
       case 'settings':  return <SettingsPanel />;
       default:          return <OverviewPanel onNavigate={setTab} />;
     }

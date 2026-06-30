@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
 import managerApi from '../../api/manager';
-import authApi from '../../api/authApi';
 
 /* ── constants ─────────────────────────────── */
 const TYPE_LABELS = {
@@ -60,13 +59,6 @@ export default function IncidentPanel() {
   // Modal chi tiết
   const [detailTarget, setDetailTarget] = useState(null);
 
-  // Phân công nhân viên
-  const [assignTarget, setAssignTarget] = useState(null);
-  const [assignStaffId, setAssignStaffId] = useState('');
-  const [assigning, setAssigning] = useState(false);
-  const [assignErr, setAssignErr] = useState('');
-  const [staffList, setStaffList] = useState([]);
-
   /* ── fetch ── */
   const fetchIncidents = async () => {
     setLoading(true);
@@ -81,16 +73,7 @@ export default function IncidentPanel() {
     }
   };
 
-  const fetchStaff = async () => {
-    try {
-      const users = await authApi.getAllUsers();
-      setStaffList(Array.isArray(users) ? users : []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => { fetchIncidents(); fetchStaff(); }, []);
+  useEffect(() => { fetchIncidents(); }, []);
 
   /* ── derived ── */
   const filtered = incidents.filter(i => {
@@ -131,20 +114,6 @@ export default function IncidentPanel() {
       setCancelErr(String(err?.response?.data?.message || err?.response?.data || 'Thao tác thất bại!'));
     } finally {
       setCancelling(false);
-    }
-  };
-
-  /* ── assign ── */
-  const handleAssign = async () => {
-    if (!assignStaffId) return setAssignErr('Vui lòng chọn nhân viên.');
-    setAssigning(true);
-    try {
-      await managerApi.assignIncident(assignTarget.incidentId, assignStaffId);
-      setAssignTarget(null); setAssignStaffId(''); fetchIncidents();
-    } catch (err) {
-      setAssignErr(String(err?.response?.data?.message || err?.response?.data || 'Thao tác thất bại!'));
-    } finally {
-      setAssigning(false);
     }
   };
 
@@ -272,10 +241,6 @@ export default function IncidentPanel() {
                       </button>
                       {canAct && (
                         <>
-                          <button type="button" onClick={() => { setAssignTarget(i); setAssignStaffId(i.reporterId || ''); setAssignErr(''); }}
-                            style={{ border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
-                            👤 Phân công
-                          </button>
                           <button type="button" onClick={() => { setResolveTarget(i); setResolveNote(''); setResolveErr(''); }}
                             style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', color: mt.success, borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
                             ✓ Giải quyết
@@ -406,62 +371,6 @@ export default function IncidentPanel() {
                 style={{ border: 'none', background: '#dc2626', color: '#fff', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════ MODAL: Phân công nhân viên ════ */}
-      {assignTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 420, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ background: 'linear-gradient(135deg,#1e40af,#3b82f6)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#fff', fontWeight: 700 }}>👤 Phân công sự cố #{assignTarget.incidentId}</div>
-              <button onClick={() => setAssignTarget(null)}
-                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ margin: '0 0 1rem 0', color: mt.text, fontSize: '0.9rem', lineHeight: 1.5 }}>
-                Chọn nhân viên để xử lý sự cố <strong>{assignTarget.title}</strong>.
-              </p>
-
-              {assignErr && (
-                <div style={{ background: '#fef2f2', color: mt.danger, padding: '10px', borderRadius: 8, fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #fca5a5' }}>
-                  {assignErr}
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: mt.textMuted, marginBottom: 8 }}>
-                  NHÂN VIÊN XỬ LÝ <span style={{ color: mt.danger }}>*</span>
-                </label>
-                <select
-                  value={assignStaffId}
-                  onChange={(e) => setAssignStaffId(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${mt.border}`, outline: 'none' }}
-                >
-                  <option value="">-- Chọn nhân viên --</option>
-                  {assignTarget?.reporterId && (
-                    <option value={assignTarget.reporterId}>
-                      {assignTarget.reporterName || `Nhân viên #${assignTarget.reporterId}`} (Người báo cáo)
-                    </option>
-                  )}
-                  {staffList.filter(s => s.id !== assignTarget?.reporterId && s.userId !== assignTarget?.reporterId).map(s => (
-                    <option key={s.id || s.userId} value={s.id || s.userId}>{s.fullName || s.username || `Nhân viên #${s.id || s.userId}`}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setAssignTarget(null)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${mt.border}`, background: '#f8fafc', color: mt.text, fontWeight: 600, cursor: 'pointer' }}>
-                  Đóng
-                </button>
-                <button type="button" onClick={handleAssign} disabled={assigning}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 700, cursor: assigning ? 'not-allowed' : 'pointer' }}>
-                  {assigning ? 'Đang lưu...' : 'Xác nhận phân công'}
-                </button>
-              </div>
             </div>
           </div>
         </div>

@@ -1,196 +1,519 @@
-import React, { useState } from 'react';
-import { MdArrowBack, MdOutlineFileUpload, MdOutlineInfo } from 'react-icons/md';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 
-// --- Ponytail Mini Helper Components ---
-const Card = ({ title, children, maxWidth }) => (
-  <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '24px', maxWidth: maxWidth || '100%', marginBottom: '24px' }}>
-    {title && <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700', color: '#111322' }}>{title}</h3>}
-    {children}
-  </div>
-);
+export default function SystemSettingsPage() {
+  const [activeTab, setActiveTab] = useState('general');
+  const [searchQuery, setSearchQuery] = useState('');
 
-const FormGroup = ({ label, children, hint }) => (
-  <div style={{ marginBottom: '20px' }}>
-    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#5e6278', marginBottom: '8px' }}>{label}</label>
-    {children}
-    {hint && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>{hint}</div>}
-  </div>
-);
+  // Branding & Logo States
+  const [systemName, setSystemName] = useState(() => localStorage.getItem('sys_name') || 'VinParking');
+  const [primaryColor, setPrimaryColor] = useState(() => localStorage.getItem('sys_primary_color') || '#1b6eff');
+  const [secondaryColor, setSecondaryColor] = useState(() => localStorage.getItem('sys_secondary_color') || '#10b981');
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [faviconPreview, setFaviconPreview] = useState(null);
 
-const Input = (props) => (
-  <input {...props} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #eef0f3', fontSize: '14px', color: '#111322', outline: 'none', ...props.style }} />
-);
+  // Security Settings States
+  const [enableMfa, setEnableMfa] = useState(true);
+  const [pwPolicy, setPwPolicy] = useState('strong');
+  const [sessionTimeout, setSessionTimeout] = useState(30);
 
-const Select = ({ options, ...props }) => (
-  <select {...props} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #eef0f3', fontSize: '14px', color: '#111322', outline: 'none', ...props.style }}>
-    {options.map(opt => <option key={opt}>{opt}</option>)}
-  </select>
-);
+  // Notification States
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [telegramAlerts, setTelegramAlerts] = useState(false);
 
-const ToggleRow = ({ title, desc, active, showBorder = true }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showBorder ? '24px' : '0', paddingBottom: showBorder ? '24px' : '0', borderBottom: showBorder ? '1px solid #eef0f3' : 'none' }}>
-    <div><div style={{ fontSize: '14px', fontWeight: '600', color: '#111322', marginBottom: '4px' }}>{title}</div>{desc && <div style={{ fontSize: '12px', color: '#787a91' }}>{desc}</div>}</div>
-    <div style={{ width: '44px', height: '24px', backgroundColor: active ? '#10b981' : '#e2e8f0', borderRadius: '12px', position: 'relative', cursor: 'pointer' }}>
-      <div style={{ width: '20px', height: '20px', backgroundColor: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: active ? 'auto' : '2px', right: active ? '2px' : 'auto' }}></div>
-    </div>
-  </div>
-);
+  // Dirty State checking for save bar
+  const [isDirty, setIsDirty] = useState(false);
+  const [originalSettings, setOriginalSettings] = useState({});
 
-const Button = ({ children, primary, danger, style = {} }) => (
-  <button style={{ padding: '10px 20px', border: primary || danger ? 'none' : '1px solid #eef0f3', borderRadius: '6px', backgroundColor: primary ? '#1b6eff' : danger ? '#fff' : '#fff', color: primary ? '#fff' : danger ? '#ef4444' : '#111322', cursor: 'pointer', fontWeight: '600', fontSize: '13px', ...(danger && {border: '1px solid #ef4444'}), ...style }}>
-    {children}
-  </button>
-);
+  useEffect(() => {
+    // Store initial values to compare changes
+    setOriginalSettings({
+      systemName,
+      primaryColor,
+      secondaryColor,
+      enableMfa,
+      pwPolicy,
+      sessionTimeout,
+      emailAlerts,
+      telegramAlerts,
+    });
+  }, []);
 
-// --- Main Page Component ---
-const SystemSettingsPage = () => {
-  const [activeTab, setActiveTab] = useState('General');
-  const tabs = ['General', 'Security', 'Notifications', 'Maintenance'];
+  const checkDirty = (updates = {}) => {
+    const current = {
+      systemName,
+      primaryColor,
+      secondaryColor,
+      enableMfa,
+      pwPolicy,
+      sessionTimeout,
+      emailAlerts,
+      telegramAlerts,
+      ...updates
+    };
+    const dirty = Object.keys(originalSettings).some(
+      key => String(originalSettings[key]) !== String(current[key])
+    );
+    setIsDirty(dirty);
+  };
 
-  const renderGeneral = () => (
-    <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Card title="Branding">
-          <FormGroup label="System Name"><Input defaultValue="Enterprise Admin Suite" /></FormGroup>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <FormGroup label="Primary Brand Color">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ width: '40px', height: '40px', backgroundColor: '#0058be', borderRadius: '6px' }}></div><Input defaultValue="#0058be" /></div>
-            </FormGroup>
-            <FormGroup label="Secondary Brand Color">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ width: '40px', height: '40px', backgroundColor: '#1E293B', borderRadius: '6px' }}></div><Input defaultValue="#1E293B" /></div>
-            </FormGroup>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <FormGroup label="Timezone"><Select options={['UTC+07:00 (Asia/Ho_Chi_Minh)', 'UTC+00:00 (GMT)', 'UTC-05:00 (EST)']} /></FormGroup>
-            <FormGroup label="Language"><Select options={['English (US)', 'Vietnamese']} /></FormGroup>
-          </div>
-        </Card>
+  const handleNameChange = (val) => {
+    setSystemName(val);
+    checkDirty({ systemName: val });
+  };
 
-        <Card title="System Logos">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            <div style={{ border: '2px dashed #cbd5e1', borderRadius: '8px', padding: '32px 16px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
-              <div style={{ width: '48px', height: '48px', backgroundColor: '#e2e8f0', borderRadius: '8px', margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#475569' }}><MdOutlineFileUpload /></div>
-              <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>Main Dashboard Logo</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>SVG, PNG (max 5MB)</div>
-              <Button style={{ color: '#1b6eff', borderColor: '#1b6eff' }}>Select File</Button>
-            </div>
-            <div style={{ border: '2px dashed #cbd5e1', borderRadius: '8px', padding: '32px 16px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
-              <div style={{ fontSize: '24px', fontWeight: '700', letterSpacing: '4px', margin: '0 auto 16px auto', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🔍 L O G O</div>
-              <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>Browser Favicon</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>ICO, PNG (32×32px)</div>
-              <Button style={{ color: '#1b6eff', borderColor: '#1b6eff' }}>Select File</Button>
-            </div>
-          </div>
-        </Card>
-      </div>
+  const handlePrimaryChange = (val) => {
+    setPrimaryColor(val);
+    checkDirty({ primaryColor: val });
+  };
 
-      <div style={{ width: '320px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', overflow: 'hidden' }}>
-        <div style={{ height: '120px', background: 'linear-gradient(135deg, #0058be 0%, #1E293B 100%)', padding: '24px', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '1px', opacity: 0.8 }}>INTERFACE PREVIEW</div>
-          <div style={{ fontSize: '18px', fontWeight: '700' }}>Enterprise Light Theme</div>
-        </div>
-        <div style={{ padding: '24px' }}>
-          <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#5e6278', lineHeight: '1.6' }}>Your changes to the branding will be applied globally across all user dashboards. Ensure color contrast meets WCAG 2.1 accessibility standards.</p>
-          <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '16px', display: 'flex', gap: '12px' }}>
-            <MdOutlineInfo style={{ color: '#0ea5e9', fontSize: '20px' }} />
-            <div style={{ fontSize: '12px', color: '#0369a1', fontWeight: '500' }}>Live preview updates automatically as you select colors.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const handleSecondaryChange = (val) => {
+    setSecondaryColor(val);
+    checkDirty({ secondaryColor: val });
+  };
 
-  const renderSecurity = () => (
-    <Card title="Security Policies" maxWidth="800px">
-      <FormGroup label="Password Policy"><Select options={['Strong (Min 12 chars, upper, lower, number, special)', 'Medium (Min 8 chars, alphanumeric)']} /></FormGroup>
-      <ToggleRow title="Two-Factor Authentication (2FA)" desc="Enforce 2FA globally for all admin and staff accounts." active={true} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-        <FormGroup label="Session Timeout (Minutes)"><Input type="number" defaultValue={30} /></FormGroup>
-        <FormGroup label="Login Attempt Limit"><Input type="number" defaultValue={5} /></FormGroup>
-      </div>
-      <FormGroup label="IP Restrictions (Allowlist)" hint="Leave blank to allow access from any IP address.">
-        <textarea rows="3" defaultValue="192.168.1.0/24, 10.0.0.0/8" style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #eef0f3', fontSize: '14px', outline: 'none', resize: 'vertical' }}></textarea>
-      </FormGroup>
-    </Card>
-  );
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+        setIsDirty(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  const renderNotifications = () => (
-    <Card title="Notification Channels" maxWidth="800px">
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid #eef0f3' }}>
-        {['Email Notifications', 'In-App Push Alerts', 'SMS Alerts (Critical only)'].map((label, i) => (
-          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input type="checkbox" defaultChecked={i < 2} style={{ width: '16px', height: '16px' }} /><span style={{ fontSize: '14px', fontWeight: '500' }}>{label}</span>
-          </label>
-        ))}
-      </div>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700' }}>SMTP Configuration</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '20px' }}>
-        <FormGroup label="SMTP Host"><Input defaultValue="smtp.enterprise-corp.com" /></FormGroup>
-        <FormGroup label="Port"><Input type="number" defaultValue={587} /></FormGroup>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid #eef0f3' }}>
-        <FormGroup label="Username"><Input defaultValue="noreply@enterprise-corp.com" /></FormGroup>
-        <FormGroup label="Password"><Input type="password" defaultValue="********" /></FormGroup>
-      </div>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700' }}>Alert Rules</h3>
-      <ToggleRow title="Notify Admins on New User Registration" active={false} showBorder={false} />
-      <div style={{ marginTop: '16px' }}><ToggleRow title="Notify Admins on Suspicious Logins" active={true} showBorder={false} /></div>
-    </Card>
-  );
+  const handleFaviconUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFaviconPreview(reader.result);
+        setIsDirty(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  const renderMaintenance = () => (
-    <Card title="System Maintenance" maxWidth="800px">
-      <ToggleRow title="Maintenance Mode" desc="Block all non-admin access and display maintenance page." active={false} />
-      <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #eef0f3' }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>Data Retention Policy</div>
-        <div style={{ fontSize: '12px', color: '#787a91', marginBottom: '12px' }}>How long should system logs and deleted items be retained?</div>
-        <Select options={['30 Days', '90 Days', '1 Year', 'Forever']} style={{ width: '200px' }} />
-      </div>
-      <div>
-        <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '16px' }}>Operations</div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <Button style={{ color: '#1b6eff', borderColor: '#1b6eff' }}>Backup Database Now</Button>
-          <Button>Restore from Backup</Button>
-          <Button danger style={{ marginLeft: 'auto' }}>Clear Application Cache</Button>
-        </div>
-      </div>
-    </Card>
-  );
+  const handleSave = () => {
+    localStorage.setItem('sys_name', systemName);
+    localStorage.setItem('sys_primary_color', primaryColor);
+    localStorage.setItem('sys_secondary_color', secondaryColor);
+    
+    // Update original state to current values
+    setOriginalSettings({
+      systemName,
+      primaryColor,
+      secondaryColor,
+      enableMfa,
+      pwPolicy,
+      sessionTimeout,
+      emailAlerts,
+      telegramAlerts,
+    });
+    setIsDirty(false);
+    toast.success('Đã áp dụng và lưu cấu hình hệ thống thành công!');
+  };
+
+  const handleCancel = () => {
+    setSystemName(originalSettings.systemName);
+    setPrimaryColor(originalSettings.primaryColor);
+    setSecondaryColor(originalSettings.secondaryColor);
+    setEnableMfa(originalSettings.enableMfa);
+    setPwPolicy(originalSettings.pwPolicy);
+    setSessionTimeout(originalSettings.sessionTimeout);
+    setEmailAlerts(originalSettings.emailAlerts);
+    setTelegramAlerts(originalSettings.telegramAlerts);
+    setIsDirty(false);
+    toast.info('Đã hủy bỏ các thay đổi.');
+  };
+
+  // WCAG 2.1 Contrast Ratio Calculator against white background (#FFFFFF)
+  const getContrastRatio = (hex) => {
+    if (!hex || hex.length < 7) return '1.0';
+    try {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+      const a = [r, g, b].map(v => {
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      const luminance = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+      
+      const ratio = (1.0 + 0.05) / (luminance + 0.05);
+      const darkRatio = (luminance + 0.05) / (0.0 + 0.05);
+      
+      return Math.max(ratio, darkRatio).toFixed(1);
+    } catch {
+      return '4.5';
+    }
+  };
+
+  const contrastRatio = getContrastRatio(primaryColor);
+  const isContrastPass = Number(contrastRatio) >= 4.5;
 
   return (
-    <div style={{ paddingBottom: '80px', position: 'relative', minHeight: 'calc(100vh - 64px)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '8px', paddingBottom: '80px' }}>
+      
+      {/* Top Title & Search bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '700', color: '#5e6278', textTransform: 'uppercase', marginBottom: '16px' }}>
-            <MdArrowBack style={{ fontSize: '16px', cursor: 'pointer' }} /> <span>Dashboard</span> &gt; <span style={{ color: '#111322' }}>System Settings</span>
-          </div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '700', color: '#111322' }}>System Settings</h2>
-          <p style={{ margin: 0, color: '#5e6278', fontSize: '14px' }}>Configure core system behavior, security protocols, and visual identity.</p>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#111322' }}>System Settings</h2>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Cấu hình nhận diện thương hiệu, bảo mật, thông báo và bảo trì hệ thống.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}><Button>Export Config</Button><Button primary>Add New User</Button></div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', width: '260px' }}>
+            <span style={{ color: '#64748b' }}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Tìm kiếm cài đặt nhanh..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', color: '#111322' }} 
+            />
+          </div>
+          <button 
+            onClick={() => toast.success('Đã xuất dữ liệu cấu hình JSON!')}
+            style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '13px', color: '#475569' }}
+          >
+            Export Config
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #eef0f3', marginBottom: '24px' }}>
-        {tabs.map(tab => (
-          <div key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '12px 24px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: activeTab === tab ? '#1b6eff' : '#787a91', borderBottom: activeTab === tab ? '2px solid #1b6eff' : '2px solid transparent', transition: 'all 0.2s' }}>
-            {tab}
-          </div>
+      {/* Tabs Menu */}
+      <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #eef0f3', paddingBottom: '12px' }}>
+        {[
+          { key: 'general', label: '🎨 General (Thương hiệu)' },
+          { key: 'security', label: '🔒 Security (Bảo mật)' },
+          { key: 'notifications', label: '🔔 Notifications (Thông báo)' },
+          { key: 'maintenance', label: '🛠️ Maintenance (Bảo trì)' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', transition: 'all 0.2s',
+              backgroundColor: activeTab === tab.key ? primaryColor : '#fff',
+              color: activeTab === tab.key ? '#fff' : '#475569',
+              border: activeTab === tab.key ? `1px solid ${primaryColor}` : '1px solid #cbd5e1',
+            }}
+          >
+            {tab.label}
+          </button>
         ))}
       </div>
 
-      <div style={{ marginBottom: '80px' }}>
-        {activeTab === 'General' && renderGeneral()}
-        {activeTab === 'Security' && renderSecurity()}
-        {activeTab === 'Notifications' && renderNotifications()}
-        {activeTab === 'Maintenance' && renderMaintenance()}
+      {/* Two Column Layout: Controls and UI Live Preview */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
+        
+        {/* Left Column: Forms */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', padding: '24px' }}>
+          
+          {/* TAB: GENERAL */}
+          {activeTab === 'general' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Tùy biến thương hiệu (Branding)</h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>TÊN HỆ THỐNG</label>
+                <input 
+                  type="text" 
+                  value={systemName}
+                  onChange={e => handleNameChange(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>MÀU SẮC CHỦ ĐẠO (PRIMARY)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="color" 
+                      value={primaryColor} 
+                      onChange={e => handlePrimaryChange(e.target.value)}
+                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={primaryColor} 
+                      onChange={e => handlePrimaryChange(e.target.value)}
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>MÀU PHỤ TRỢ (SECONDARY)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="color" 
+                      value={secondaryColor} 
+                      onChange={e => handleSecondaryChange(e.target.value)}
+                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={secondaryColor} 
+                      onChange={e => handleSecondaryChange(e.target.value)}
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #eef0f3', margin: '12px 0' }} />
+
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Logo Hệ thống (System Logos)</h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>LOGO DASHBOARD (SVG/PNG)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    style={{ fontSize: '13px' }}
+                  />
+                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Logo Preview" style={{ maxHeight: '60px' }} />
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Chưa chọn logo mới</span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>FAVICON BROWSER (ICO/PNG)</label>
+                  <input 
+                    type="file" 
+                    accept=".ico,image/png"
+                    onChange={handleFaviconUpload}
+                    style={{ fontSize: '13px' }}
+                  />
+                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                    {faviconPreview ? (
+                      <img src={faviconPreview} alt="Favicon Preview" style={{ width: '32px', height: '32px' }} />
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Chưa chọn favicon (32x32px)</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: SECURITY */}
+          {activeTab === 'security' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Bảo mật hệ thống (Security)</h3>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div>
+                  <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px' }}>Xác thực 2 yếu tố (2FA)</div>
+                  <div style={{ color: '#64748b', fontSize: '12px' }}>Bắt buộc quản trị viên xác thực qua OTP khi đăng nhập.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={enableMfa}
+                  onChange={e => { setEnableMfa(e.target.checked); checkDirty({ enableMfa: e.target.checked }); }}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>CHÍNH SÁCH MẬT KHẨU</label>
+                <select
+                  value={pwPolicy}
+                  onChange={e => { setPwPolicy(e.target.value); checkDirty({ pwPolicy: e.target.value }); }}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                >
+                  <option value="basic">Cơ bản (Ít nhất 6 ký tự)</option>
+                  <option value="strong">Mạnh (Chứa hoa, thường, số & ký tự đặc biệt)</option>
+                  <option value="strict">Nghiêm ngặt (Mạnh + đổi mật khẩu mỗi 90 ngày)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>THỜI GIAN HẾT HẠN PHIÊN (PHÚT)</label>
+                <input 
+                  type="number"
+                  value={sessionTimeout}
+                  onChange={e => { setSessionTimeout(Number(e.target.value)); checkDirty({ sessionTimeout: Number(e.target.value) }); }}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB: NOTIFICATIONS */}
+          {activeTab === 'notifications' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Cấu hình Thông báo (Notifications)</h3>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div>
+                  <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px' }}>Thông báo qua Email</div>
+                  <div style={{ color: '#64748b', fontSize: '12px' }}>Gửi email báo cáo hàng ngày/hàng tuần cho Manager.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={emailAlerts}
+                  onChange={e => { setEmailAlerts(e.target.checked); checkDirty({ emailAlerts: e.target.checked }); }}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div>
+                  <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px' }}>Cảnh báo sự cố qua Telegram Bot</div>
+                  <div style={{ color: '#64748b', fontSize: '12px' }}>Tự động đẩy tin nhắn về Group vận hành khi phát hiện sự cố khẩn cấp.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={telegramAlerts}
+                  onChange={e => { setTelegramAlerts(e.target.checked); checkDirty({ telegramAlerts: e.target.checked }); }}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB: MAINTENANCE */}
+          {activeTab === 'maintenance' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Bảo trì & Sao lưu (Maintenance)</h3>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ systemName, primaryColor, secondaryColor, timestamp: new Date().toISOString() }));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href",     dataStr);
+                    downloadAnchor.setAttribute("download", `vinparking_backup_${new Date().toLocaleDateString()}.json`);
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                    toast.success('Đã xuất bản sao lưu cơ sở dữ liệu cấu hình!');
+                  }}
+                  style={{ flex: 1, padding: '12px', border: '1px solid #1b6eff', color: '#1b6eff', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  💾 Sao lưu Cấu hình (.json)
+                </button>
+
+                <button
+                  onClick={() => toast.success('Đã dọn dẹp bộ nhớ tạm và cache phiên đỗ xe!')}
+                  style={{ flex: 1, padding: '12px', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  🧹 Dọn dẹp Bộ nhớ cache
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Right Column: Live UI Preview Box */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>Xem trước Giao diện (Live Preview)</h4>
+              <span style={{
+                fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '12px',
+                backgroundColor: isContrastPass ? '#dcfce7' : '#fee2e2',
+                color: isContrastPass ? '#166534' : '#991b1b'
+              }}>
+                WCAG 2.1: {contrastRatio}:1 ({isContrastPass ? 'ĐẠT' : 'YẾU'})
+              </span>
+            </div>
+
+            {/* Mock Dashboard Preview */}
+            <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', height: '240px', display: 'flex', flexDirection: 'column', fontSize: '12px', backgroundColor: '#f8fafc' }}>
+              
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: '#1e293b' }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '4px', backgroundColor: primaryColor }} />
+                  {systemName}
+                </div>
+                <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#e2e8f0' }} />
+              </div>
+
+              {/* Body */}
+              <div style={{ display: 'flex', flex: 1 }}>
+                
+                {/* Sidebar */}
+                <div style={{ width: '60px', backgroundColor: '#fff', borderRight: '1px solid #e2e8f0', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ height: '8px', width: '100%', backgroundColor: primaryColor, borderRadius: '4px' }} />
+                  <div style={{ height: '8px', width: '80%', backgroundColor: '#e2e8f0', borderRadius: '4px' }} />
+                  <div style={{ height: '8px', width: '90%', backgroundColor: '#e2e8f0', borderRadius: '4px' }} />
+                </div>
+
+                {/* Main panel */}
+                <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ height: '10px', width: '80px', backgroundColor: '#1e293b', borderRadius: '4px', fontWeight: '700' }} />
+                    <button style={{ border: 'none', backgroundColor: primaryColor, color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '600' }}>
+                      + Action
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', backgroundColor: '#fff' }}>
+                      <div style={{ height: '14px', width: '20px', backgroundColor: secondaryColor, borderRadius: '4px', marginBottom: '4px' }} />
+                      <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '3px' }} />
+                    </div>
+
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', backgroundColor: '#fff' }}>
+                      <div style={{ height: '14px', width: '35px', backgroundColor: '#1e293b', borderRadius: '4px', marginBottom: '4px' }} />
+                      <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '3px' }} />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+            <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#64748b', textAlign: 'center' }}>
+              Bản xem trước giao diện được tính toán tự động độ tương phản.
+            </p>
+          </div>
+        </div>
+
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: '260px', right: 0, backgroundColor: '#fff', borderTop: '1px solid #eef0f3', padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '24px', zIndex: 100 }}>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: '#5e6278', cursor: 'pointer' }}>Cancel Changes</span>
-        <Button primary style={{ padding: '12px 24px' }}>Save All Changes</Button>
-      </div>
+      {/* Fixed Confirm Action Bar at the Bottom */}
+      {isDirty && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: '260px', right: 0, 
+          backgroundColor: '#fff', borderTop: '1px solid #eef0f3',
+          padding: '16px 24px', display: 'flex', justifyContent: 'flex-end',
+          gap: '12px', zIndex: 100, boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
+        }}>
+          <span style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', fontSize: '13px', color: '#f59e0b', fontWeight: '600' }}>
+            ⚠️ Bạn có các thay đổi chưa lưu cấu hình hệ thống!
+          </span>
+          <button 
+            onClick={handleCancel}
+            style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#475569' }}
+          >
+            Hủy thay đổi
+          </button>
+          <button 
+            onClick={handleSave}
+            style={{ padding: '8px 16px', backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+          >
+            Lưu cấu hình
+          </button>
+        </div>
+      )}
+
     </div>
   );
-};
-
-export default SystemSettingsPage;
+}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
 import managerApi from '../../api/manager';
 
-const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + ' đ';
+const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
 
 export default function ReportsPanel() {
   const [sessions, setSessions] = useState([]);
