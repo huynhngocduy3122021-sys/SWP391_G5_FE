@@ -5,26 +5,39 @@ import ZoneOverviewPanel from './ZoneOverviewPanel';
 import ReportsPanel from './ReportsPanel';
 import SettingsPanel from './SettingsPanel';
 import OverviewPanel from './OverviewPanel';
+import IncidentPanel from './IncidentPanel';
 import { mt } from './managerTheme';
 
 const NAV_ITEMS = [
-  { key: 'overview', label: 'Dashboard', icon: '\u25A6' },
-  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '\u25A3' },
-  { key: 'staff', label: 'Quản lý Nhân sự', icon: '\u263A' },
-  { key: 'reports', label: 'Báo cáo doanh thu', icon: '\u25B2' },
-  { key: 'settings', label: 'Cấu hình hệ thống', icon: '\u2699' },
+  { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
+  { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
+  { key: 'staff',     label: 'Quản lý Nhân sự',   icon: '\u263A' },
+  { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
+  { key: 'reports',   label: 'Báo cáo doanh thu',  icon: '\u25B2' },
+  { key: 'settings',  label: 'Cấu hình hệ thống', icon: '\u2699' },
 ];
 
 export default function ManagerDashboard() {
   const [tab, setTab] = useState('overview');
+  const managerName = localStorage.getItem('fullName') || 'Manager';
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('email');
+    localStorage.removeItem('fullName');
+    localStorage.removeItem('userId');
+    window.location.href = '/auth';
+  };
 
   const renderPanel = () => {
     switch (tab) {
-      case 'zones': return <ZoneOverviewPanel />;
-      case 'staff': return <StaffManagementPanel />;
-      case 'reports': return <ReportsPanel />;
-      case 'settings': return <SettingsPanel />;
-      default: return <OverviewPanel onNavigate={setTab} />;
+      case 'zones':     return <ZoneOverviewPanel />;
+      case 'staff':     return <StaffManagementPanel />;
+      case 'incidents': return <IncidentPanel />;
+      case 'reports':   return <ReportsPanel />;
+      case 'settings':  return <SettingsPanel />;
+      default:          return <OverviewPanel onNavigate={setTab} />;
     }
   };
 
@@ -42,7 +55,7 @@ export default function ManagerDashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
           }}>P</div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: mt.text, lineHeight: 1.1 }}>Vincom Center</div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: mt.text, lineHeight: 1.1 }}>{managerName}</div>
             <div style={{ fontSize: '0.65rem', color: mt.textMuted, letterSpacing: '0.05em' }}>PARKING MANAGEMENT</div>
           </div>
         </div>
@@ -77,7 +90,7 @@ export default function ManagerDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('role'); window.location.href = '/auth'; }}
+            onClick={handleLogout}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem',
               borderRadius: 8, border: 'none', background: 'transparent', color: mt.danger,

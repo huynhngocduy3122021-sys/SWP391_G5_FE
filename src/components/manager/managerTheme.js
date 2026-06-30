@@ -1,6 +1,6 @@
 // Bảng màu/kích thước dùng chung cho khu vực Manager Dashboard.
 // Tách riêng khỏi vinparking.css (theme tối của Staff) vì khu Manager dùng
-// nền sáng theo đúng mockup ParkControl Enterprise.
+// Nen sang cho giao dien manager.
 export const mt = {
   bg: '#f3f4f6',
   sidebarBg: '#ffffff',
