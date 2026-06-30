@@ -1,6 +1,17 @@
 // Bảng màu/kích thước dùng chung cho khu vực Manager Dashboard.
 // Tách riêng khỏi vinparking.css (theme tối của Staff) vì khu Manager dùng
 // Nen sang cho giao dien manager.
+const getSafeStorage = (key, fallback) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(key) || fallback;
+    }
+  } catch (e) {
+    console.warn("Storage access failed:", e);
+  }
+  return fallback;
+};
+
 export const mt = {
   bg: '#f3f4f6',
   sidebarBg: '#ffffff',
@@ -8,8 +19,8 @@ export const mt = {
   border: '#e5e7eb',
   text: '#0f172a',
   textMuted: '#64748b',
-  primary: localStorage.getItem('sys_color_manager') || '#0f172a',
-  accent: localStorage.getItem('sys_color_manager') || '#0f172a',
+  primary: getSafeStorage('sys_color_manager', '#0f172a'),
+  accent: getSafeStorage('sys_color_manager', '#0f172a'),
   success: '#16a34a',
   danger: '#dc2626',
   warning: '#d97706',
