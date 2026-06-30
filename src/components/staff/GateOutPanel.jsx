@@ -14,6 +14,7 @@ export default function GateOutPanel() {
   const [cardCode, setCardCode] = useState('CARD-123');
   const [exitPlate, setExitPlate] = useState('30K-888.88');
   const [activeSession, setActiveSession] = useState(null);
+  const [exitImages, setExitImages] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -55,10 +56,16 @@ export default function GateOutPanel() {
       const session = await staffApi.getActiveSessionByCardCode(cardCode.trim());
       setActiveSession(session);
       setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
+      
+      // Call mock API to simulate capturing camera images at the exit
+      // Fake exit images by using the session's images from the database
+      setExitImages(session.imageUrls || []);
+
       toast.success('Tìm thấy phiên gửi xe hoạt động!');
     } catch (err) {
       console.error(err);
       setActiveSession(null);
+      setExitImages([]);
       const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho mã thẻ này!';
       toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
     } finally {
@@ -76,10 +83,16 @@ export default function GateOutPanel() {
       const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim());
       setActiveSession(session);
       setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
+      
+      // Call mock API to simulate capturing camera images at the exit
+      // Fake exit images by using the session's images from the database
+      setExitImages(session.imageUrls || []);
+
       toast.success('Tìm thấy phiên gửi xe bằng biển số!');
     } catch (err) {
       console.error(err);
       setActiveSession(null);
+      setExitImages([]);
       const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho biển số này!';
       toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
     } finally {
@@ -118,6 +131,7 @@ export default function GateOutPanel() {
         setActiveSession(null);
         setCardCode('');
         setExitPlate('');
+        setExitImages([]);
       } else if (selectedMethod === 'VNPAY') {
         if (res.paymentUrl) {
           toast.info('Đang mở trang thanh toán VNPay...');
@@ -163,7 +177,7 @@ export default function GateOutPanel() {
             title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)" 
             plate={exitPlate || 'CHƯA NHẬP'} 
             vehicleType="Ảnh camera thực tế tại cổng ra"
-            imageUrls={[]} 
+            imageUrls={exitImages} 
           />
         </div>
 
