@@ -66,6 +66,27 @@ export default function GateOutPanel() {
     }
   };
 
+  const handleSearchByPlate = async () => {
+    if (!exitPlate.trim()) {
+      toast.error('Vui lòng nhập biển số xe để tìm kiếm!');
+      return;
+    }
+    setSearching(true);
+    try {
+      const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim());
+      setActiveSession(session);
+      setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
+      toast.success('Tìm thấy phiên gửi xe bằng biển số!');
+    } catch (err) {
+      console.error(err);
+      setActiveSession(null);
+      const msg = err.response?.data?.message || err.response?.data || 'Không tìm thấy phiên gửi xe hoạt động cho biển số này!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!cardCode.trim()) {
       toast.error('Vui lòng nhập mã thẻ!');
@@ -197,13 +218,24 @@ export default function GateOutPanel() {
           )}
 
           <div className="vin-field" style={{ marginBottom: '1rem' }}>
-            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE THỰC TẾ LÚC RA</label>
-            <input
-              value={exitPlate}
-              onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
-              placeholder="Nhập biển số xe thực tế..."
-              style={{ fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>BIỂN SỐ XE THỰC TẾ LÚC RA (TÌM KHI MẤT THẺ)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                value={exitPlate}
+                onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
+                placeholder="Nhập biển số xe thực tế..."
+                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              <button 
+                type="button"
+                className="vin-btn vin-btn--primary"
+                onClick={handleSearchByPlate}
+                disabled={searching}
+                style={{ padding: '0 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', background: '#3b82f6' }}
+              >
+                {searching ? <span className="vin-spinner" /> : '🔍 Tìm Biển Số'}
+              </button>
+            </div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
@@ -229,7 +261,7 @@ export default function GateOutPanel() {
           </button>
         </div>
 
-        <SupportPanel plateNumber={exitPlate} gateId={GATE_ID} />
+        <SupportPanel plateNumber={exitPlate} gateId={GATE_ID} activeSession={activeSession} />
       </div>
     </div>
   );

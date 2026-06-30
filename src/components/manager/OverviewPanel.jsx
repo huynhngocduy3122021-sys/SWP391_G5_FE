@@ -1,26 +1,95 @@
+import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
-
-const STATS = [
-  { label: 'DOANH THU HÔM NAY', value: '42.850.000đ', delta: '+12.5% so với hôm qua', color: mt.success },
-  { label: 'LƯỢT XE VÀO/RA', value: '1,240 / 1,085', sub: 'Vào / Ra', color: mt.warning },
-  { label: 'TỶ LỆ LẤP ĐẦY', value: '84%', sub: '/ 2500 chỗ', color: mt.text },
-  { label: 'CẢNH BÁO HỆ THỐNG', value: '07', sub: 'Trường hợp', color: mt.danger, alert: true },
-];
-
-const ZONES = [
-  { name: 'Hầm B1 (Ô tô)', pct: 92, used: 460, free: 40, color: mt.danger },
-  { name: 'Hầm B2 (Ô tô)', pct: 75, used: 375, free: 125, color: '#0f172a' },
-  { name: 'Hầm B3 (Xe máy)', pct: 45, used: 450, free: 550, color: mt.warning },
-  { name: 'Khu vực ngoài trời', pct: 12, used: 24, free: 176, color: '#cbd5e1' },
-];
-
-const RECENT = [
-  { plate: '30A - 123.45', time: '14:23:45 12/10/2023', zone: 'Hầm B1 - Cổng 02', type: 'VÉ THÁNG', status: 'Vào bãi', ok: true },
-  { plate: '51G - 888.99', time: '14:20:12 12/10/2023', zone: 'Hầm B2 - Cổng 01', type: 'VÉ LƯỢT', status: 'Ra bãi (55k)', ok: false },
-  { plate: '29D - 456.78', time: '14:18:05 12/10/2023', zone: 'Ngoài trời - Cổng 04', type: 'VIP', status: 'Vào bãi', ok: true },
-];
+import managerApi from '../../api/managerApi';
 
 export default function OverviewPanel({ onNavigate }) {
+  const [data, setData] = useState({
+    revenue: 0,
+    checkInCount: 0,
+    checkOutCount: 0,
+    occupancyPct: 0,
+    totalCapacity: 0,
+    incidentsCount: 0,
+    zones: [],
+    recentSessions: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [sessions, zones, incidents] = await Promise.all([
+          managerApi.getSessions(),
+          managerApi.getZones(),
+          managerApi.getIncidents()
+        ]);
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todaySessions = sessions.filter(s => s.checkOutTime && s.checkOutTime.startsWith(todayStr));
+        const revenue = todaySessions.reduce((sum, s) => sum + (s.totalFee || 0), 0);
+        
+        const checkInCount = sessions.filter(s => s.checkInTime && s.checkInTime.startsWith(todayStr)).length;
+        const checkOutCount = todaySessions.length;
+
+        const totalCapacity = zones.reduce((sum, z) => sum + z.capacity, 0);
+        const availableCapacity = zones.reduce((sum, z) => sum + z.availableCapacity, 0);
+        const used = totalCapacity - availableCapacity;
+        const occupancyPct = totalCapacity === 0 ? 0 : Math.round((used / totalCapacity) * 100);
+
+        const pendingIncidents = incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
+
+        const formattedZones = zones.map((z, idx) => {
+           const zoneUsed = z.capacity - z.availableCapacity;
+           const pct = z.capacity === 0 ? 0 : Math.round((zoneUsed / z.capacity) * 100);
+           const colors = [mt.danger, '#0f172a', mt.warning, '#cbd5e1', mt.success];
+           return {
+             name: z.zoneName,
+             pct,
+             used: zoneUsed,
+             free: z.availableCapacity,
+             color: colors[idx % colors.length]
+           };
+        });
+
+        const recent = sessions.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime()).reverse().slice(0, 5).map(s => ({
+          plate: s.licensePlate,
+          time: new Date(s.checkInTime).toLocaleString('vi-VN'),
+          zone: 'N/A', 
+          type: s.parkingCard?.cardType || 'GUEST',
+          status: s.checkOutTime ? 'Ra bãi' : 'Vào bãi',
+          ok: true
+        }));
+
+        setData({
+          revenue,
+          checkInCount,
+          checkOutCount,
+          occupancyPct,
+          totalCapacity,
+          incidentsCount: pendingIncidents,
+          zones: formattedZones,
+          recentSessions: recent
+        });
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const STATS = [
+    { label: 'DOANH THU HÔM NAY', value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.revenue), delta: null, color: mt.success },
+    { label: 'LƯỢT XE VÀO/RA', value: `${data.checkInCount} / ${data.checkOutCount}`, sub: 'Hôm nay', color: mt.warning },
+    { label: 'TỶ LỆ LẤP ĐẦY', value: `${data.occupancyPct}%`, sub: `/ ${data.totalCapacity} chỗ`, color: mt.text },
+    { label: 'CẢNH BÁO HỆ THỐNG', value: data.incidentsCount.toString().padStart(2, '0'), sub: 'Trường hợp', color: mt.danger, alert: data.incidentsCount > 0 },
+  ];
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải dữ liệu...</div>;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Stat cards */}
@@ -62,7 +131,8 @@ export default function OverviewPanel({ onNavigate }) {
         <div style={card}>
           <div style={{ fontWeight: 700, color: mt.text, marginBottom: 12 }}>Mật độ theo khu vực</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {ZONES.map((z) => (
+            {data.zones.length === 0 ? <div style={{ color: mt.textMuted, fontSize: '0.8rem' }}>Chưa có khu vực nào</div> : 
+             data.zones.map((z) => (
               <div key={z.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4 }}>
                   <span style={{ color: mt.text, fontWeight: 600 }}>{z.name}</span>
@@ -93,26 +163,26 @@ export default function OverviewPanel({ onNavigate }) {
           <thead>
             <tr style={{ color: mt.textMuted, textAlign: 'left' }}>
               <th style={{ padding: '6px 8px', fontWeight: 600 }}>BIỂN SỐ</th>
-              <th style={{ padding: '6px 8px', fontWeight: 600 }}>THỜI GIAN</th>
-              <th style={{ padding: '6px 8px', fontWeight: 600 }}>KHU VỰC</th>
+              <th style={{ padding: '6px 8px', fontWeight: 600 }}>THỜI GIAN VÀO</th>
               <th style={{ padding: '6px 8px', fontWeight: 600 }}>LOẠI THẺ</th>
               <th style={{ padding: '6px 8px', fontWeight: 600 }}>TRẠNG THÁI</th>
             </tr>
           </thead>
           <tbody>
-            {RECENT.map((r) => (
-              <tr key={r.plate} style={{ borderTop: `1px solid ${mt.border}` }}>
+            {data.recentSessions.length === 0 ? (
+              <tr><td colSpan="4" style={{ padding: '10px', textAlign: 'center', color: mt.textMuted }}>Không có dữ liệu</td></tr>
+            ) : data.recentSessions.map((r, idx) => (
+              <tr key={idx} style={{ borderTop: `1px solid ${mt.border}` }}>
                 <td style={{ padding: '8px' }}>
                   <span style={{ background: '#f1f5f9', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>{r.plate}</span>
                 </td>
                 <td style={{ padding: '8px', color: mt.textMuted }}>{r.time}</td>
-                <td style={{ padding: '8px' }}>{r.zone}</td>
                 <td style={{ padding: '8px' }}>
                   <span style={{
                     background: r.type === 'VIP' ? '#fef9c3' : '#f1f5f9', borderRadius: 6, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 600,
                   }}>{r.type}</span>
                 </td>
-                <td style={{ padding: '8px', color: r.ok ? mt.success : mt.danger, fontWeight: 600 }}>
+                <td style={{ padding: '8px', color: r.status === 'Vào bãi' ? mt.success : mt.textMuted, fontWeight: 600 }}>
                   &#9679; {r.status}
                 </td>
               </tr>

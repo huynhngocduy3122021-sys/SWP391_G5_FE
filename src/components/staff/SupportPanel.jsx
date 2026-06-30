@@ -5,7 +5,7 @@ import staffApi from '../../api/staffApi';
 const INCIDENT_TYPES = ['Mất thẻ', 'Sai biển số', 'Barie kẹt', 'Khách không thanh toán', 'Khác'];
 
 // Panel "XỬ LÝ CÁC NGOẠI LỆ KHÁC" — xuất hiện ở cả màn Cổng VÀO và Cổng RA
-export default function SupportPanel({ plateNumber, gateId }) {
+export default function SupportPanel({ plateNumber, gateId, activeSession }) {
   const [type, setType] = useState(INCIDENT_TYPES[0]);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
@@ -13,11 +13,25 @@ export default function SupportPanel({ plateNumber, gateId }) {
   const handleSend = async () => {
     setSending(true);
     try {
-      await staffApi.reportIncident({ type, note, plateNumber, gateId });
+      if (type === 'Mất thẻ') {
+        if (!activeSession) {
+           toast.error('Vui lòng tìm kiếm phiên gửi xe trước khi báo mất thẻ!');
+           setSending(false);
+           return;
+        }
+        await staffApi.reportLostCard({
+          description: note || 'Báo mất thẻ cho xe ' + plateNumber,
+          parkingSessionId: activeSession.parkingSessionId,
+          cardCode: activeSession.cardCode || activeSession.parkingCard?.cardCode
+        });
+      } else {
+        await staffApi.reportIncident({ type, note, plateNumber, gateId });
+      }
       toast.success('Đã gửi yêu cầu hỗ trợ!');
       setNote('');
-    } catch {
-      toast.error('Gửi yêu cầu thất bại!');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Gửi yêu cầu thất bại!';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
     } finally {
       setSending(false);
     }

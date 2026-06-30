@@ -15,6 +15,10 @@ const parkingApi = {
   cancelBooking: async (bookingId) => (await API.post(`/api/bookings/${bookingId}/cancel`)).data,
   getBookingByCode: async (bookingCode) => (await API.get(`/api/bookings/code/${bookingCode}`)).data,
   checkInBooking: async (bookingCode, cardCode) => (await API.post('/api/parking-sessions/booking/check-in', null, { params: { bookingCode, cardCode } })).data,
+  
+  // New Methods for Booking form
+  getAllVehicleTypes: async () => (await API.get('/api/vehicle-types')).data,
+  getAllPricePolicies: async () => (await API.get('/api/price-policies')).data,
 };
 
 export default parkingApi;

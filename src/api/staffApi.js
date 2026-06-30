@@ -37,6 +37,11 @@ const staffApi = {
       params: { cardCode }
     })).data;
   },
+  getActiveSessionByLicensePlate: async (licensePlate) => {
+    return (await API.get('/api/parking-sessions/active-session/license-plate', {
+      params: { licensePlate }
+    })).data;
+  },
   verifyVnPayReturn: async (params) => {
     return (await API.get('/api/payments/vnpay-return', { params })).data;
   },
@@ -52,7 +57,30 @@ const staffApi = {
     return (await API.post('/api/parking-sessions/guest/check-out', payload)).data;
   },
   reportIncident: async (data) => {
-    return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 500));
+    let incidentType = 'OTHER';
+    switch (data.type) {
+      case 'Mất thẻ': incidentType = 'LOST_CARD'; break;
+      case 'Barie kẹt': incidentType = 'BARRIER_ERROR'; break;
+      case 'Khách không thanh toán': incidentType = 'PAYMENT_ERROR'; break;
+      case 'Sai biển số': incidentType = 'OTHER'; break;
+      default: incidentType = 'OTHER'; break;
+    }
+
+    const title = `Yêu cầu hỗ trợ: ${data.type} - Xe ${data.plateNumber || 'Không rõ'}`;
+    const description = data.note ? data.note : title;
+
+    const payload = {
+      title,
+      description,
+      incidentType,
+      locationDetails: `Cổng: ${data.gateId || 'Không rõ'}`,
+      parkingBranchId: Number(localStorage.getItem('branchId')) || 1 // Fallback to branch 1
+    };
+
+    return (await API.post('/api/incidents', payload)).data;
+  },
+  reportLostCard: async (payload) => {
+    return (await API.post('/api/incidents/lost-card', payload)).data;
   }
 };
 

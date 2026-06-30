@@ -1,19 +1,83 @@
+import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
-
-const STATS = [
-  { label: 'TỔNG DOANH THU', value: '2.450,8M', delta: '+12.5%', good: true },
-  { label: 'TB GIAI ĐOẠN', value: '79,05M', delta: '+4.2%', good: true },
-  { label: 'LƯỢT GIAO DỊCH', value: '45.289', delta: '-2.1%', good: false },
-  { label: 'TĂNG TRƯỞNG NĂM', value: '+18,4%', delta: null, good: true },
-];
-
-const ROWS = [
-  { time: '01/10', oto: '12.4M', xemay: '3.1M', xedien: '0.8M', total: '16.3M' },
-  { time: '02/10', oto: '13.1M', xemay: '2.9M', xedien: '0.9M', total: '16.9M' },
-  { time: '03/10', oto: '11.8M', xemay: '3.4M', xedien: '0.7M', total: '15.9M' },
-];
+import managerApi from '../../api/managerApi';
 
 export default function ReportsPanel() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    totalRevenue: 0,
+    txCount: 0,
+    dailyData: []
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const sessions = await managerApi.getSessions();
+      
+      // Filter sessions that have checked out
+      const completedSessions = sessions.filter(s => s.checkOutTime);
+      const totalRevenue = completedSessions.reduce((sum, s) => sum + (s.totalFee || 0), 0);
+      
+      // Group by day
+      const dailyMap = {};
+      completedSessions.forEach(s => {
+        const date = s.checkOutTime.split('T')[0];
+        if (!dailyMap[date]) dailyMap[date] = { oto: 0, xemay: 0, xedien: 0, total: 0 };
+        
+        const fee = s.totalFee || 0;
+        dailyMap[date].total += fee;
+        
+        const type = s.vehicleTypeName?.toLowerCase() || '';
+        if (type.includes('ô tô') || type.includes('car')) dailyMap[date].oto += fee;
+        else if (type.includes('xe máy') || type.includes('motor')) dailyMap[date].xemay += fee;
+        else dailyMap[date].xedien += fee; // Default fallback for electric or others
+      });
+
+      const sortedDates = Object.keys(dailyMap).sort();
+      const dailyData = sortedDates.map(date => {
+        const d = date.split('-'); // YYYY-MM-DD
+        return {
+          time: `${d[2]}/${d[1]}`,
+          oto: dailyMap[date].oto,
+          xemay: dailyMap[date].xemay,
+          xedien: dailyMap[date].xedien,
+          total: dailyMap[date].total,
+          rawDate: date
+        };
+      }).reverse(); // Newest first for table
+
+      setData({
+        totalRevenue,
+        txCount: completedSessions.length,
+        dailyData
+      });
+    } catch (err) {
+      console.error('Lỗi khi tải báo cáo:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatVND = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+
+  const STATS = [
+    { label: 'TỔNG DOANH THU', value: formatVND(data.totalRevenue), delta: null, good: true },
+    { label: 'LƯỢT GIAO DỊCH (XE RA)', value: data.txCount, delta: null, good: true },
+  ];
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải báo cáo...</div>;
+  }
+
+  // Chart heights logic (relative to max daily revenue)
+  const chartData = [...data.dailyData].reverse(); // oldest to newest
+  const maxRevenue = Math.max(...chartData.map(d => d.total), 1);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
@@ -21,25 +85,23 @@ export default function ReportsPanel() {
           <div key={s.label} style={card}>
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, marginBottom: 8 }}>{s.label}</div>
             <div style={{ fontSize: '1.4rem', fontWeight: 800, color: mt.text }}>{s.value}</div>
-            {s.delta && (
-              <div style={{ fontSize: '0.75rem', marginTop: 6, color: s.good ? mt.success : mt.danger }}>
-                {s.good ? '\u2197' : '\u2198'} {s.delta}
-              </div>
-            )}
           </div>
         ))}
       </div>
 
       <div style={card}>
         <div style={{ fontWeight: 700, color: mt.text, marginBottom: 4 }}>Biểu đồ xu hướng doanh thu</div>
-        <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginBottom: 12 }}>Chi tiết theo thời gian đã chọn (Đơn vị: Triệu VNĐ)</div>
+        <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginBottom: 12 }}>Doanh thu theo ngày</div>
         <div style={{
           height: 200, borderRadius: 8, background: '#f8fafc',
           display: 'flex', alignItems: 'flex-end', gap: 4, padding: '0.75rem',
         }}>
-          {[60, 65, 58, 70, 75, 68, 80, 72, 85, 90, 78, 82].map((h, i) => (
-            <div key={i} style={{ flex: 1, height: `${h}%`, borderRadius: 3, background: mt.primary, opacity: 0.85 }} />
-          ))}
+          {chartData.length === 0 ? <div style={{width: '100%', textAlign: 'center', color: mt.textMuted}}>Không có dữ liệu</div> : chartData.map((d, i) => {
+            const h = Math.max((d.total / maxRevenue) * 100, 5); // min 5% height
+            return (
+              <div key={i} title={`${d.time}: ${formatVND(d.total)}`} style={{ flex: 1, height: `${h}%`, borderRadius: 3, background: mt.primary, opacity: 0.85 }} />
+            );
+          })}
         </div>
       </div>
 
@@ -51,18 +113,20 @@ export default function ReportsPanel() {
               <th style={{ padding: '6px 8px' }}>THỜI GIAN</th>
               <th style={{ padding: '6px 8px' }}>Ô TÔ</th>
               <th style={{ padding: '6px 8px' }}>XE MÁY</th>
-              <th style={{ padding: '6px 8px' }}>XE ĐIỆN</th>
+              <th style={{ padding: '6px 8px' }}>XE ĐIỆN / KHÁC</th>
               <th style={{ padding: '6px 8px' }}>TỔNG DOANH THU</th>
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((r) => (
-              <tr key={r.time} style={{ borderTop: `1px solid ${mt.border}` }}>
+            {data.dailyData.length === 0 ? (
+              <tr><td colSpan="5" style={{ padding: '10px', textAlign: 'center', color: mt.textMuted }}>Chưa có giao dịch nào</td></tr>
+            ) : data.dailyData.map((r) => (
+              <tr key={r.rawDate} style={{ borderTop: `1px solid ${mt.border}` }}>
                 <td style={{ padding: '8px' }}>{r.time}</td>
-                <td style={{ padding: '8px' }}>{r.oto}</td>
-                <td style={{ padding: '8px' }}>{r.xemay}</td>
-                <td style={{ padding: '8px' }}>{r.xedien}</td>
-                <td style={{ padding: '8px', fontWeight: 700 }}>{r.total}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.oto)}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.xemay)}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.xedien)}</td>
+                <td style={{ padding: '8px', fontWeight: 700 }}>{formatVND(r.total)}</td>
               </tr>
             ))}
           </tbody>

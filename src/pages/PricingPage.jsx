@@ -410,11 +410,11 @@ export default function PricingPage() {
               
               <button 
                 type="button" 
-                onClick={() => handleBookNow('Standard', 'Xe máy')}
-                className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto"
-                style={{ backgroundColor: '#164e63' }}
+                disabled
+                className="btn btn-secondary fw-bold py-2.5 rounded-3 w-100 mt-auto"
+                style={{ cursor: 'not-allowed' }}
               >
-                Đặt chỗ ngay
+                Không hỗ trợ đặt trước xe máy
               </button>
             </div>
           </div>

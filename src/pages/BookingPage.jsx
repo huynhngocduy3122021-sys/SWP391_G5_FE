@@ -8,36 +8,45 @@ export default function BookingPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get state parameters passed from Pricing Page or Search Page
-  const passedLot = location.state?.lot;
-  const passedVehicle = location.state?.selectedVehicle || 'Ô tô';
+  const [branches, setBranches] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [pricePolicies, setPricePolicies] = useState([]);
 
-  // Fallback to Landmark 81 if no lot was selected
-  const [lot, setLot] = useState(passedLot || PARKING_LOTS[0]);
+  // Selected state
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
 
   useEffect(() => {
-    if (passedLot) {
-      setLot(passedLot);
-    } else {
-      const fetchDefaultLot = async () => {
-        try {
-          const branches = await parkingApi.getAllBranches();
-          if (branches && branches.length > 0) {
-            setLot(mapBranchToParkingLot(branches[0]));
-          }
-        } catch (error) {
-          console.error('Error fetching default branch in BookingPage:', error);
-        }
-      };
-      fetchDefaultLot();
-    }
-  }, [passedLot]);
+    const fetchData = async () => {
+      try {
+        const [branchesData, vtData, policiesData] = await Promise.all([
+          parkingApi.getAllBranches(),
+          parkingApi.getAllVehicleTypes(),
+          parkingApi.getAllPricePolicies()
+        ]);
+        
+        setBranches(branchesData);
+        setVehicleTypes(vtData);
+        setPricePolicies(policiesData);
 
-  // 1. Wizard Step State: 1 (Select Slot), 2 (Details), 3 (Payment), 4 (Success)
+        if (branchesData.length > 0) {
+          setSelectedBranchId(branchesData[0].parkingBranchId || branchesData[0].branchId || branchesData[0].id);
+        }
+        if (vtData.length > 0) {
+          const carType = vtData.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
+          setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : vtData[0].vehicleTypeId);
+        }
+      } catch (error) {
+        console.error('Error fetching booking data:', error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // 1. Wizard Step State: 1 (Select Slot), 2 (Details), 3 (Success)
   const [step, setStep] = useState(1);
 
   // 2. Booking Data State
-  const [vehicle, setVehicle] = useState(passedVehicle);
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('14:00');
   const [customTime, setCustomTime] = useState('');
@@ -51,16 +60,9 @@ export default function BookingPage() {
   const [vehicleColor, setVehicleColor] = useState('');
   const [vehicleBrand, setVehicleBrand] = useState('');
 
-  // Payment State
-  const [paymentMethod, setPaymentMethod] = useState('vnpay'); // 'vnpay', 'card', 'cash', 'wallet'
-
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
   const [createdBookingId, setCreatedBookingId] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(() => {
-    const bal = localStorage.getItem('walletBalance');
-    return bal !== null ? Number(bal) : 1250000;
-  });
 
   // Calculate expiration time (Arrival time + 20 minutes)
   const getExpirationTime = () => {
@@ -89,50 +91,46 @@ export default function BookingPage() {
     }
   };
 
-  // Get base hourly price as number
-  const getBasePrice = (priceStr) => {
-    if (!priceStr) return 30000;
-    const num = parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
-    return isNaN(num) ? 30000 : num;
-  };
+  // Retrieve selected branch & vehicle info
+  const selectedBranch = branches.find(b => 
+    b.parkingBranchId === Number(selectedBranchId) || b.branchId === Number(selectedBranchId) || b.id === Number(selectedBranchId)
+  ) || {};
+  const selectedVehicleType = vehicleTypes.find(v => 
+    v.vehicleTypeId === Number(selectedVehicleTypeId) || v.id === Number(selectedVehicleTypeId)
+  ) || {};
 
-  const lotCarPrice = getBasePrice(lot.price);
-  const isMotorcycle = vehicle.includes('Xe máy');
-  const hourlyRate = isMotorcycle 
-    ? (lotCarPrice === 20000 ? 3000 : 5000) 
-    : lotCarPrice;
+  // Retrieve price dynamically
+  // Find price policy matching vehicle type id and branch id
+  let matchedPolicy = pricePolicies.find(
+    p => (p.vehicleType?.vehicleTypeId === Number(selectedVehicleTypeId) || p.vehicleType?.id === Number(selectedVehicleTypeId)) && 
+         (p.parkingBranch?.parkingBranchId === Number(selectedBranchId) || p.parkingBranch?.branchId === Number(selectedBranchId) || p.parkingBranch?.id === Number(selectedBranchId))
+  );
+  
+  if (!matchedPolicy) {
+    matchedPolicy = pricePolicies.find(p => p.vehicleType?.vehicleTypeId === Number(selectedVehicleTypeId) || p.vehicleType?.id === Number(selectedVehicleTypeId));
+  }
 
-  const bookingFee = isMotorcycle ? 5000 : 15000;
-  const finalPrice = bookingFee;
+  // Lấy giá thực tế từ backend, không dùng giá ảo
+  const hourlyRate = matchedPolicy?.hourlyRate ?? matchedPolicy?.basePrice ?? matchedPolicy?.price ?? matchedPolicy?.firstBlockPrice ?? 0;
+  
+  // Lấy phí booking từ backend
+  const bookingFee = matchedPolicy?.bookingFee ?? matchedPolicy?.reservationFee ?? 0;
 
-  // Proceed to next steps
-  const handleNextStep = () => {
-    if (step === 1) {
-      setStep(2);
-    } else if (step === 2) {
-      if (!fullName.trim() || !phoneNumber.trim() || !licensePlate.trim()) {
-        toast.error('Vui lòng nhập đầy đủ thông tin tài xế!');
-        return;
-      }
-      setStep(3);
-    }
-  };
-
-  // Complete Payment and Generate Ticket (Step 3 -> Step 4)
-  const handleConfirmPayment = async () => {
-    // Check wallet balance if user uses Vinparking Wallet (custom logic integration)
-    if (paymentMethod === 'wallet' && walletBalance < finalPrice) {
-      toast.error('Số dư ví Vinparking không đủ!');
+  // Complete Booking (Step 2 -> Step 3)
+  const handleCreateBooking = async () => {
+    if (!fullName.trim() || !phoneNumber.trim() || !licensePlate.trim()) {
+      toast.error('Vui lòng nhập đầy đủ thông tin tài xế!');
       return;
     }
 
     try {
-      const vehicleTypeId = vehicle === 'Xe máy' ? 2 : 3;
+      // Keep local time format for LocalDateTime backend validation
       const expectedArrivalTime = `${arrivalDate}T${timeSlot}:00`;
       
       const payload = {
-        parkingBranchId: lot.id,
-        vehicleTypeId: vehicleTypeId,
+        userId: Number(localStorage.getItem('userId')) || undefined,
+        parkingBranchId: Number(selectedBranchId),
+        vehicleTypeId: Number(selectedVehicleTypeId),
         licensePlate: licensePlate,
         expectedArrivalTime: expectedArrivalTime,
         vehicleColor: vehicleColor.trim(),
@@ -146,23 +144,15 @@ export default function BookingPage() {
       setConfirmedBookingId(actualBookingCode);
       setCreatedBookingId(response.bookingId);
 
-      // Deduct wallet if selected
-      if (paymentMethod === 'wallet') {
-        const newBal = walletBalance - finalPrice;
-        setWalletBalance(newBal);
-        localStorage.setItem('walletBalance', String(newBal));
-        window.dispatchEvent(new Event('storage'));
-      }
-
       // Save transaction to local storage
       const newTransaction = {
         id: actualBookingCode,
         date: `${arrivalDate} ${timeSlot}`,
-        lotName: lot.title,
+        lotName: selectedBranch?.branchName || 'Bãi đỗ xe',
         plate: licensePlate,
-        amount: finalPrice,
+        amount: bookingFee, // Save actual booking fee
         status: 'Thành công',
-        service: `Đặt giữ chỗ ${vehicle}`,
+        service: `Đặt giữ chỗ ${selectedVehicleType?.typeName || 'Xe'}`,
         duration: '1h',
       };
 
@@ -170,12 +160,53 @@ export default function BookingPage() {
       const existingTx = existingTxStr ? JSON.parse(existingTxStr) : [];
       localStorage.setItem('customTransactions', JSON.stringify([newTransaction, ...existingTx]));
 
-      setStep(4);
+      setStep(3);
       toast.success('Đặt giữ chỗ thành công!');
     } catch (error) {
       console.error('Error creating booking:', error);
-      const errMsg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo mã đặt chỗ trên hệ thống!';
-      toast.error(errMsg);
+      
+      if (error.response?.data) {
+        const data = error.response.data;
+        
+        // Xử lý lỗi validation từ Spring Boot (dạng Object { field: 'message' })
+        if (data.errors && typeof data.errors === 'object' && !Array.isArray(data.errors)) {
+          Object.values(data.errors).forEach(errMsg => {
+            toast.error(errMsg);
+          });
+          return;
+        }
+        
+        // Xử lý lỗi validation dạng mảng (Array)
+        if (Array.isArray(data.errors)) {
+          data.errors.forEach(err => {
+            toast.error(err.defaultMessage || err.message || err);
+          });
+          return;
+        }
+
+        // Xử lý khi backend trả về một message cụ thể
+        if (data.message) {
+          toast.error(data.message);
+          return;
+        }
+        
+        // Xử lý khi data là chuỗi
+        if (typeof data === 'string') {
+          toast.error(data);
+          return;
+        }
+      }
+      
+      toast.error('Có lỗi xảy ra khi tạo mã đặt chỗ trên hệ thống! Vui lòng thử lại.');
+    }
+  };
+
+  // Proceed to next steps
+  const handleNextStep = () => {
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      handleCreateBooking();
     }
   };
 
@@ -183,8 +214,7 @@ export default function BookingPage() {
   const stepsList = [
     { num: 1, label: 'Select Slot' },
     { num: 2, label: 'Details' },
-    { num: 3, label: 'Payment' },
-    { num: 4, label: 'Success' }
+    { num: 3, label: 'Success' }
   ];
 
   return (
@@ -192,7 +222,7 @@ export default function BookingPage() {
       <div className="container" style={{ maxWidth: '640px' }}>
         
         {/* Back Button */}
-        {step < 4 && (
+        {step < 3 && (
           <button 
             type="button" 
             onClick={() => step > 1 ? setStep(step - 1) : navigate(-1)} 
@@ -203,7 +233,7 @@ export default function BookingPage() {
           </button>
         )}
 
-        {/* 4-Step Progress Tracker */}
+        {/* 3-Step Progress Tracker */}
         <div className="d-flex justify-content-between align-items-center border border-dashed rounded-3 p-3 mb-4 bg-white" style={{ borderColor: '#cbd5e1' }}>
           {stepsList.map((s) => (
             <div key={s.num} className="d-flex flex-column align-items-center flex-grow-1 position-relative">
@@ -227,16 +257,26 @@ export default function BookingPage() {
         </div>
 
         {/* Selected Lot Header Info */}
-        {step < 4 && (
+        {step < 3 && (
           <div className="card border-0 shadow-sm p-3 rounded-4 mb-4 bg-white">
             <div className="d-flex align-items-center gap-3">
-              <div className="rounded-3 overflow-hidden shadow-sm" style={{ width: '80px', height: '60px', flexShrink: 0 }}>
-                <img src={lot.image} alt={lot.name} className="w-100 h-100 object-fit-cover" />
+              <div className="rounded-3 overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-light" style={{ width: '80px', height: '60px', flexShrink: 0, fontSize: '1.5rem' }}>
+                🏢
               </div>
-              <div>
+              <div className="flex-grow-1">
                 <small className="text-muted d-block" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>BÃI ĐỖ XE DỰ KIẾN</small>
-                <h6 className="fw-bold text-dark m-0" style={{ fontSize: '0.95rem' }}>{lot.title}</h6>
-                <p className="text-muted small m-0" style={{ fontSize: '0.8rem' }}>📍 {lot.address}</p>
+                <select 
+                  className="form-select form-select-sm fw-bold border-0 shadow-none px-0 mt-1" 
+                  value={selectedBranchId} 
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                >
+                  {branches.map(b => {
+                    const id = b.parkingBranchId || b.branchId || b.id;
+                    const name = b.branchName || b.name;
+                    return <option key={id} value={id}>{name}</option>;
+                  })}
+                </select>
+                <p className="text-muted small m-0 mt-1" style={{ fontSize: '0.8rem' }}>📍 {selectedBranch?.location || 'Đang cập nhật địa chỉ'}</p>
               </div>
             </div>
           </div>
@@ -250,34 +290,25 @@ export default function BookingPage() {
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>LOẠI PHƯƠNG TIỆN</h6>
               <div className="row g-3">
-                <div className="col-6">
-                  <button
-                    type="button"
-                    onClick={() => setVehicle('Ô tô')}
-                    className="btn w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center border transition-all shadow-sm"
-                    style={{
-                      borderColor: vehicle === 'Ô tô' ? '#3b82f6' : '#dee2e6',
-                      backgroundColor: vehicle === 'Ô tô' ? '#eff6ff' : '#ffffff',
-                    }}
-                  >
-                    <span className="fs-2 mb-1">🚗</span>
-                    <span className="fw-bold text-dark small">Ô tô</span>
-                  </button>
-                </div>
-                <div className="col-6">
-                  <button
-                    type="button"
-                    onClick={() => setVehicle('Xe máy')}
-                    className="btn w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center border transition-all shadow-sm"
-                    style={{
-                      borderColor: vehicle === 'Xe máy' ? '#3b82f6' : '#dee2e6',
-                      backgroundColor: vehicle === 'Xe máy' ? '#eff6ff' : '#ffffff',
-                    }}
-                  >
-                    <span className="fs-2 mb-1">🏍️</span>
-                    <span className="fw-bold text-dark small">Xe máy</span>
-                  </button>
-                </div>
+                {vehicleTypes.map(v => {
+                  const isSelected = String(selectedVehicleTypeId) === String(v.vehicleTypeId);
+                  return (
+                    <div className="col-6" key={v.vehicleTypeId}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVehicleTypeId(v.vehicleTypeId)}
+                        className="btn w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center border transition-all shadow-sm"
+                        style={{
+                          borderColor: isSelected ? '#3b82f6' : '#e2e8f0',
+                          backgroundColor: isSelected ? '#eff6ff' : '#fff',
+                        }}
+                      >
+                        <span className="fs-2 mb-1">{v.typeName?.toLowerCase().includes('ô tô') || v.typeName?.toLowerCase().includes('car') ? '🚗' : '🏍️'}</span>
+                        <span className="fw-bold text-dark small">{v.typeName}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -352,8 +383,8 @@ export default function BookingPage() {
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h6 className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>PHÍ GIỮ CHỖ TRƯỚC: MIỄN PHÍ</h6>
-                  <p className="text-muted small m-0">Khách hàng: {vehicle} - {timeSlot}</p>
+                  <h6 className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>PHÍ GIỮ CHỖ TRƯỚC (BOOKING)</h6>
+                  <p className="text-muted small m-0">Khách hàng: {selectedVehicleType?.typeName} - {timeSlot}</p>
                 </div>
                 <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{bookingFee.toLocaleString('vi-VN')}đ</h4>
               </div>
@@ -523,8 +554,8 @@ export default function BookingPage() {
             {/* Sticky Step 2 footer */}
             <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
               <div>
-                <small className="text-muted d-block">Tổng cộng</small>
-                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>{bookingFee.toLocaleString('vi-VN')}đ</h5>
+                <small className="text-muted d-block">Phí giữ chỗ trước</small>
+                <h5 className="fw-bold m-0 text-success">Miễn phí</h5>
               </div>
               <button
                 type="button"
@@ -532,163 +563,15 @@ export default function BookingPage() {
                 className="btn text-white fw-bold px-4 py-2.5 rounded-3"
                 style={{ backgroundColor: '#164e63' }}
               >
-                Xác nhận
+                Xác nhận đặt chỗ
               </button>
             </div>
 
           </div>
         )}
 
-        {/* STEP 3: PAYMENT */}
+        {/* STEP 3: SUCCESS */}
         {step === 3 && (
-          <div className="d-flex flex-column gap-4">
-            
-            {/* Payment selections */}
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
-              <h5 className="fw-bold text-dark mb-1">Phương thức thanh toán</h5>
-              <p className="text-muted small mb-4">Vui lòng chọn phương thức thanh toán phù hợp để hoàn tất đặt chỗ.</p>
-
-              {/* Suggested payment: VNPAY */}
-              <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>PHƯƠNG THỨC GỢI Ý</h6>
-              <label 
-                className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer mb-4" 
-                style={{ borderColor: paymentMethod === 'vnpay' ? '#164e63' : '#dee2e6', backgroundColor: paymentMethod === 'vnpay' ? '#f0f9ff' : 'transparent' }}
-              >
-                <div className="d-flex align-items-center gap-3">
-                  <div className="bg-light rounded p-1.5" style={{ width: '40px', height: '40px' }}>
-                    <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" className="w-100 h-100 object-fit-contain" alt="VNPay" />
-                  </div>
-                  <div>
-                    <h6 className="fw-bold text-dark mb-0">VNPAY QR <span className="badge bg-primary ms-1 small" style={{ fontSize: '0.6rem' }}>KHUYÊN DÙNG</span></h6>
-                    <small className="text-muted">Thanh toán quét mã QR nhanh chóng, an toàn</small>
-                  </div>
-                </div>
-                <input 
-                  type="radio" 
-                  name="paymentChoice" 
-                  className="form-check-input fs-5 cursor-pointer"
-                  checked={paymentMethod === 'vnpay'}
-                  onChange={() => setPaymentMethod('vnpay')}
-                />
-              </label>
-
-              {/* Other payment options */}
-              <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>CÁC PHƯƠNG THỨC KHÁC</h6>
-              <div className="d-flex flex-column gap-2.5">
-
-                {/* International card */}
-                <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer" style={{ borderColor: paymentMethod === 'card' ? '#164e63' : '#dee2e6' }}>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-light rounded p-2 text-center" style={{ width: '40px', height: '40px', fontSize: '1.2rem' }}>
-                      💳
-                    </div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Thẻ Quốc tế</h6>
-                      <small className="text-muted">Visa, Mastercard, JCB</small>
-                    </div>
-                  </div>
-                  <input 
-                    type="radio" 
-                    name="paymentChoice" 
-                    className="form-check-input fs-5"
-                    checked={paymentMethod === 'card'}
-                    onChange={() => setPaymentMethod('card')}
-                  />
-                </label>
-
-                {/* Cash on site */}
-                <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer" style={{ borderColor: paymentMethod === 'cash' ? '#164e63' : '#dee2e6' }}>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-light rounded p-2 text-center" style={{ width: '40px', height: '40px', fontSize: '1.2rem' }}>
-                      💵
-                    </div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Tiền mặt tại quầy</h6>
-                      <small className="text-muted">Thanh toán trực tiếp khi đến bãi đỗ</small>
-                    </div>
-                  </div>
-                  <input 
-                    type="radio" 
-                    name="paymentChoice" 
-                    className="form-check-input fs-5"
-                    checked={paymentMethod === 'cash'}
-                    onChange={() => setPaymentMethod('cash')}
-                  />
-                </label>
-
-                {/* Vinparking Wallet */}
-                <label className="border rounded-3 p-3 d-flex justify-content-between align-items-center cursor-pointer" style={{ borderColor: paymentMethod === 'wallet' ? '#164e63' : '#dee2e6' }}>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-light rounded p-2 text-center" style={{ width: '40px', height: '40px', fontSize: '1.2rem' }}>
-                      👛
-                    </div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Ví Vinparking</h6>
-                      <small className="text-muted">Số dư khả dụng: {walletBalance.toLocaleString('vi-VN')}đ</small>
-                    </div>
-                  </div>
-                  <input 
-                    type="radio" 
-                    name="paymentChoice" 
-                    className="form-check-input fs-5"
-                    checked={paymentMethod === 'wallet'}
-                    onChange={() => setPaymentMethod('wallet')}
-                  />
-                </label>
-              </div>
-            </div>
-
-
-            {/* Estimated payment details */}
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-white text-dark">
-              <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>CHI TIẾT THANH TOÁN</h6>
-              
-              <div className="d-flex justify-content-between align-items-center mb-2 small">
-                <span className="text-muted">Tạm tính</span>
-                <span>{bookingFee.toLocaleString('vi-VN')}đ</span>
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-2 small">
-                <span className="text-muted">VAT (10%)</span>
-                <span>0đ</span>
-              </div>
-
-              
-              <hr className="my-3 text-muted opacity-25" />
-
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="fw-bold">Tổng cộng</span>
-                <div className="text-end">
-                  <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{finalPrice.toLocaleString('vi-VN')}đ</h4>
-                  <small className="text-muted small" style={{ fontSize: '0.65rem' }}> (Đã bao gồm VAT)</small>
-                </div>
-              </div>
-
-              <p className="text-muted text-center small mt-4 m-0" style={{ fontSize: '0.72rem', lineHeight: '1.4' }}>
-                🔒 Giao dịch được bảo mật bởi chuẩn PCI DSS. Thông tin thẻ của bạn sẽ không được lưu trữ trên hệ thống.
-              </p>
-            </div>
-
-            {/* Sticky Step 3 footer */}
-            <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
-              <div>
-                <small className="text-muted d-block">Tổng cộng</small>
-                <h5 className="fw-bold m-0" style={{ color: '#164e63' }}>{finalPrice.toLocaleString('vi-VN')}đ</h5>
-              </div>
-              <button
-                type="button"
-                onClick={handleConfirmPayment}
-                className="btn text-white fw-bold px-4 py-2.5 rounded-3"
-                style={{ backgroundColor: '#164e63' }}
-              >
-                Xác nhận thanh toán
-              </button>
-            </div>
-
-          </div>
-        )}
-
-        {/* STEP 4: SUCCESS */}
-        {step === 4 && (
           <div className="card border-0 shadow-lg p-4 p-md-5 rounded-4 bg-white text-center">
             
             <div className="d-flex justify-content-center mb-3">
@@ -736,11 +619,11 @@ export default function BookingPage() {
               <div className="row g-3 w-100 text-start small border-top pt-4 mt-2">
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>📍 VỊ TRÍ ĐỖ</span>
-                  <strong className="text-dark">{lot.name}</strong>
+                  <strong className="text-dark">{selectedBranch?.branchName}</strong>
                 </div>
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>🚗 PHƯƠNG TIỆN</span>
-                  <strong className="text-dark">{vehicle} - {licensePlate}</strong>
+                  <strong className="text-dark">{selectedVehicleType?.typeName} - {licensePlate}</strong>
                   {(vehicleColor || vehicleBrand) && (
                     <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
                       ({[vehicleBrand, vehicleColor].filter(Boolean).join(' - ')})
@@ -756,7 +639,7 @@ export default function BookingPage() {
                 <div className="col-6">
                   <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>💵 PHÍ DỰ KIẾN</span>
                   <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 py-1 px-2.5 fw-bold">
-                    {vehicle.includes('Xe máy') ? `${hourlyRate.toLocaleString('vi-VN')}đ/1h` : `${lot.price}/1h`}
+                    {hourlyRate.toLocaleString('vi-VN')}đ/1h
                   </span>
                 </div>
               </div>

@@ -77,11 +77,16 @@ export default function GateInPanel() {
     try {
       const res = await parkingApi.getBookingByCode(bookingCode.trim());
       if (res) {
-        setLicensePlate(res.licensePlate);
+        setLicensePlate(res.licensePlate || '');
         if (res.vehicleTypeId) {
           setVehicleTypeId(res.vehicleTypeId);
         }
-        toast.success(`Tìm thấy đặt chỗ xe ${res.licensePlate} (${res.vehicleTypeName})!`);
+        
+        // Cố gắng lấy từ nhiều tên thuộc tính khác nhau để đảm bảo không bị sót nếu backend đổi tên field
+        setVehicleColor(res.vehicleColor || res.color || '');
+        setVehicleBrand(res.vehicleBrand || res.brand || '');
+        
+        toast.success(`Tìm thấy đặt chỗ xe ${res.licensePlate} (${res.vehicleTypeName || 'Ô tô/Xe máy'})!`);
       }
     } catch (err) {
       console.error("Lookup Booking Error:", err);

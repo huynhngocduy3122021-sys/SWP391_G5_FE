@@ -409,14 +409,18 @@ export default function SearchPage() {
                                     {isMotorcycle ? "Giá vé ban ngày cho xe máy" : "Giá cho 1 giờ sử dụng"}
                                   </div>
                                   <div className="fw-bold text-dark small mt-1">Gói tháng: {monthlyPriceLabel}</div>
-                                  <div className="text-primary small fw-bold mb-3" style={{ fontSize: '0.75rem' }}>Hủy MIỄN PHÍ</div>
                                   <button 
                                     type="button" 
-                                    onClick={() => handleBooking(lot)}
-                                    className="btn text-white w-100 fw-bold shadow-sm"
-                                    style={{ backgroundColor: '#3b82f6', border: 'none' }}
+                                    onClick={() => !isMotorcycle && handleBooking(lot)}
+                                    className={`btn w-100 fw-bold shadow-sm ${isMotorcycle ? 'btn-secondary text-white' : 'text-white'}`}
+                                    disabled={isMotorcycle}
+                                    style={{ 
+                                      backgroundColor: isMotorcycle ? '#cbd5e1' : '#3b82f6', 
+                                      border: 'none',
+                                      cursor: isMotorcycle ? 'not-allowed' : 'pointer'
+                                    }}
                                   >
-                                    Đặt Chỗ Ngay
+                                    {isMotorcycle ? 'Không hỗ trợ đặt trước xe máy' : 'Đặt Chỗ Ngay'}
                                   </button>
                                 </div>
                               </div>
