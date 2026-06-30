@@ -1,8 +1,31 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PARKING_LOTS } from '../../data/parkingData';
+import parkingApi from '../../api/parkingApi';
+import { PARKING_LOTS, mapBranchToParkingLot } from '../../data/parkingData';
 
 export default function StatusSection() {
   const navigate = useNavigate();
+  const [lots, setLots] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLots = async () => {
+      try {
+        const branches = await parkingApi.getAllBranches();
+        if (branches && branches.length > 0) {
+          setLots(branches.map(mapBranchToParkingLot));
+        } else {
+          setLots(PARKING_LOTS);
+        }
+      } catch (error) {
+        console.error('Error fetching parking branches:', error);
+        setLots(PARKING_LOTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLots();
+  }, []);
 
   return (
     <section id="locations" className="status-section">
@@ -21,7 +44,14 @@ export default function StatusSection() {
                   </tr>
                 </thead>
                 <tbody>
-                  {PARKING_LOTS.map((s) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--vin-text-muted)', padding: '20px' }}>
+                        Đang tải trạng thái bãi đỗ...
+                      </td>
+                    </tr>
+                  ) : (
+                    lots.map((s) => (
                     <tr key={s.id}>
                       <td style={{ fontWeight: 700, color: 'var(--vin-text-main)' }}>{s.name}</td>
                       <td style={{ color: 'var(--vin-text-muted)' }}>{s.area}</td>
@@ -41,7 +71,7 @@ export default function StatusSection() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

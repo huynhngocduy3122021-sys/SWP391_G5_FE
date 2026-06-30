@@ -1,40 +1,100 @@
+import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
-
-const BLOCKS = [
-  { name: 'Block A1', status: 'Còn chỗ', statusColor: mt.success, used: 145, total: 200, pct: 72 },
-  { name: 'Block A2', status: 'Đầy', statusColor: mt.danger, used: 198, total: 200, pct: 99 },
-  { name: 'Block M1 (Xe máy)', status: 'Còn chỗ', statusColor: mt.success, used: 312, total: 500, pct: 62 },
-  { name: 'Block B1', status: 'Đặt trước', statusColor: mt.warning, used: 45, total: 150, pct: 30 },
-  { name: 'Block B2', status: 'Bảo trì', statusColor: mt.textMuted, used: 0, total: 150, pct: 0 },
-];
-
-const LOGS = [
-  { time: '08:45', type: 'Mất thẻ xe', plate: '30K-123.45', loc: 'Block A1 - A05', action: 'Phê duyệt' },
-  { time: '09:12', type: 'Xe đỗ sai khu vực', plate: '29P1-999.88', loc: 'Block M1 - M12', action: 'Xử lý' },
-  { time: '10:05', type: 'Xe quá hạn gửi', plate: '51F-888.88', loc: 'Block B1 - B22', action: 'Chi tiết' },
-];
+import managerApi from '../../api/managerApi';
 
 export default function ZoneOverviewPanel() {
+  const [zones, setZones] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [zonesRes, incidentsRes] = await Promise.all([
+        managerApi.getZones(),
+        managerApi.getIncidents()
+      ]);
+      setZones(zonesRes);
+      setIncidents(incidentsRes.content || incidentsRes || []);
+    } catch (err) {
+      console.error('Lỗi khi tải dữ liệu phân khu:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResolve = async (incident) => {
+    const notes = prompt("Nhập ghi chú khắc phục sự cố (Bắt buộc):");
+    if (!notes) return;
+    
+    let lostCardFee = 0;
+    if (incident.incidentType === 'LOST_CARD') {
+      const feeInput = prompt("Nhập phụ phí đền bù thẻ mất (VNĐ):", "50000");
+      if (feeInput !== null && !isNaN(feeInput)) {
+        lostCardFee = Number(feeInput);
+      }
+    }
+
+    try {
+      await managerApi.resolveIncident(incident.incidentId, { resolutionNotes: notes, lostCardFee });
+      alert("Đã giải quyết sự cố!");
+      fetchData(); // Tải lại danh sách
+    } catch (err) {
+      const errorMsg = typeof err.response?.data === 'string' 
+        ? err.response.data 
+        : err.response?.data?.message || err.message;
+      alert("Lỗi khi giải quyết sự cố: " + errorMsg);
+    }
+  };
+
+  const totalCapacity = zones.reduce((sum, z) => sum + z.capacity, 0);
+  const totalUsed = totalCapacity - zones.reduce((sum, z) => sum + z.availableCapacity, 0);
+  const totalPct = totalCapacity === 0 ? 0 : Math.round((totalUsed / totalCapacity) * 100);
+
+  // Remove filter to show all incidents including RESOLVED
+  const allIncidents = Array.isArray(incidents) ? incidents : [];
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải dữ liệu...</div>;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr', gap: '1rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-          {BLOCKS.map((b) => (
-            <div key={b.name} style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontWeight: 700, color: mt.text }}>{b.name}</span>
-                <span style={{
-                  fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                  background: `${b.statusColor}1A`, color: b.statusColor,
-                }}>{b.status}</span>
+          {zones.map((b) => {
+            const used = b.capacity - b.availableCapacity;
+            const pct = b.capacity === 0 ? 0 : Math.round((used / b.capacity) * 100);
+            let status = 'Còn chỗ';
+            let statusColor = mt.success;
+            if (pct >= 100) {
+              status = 'Đầy';
+              statusColor = mt.danger;
+            } else if (!b.active) {
+              status = 'Bảo trì';
+              statusColor = mt.textMuted;
+            }
+            return (
+              <div key={b.parkingZoneId || b.zoneName} style={card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 700, color: mt.text }}>{b.zoneName}</span>
+                  <span style={{
+                    fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                    background: `${statusColor}1A`, color: statusColor,
+                  }}>{status}</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: mt.textMuted, marginBottom: 10 }}>Đã dùng {pct}%</div>
+                <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9', marginBottom: 6 }}>
+                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: mt.primary }} />
+                </div>
+                <div style={{ fontSize: '0.7rem', color: mt.textMuted }}>{used} / {b.capacity} slots</div>
               </div>
-              <div style={{ fontSize: '0.7rem', color: mt.textMuted, marginBottom: 10 }}>Đã dùng {b.pct}%</div>
-              <div style={{ height: 6, borderRadius: 4, background: '#f1f5f9', marginBottom: 6 }}>
-                <div style={{ width: `${b.pct}%`, height: '100%', borderRadius: 4, background: mt.primary }} />
-              </div>
-              <div style={{ fontSize: '0.7rem', color: mt.textMuted }}>{b.used} / {b.total} slots</div>
-            </div>
-          ))}
+            );
+          })}
           <button type="button" style={{
             ...card, display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: `2px dashed ${mt.border}`, color: mt.textMuted, cursor: 'pointer', fontWeight: 600,
@@ -47,25 +107,21 @@ export default function ZoneOverviewPanel() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ ...card, background: mt.primary, color: '#fff' }}>
             <div style={{ fontSize: '0.7rem', opacity: 0.8, marginBottom: 6 }}>TỔNG CÔNG SUẤT</div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>84%</div>
-            <div style={{ fontSize: '0.7rem', opacity: 0.8, marginBottom: 12 }}>1,420 / 1,700 vị trí</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-              <span>Ô tô<br /><b>92%</b></span>
-              <span>Xe máy<br /><b>76%</b></span>
-            </div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{totalPct}%</div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.8, marginBottom: 12 }}>{totalUsed} / {totalCapacity} vị trí</div>
           </div>
           <div style={card}>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Chi tiết hiện trạng</div>
-            {[
-              { code: 'B1', name: 'Hầm B1', pct: 95, slots: 850 },
-              { code: 'B2', name: 'Hầm B2', pct: 72, slots: 600 },
-              { code: 'NT', name: 'Ngoài trời', pct: 45, slots: 250 },
-            ].map((r) => (
-              <div key={r.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.8rem' }}>
-                <span style={{ color: mt.textMuted }}>{r.code} &nbsp;{r.name}</span>
-                <span style={{ fontWeight: 700, color: r.pct > 85 ? mt.danger : mt.text }}>{r.pct}%</span>
-              </div>
-            ))}
+            {zones.map((r) => {
+              const used = r.capacity - r.availableCapacity;
+              const pct = r.capacity === 0 ? 0 : Math.round((used / r.capacity) * 100);
+              return (
+                <div key={r.parkingZoneId || r.zoneName} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.8rem' }}>
+                  <span style={{ color: mt.textMuted }}>{r.zoneName}</span>
+                  <span style={{ fontWeight: 700, color: pct > 85 ? mt.danger : mt.text }}>{pct}%</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -80,26 +136,35 @@ export default function ZoneOverviewPanel() {
             <tr style={{ color: mt.textMuted, textAlign: 'left' }}>
               <th style={{ padding: '6px 8px' }}>THỜI GIAN</th>
               <th style={{ padding: '6px 8px' }}>LOẠI SỰ CỐ</th>
-              <th style={{ padding: '6px 8px' }}>BIỂN SỐ</th>
-              <th style={{ padding: '6px 8px' }}>VỊ TRÍ</th>
+              <th style={{ padding: '6px 8px' }}>TIÊU ĐỀ</th>
+              <th style={{ padding: '6px 8px' }}>TRẠNG THÁI</th>
               <th style={{ padding: '6px 8px' }}>THAO TÁC</th>
             </tr>
           </thead>
           <tbody>
-            {LOGS.map((l) => (
-              <tr key={l.time} style={{ borderTop: `1px solid ${mt.border}` }}>
-                <td style={{ padding: '8px' }}>{l.time}</td>
-                <td style={{ padding: '8px' }}>&#9679; {l.type}</td>
-                <td style={{ padding: '8px', fontWeight: 600 }}>{l.plate}</td>
-                <td style={{ padding: '8px', color: mt.textMuted }}>{l.loc}</td>
+            {allIncidents.length === 0 ? (
+              <tr><td colSpan="5" style={{ padding: '10px', textAlign: 'center', color: mt.textMuted }}>Không có sự cố nào</td></tr>
+            ) : allIncidents.map((l) => {
+              const isResolved = l.status === 'RESOLVED' || l.status === 'CLOSED';
+              return (
+              <tr key={l.incidentId} style={{ borderTop: `1px solid ${mt.border}` }}>
+                <td style={{ padding: '8px' }}>{new Date(l.createdAt).toLocaleString('vi-VN')}</td>
+                <td style={{ padding: '8px', color: l.incidentType === 'LOST_CARD' ? mt.danger : mt.text }}>&#9679; {l.incidentType}</td>
+                <td style={{ padding: '8px', fontWeight: 600 }}>{l.title}</td>
+                <td style={{ padding: '8px', color: isResolved ? mt.success : mt.warning, fontWeight: 600 }}>{l.status}</td>
                 <td style={{ padding: '8px' }}>
-                  <button type="button" style={{
-                    border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 6,
-                    padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer',
-                  }}>{l.action}</button>
+                  {!isResolved ? (
+                    <button type="button" onClick={() => handleResolve(l)} style={{
+                      border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 6,
+                      padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', color: mt.success, fontWeight: 600
+                    }}>Giải quyết</button>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: mt.textMuted }}>Đã đóng</span>
+                  )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -3,13 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
 
-
-
 const NAV_ITEMS = [
   { label: 'Trang chủ', to: '/' },
-  { label: 'Vị trí',    to: '/locations' },
-  { label: 'Bảng giá',  to: '/pricing' },
-  { label: 'Liên hệ',   to: '/contact' },
+  { label: 'Vị trí', to: '/locations' },
+  { label: 'Bảng giá', to: '/pricing' },
+  { label: 'Liên hệ', to: '/contact' },
 ];
 
 export default function Navbar() {
@@ -61,8 +59,8 @@ export default function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div className="nav-search">
           <span>🔍</span>
-          <input 
-            placeholder="Tìm bãi đỗ..." 
+          <input
+            placeholder="Tìm bãi đỗ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -149,6 +147,22 @@ export default function Navbar() {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       📊 Quản lý hệ thống
+                    </Link>
+                  )}
+
+                  {role === 'admin' && (
+                    <Link to="/admin/dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.65rem',
+                        padding: '0.6rem 0.75rem', borderRadius: 8,
+                        color: '#38bdf8', textDecoration: 'none',
+                        fontSize: '0.875rem', fontWeight: 700,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      🛡️ Admin Portal
                     </Link>
                   )}
 

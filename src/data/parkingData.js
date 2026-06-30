@@ -85,3 +85,38 @@ export const PARKING_LOTS = [
     image: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800&q=80',
   },
 ];
+
+export const mapBranchToParkingLot = (branch) => {
+  const images = [landmark, vincom, grandpark, metropolis];
+  const imgIdx = Math.max(0, (branch.parkingBranchId - 1) % images.length);
+  const img = images[imgIdx];
+
+  return {
+    id: branch.parkingBranchId,
+    name: branch.branchName,
+    title: branch.branchName + (branch.description ? ` - ${branch.description}` : ' - Hệ thống đỗ xe thông minh'),
+    area: branch.address || 'Hồ Chí Minh',
+    address: branch.address || 'Hồ Chí Minh',
+    distance: `${(0.5 + (branch.parkingBranchId * 0.4)).toFixed(1)} km từ vị trí hiện tại`,
+    free: branch.availableCapacity !== undefined && branch.availableCapacity !== null ? branch.availableCapacity : (10 + (Number(branch.parkingBranchId) * 15) % 80),
+    total: branch.totalCapacity !== undefined && branch.totalCapacity !== null ? branch.totalCapacity : (100 + (Number(branch.parkingBranchId) * 50) % 200),
+    status: branch.active ? 'Bình thường' : 'Tạm đóng',
+    badgeCls: branch.active ? 'vin-badge--success' : 'vin-badge--danger',
+    price: '30.000đ',
+    priceBlock: '30.000đ/Block',
+    originalPrice: '40.000đ',
+    discount: '-25%',
+    monthlyPrice: '2.000.000đ',
+    rating: 5,
+    score: 9.0,
+    scoreLabel: 'Tuyệt vời',
+    reviews: '120 bài đánh giá',
+    amenities: ['An ninh 24/7', 'Có mái che', 'Sạc EV'],
+    badge: branch.active ? 'Đang hoạt động' : 'Ngừng hoạt động',
+    badgeDesc: branch.phoneNumber ? `Liên hệ: ${branch.phoneNumber}` : '',
+    tag: 'Chính thức',
+    tagColor: 'bg-primary',
+    img: img,
+    image: img,
+  };
+};

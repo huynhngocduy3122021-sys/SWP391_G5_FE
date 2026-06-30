@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { PARKING_LOTS } from '../data/parkingData';
+import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import parkingApi from '../api/parkingApi';
+import { useAuth } from '../hooks/useAuth';
 
 export default function SearchPage() {
+  const { user } = useAuth();
+  const [lots, setLots] = useState([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const initialQuery = location.state?.searchQuery || '';
 
@@ -29,6 +34,25 @@ export default function SearchPage() {
     }
   }, [location.state?.searchQuery]);
 
+  useEffect(() => {
+    const fetchLots = async () => {
+      try {
+        const branches = await parkingApi.getAllBranches();
+        if (branches && branches.length > 0) {
+          setLots(branches.map(mapBranchToParkingLot));
+        } else {
+          setLots(PARKING_LOTS);
+        }
+      } catch (error) {
+        console.error('Error fetching branches in SearchPage:', error);
+        setLots(PARKING_LOTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLots();
+  }, []);
+
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(50000);
 
@@ -51,8 +75,7 @@ export default function SearchPage() {
   };
 
   const handleBooking = (lot) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!user) {
       toast.info('Vui lòng đăng nhập để đặt chỗ!');
       navigate('/auth');
     } else {
@@ -69,7 +92,7 @@ export default function SearchPage() {
 
   // Derive filtered results inside render to keep state clean and reactive
   const keyword = appliedSearch.location.toLowerCase().trim();
-  const filtered = PARKING_LOTS.filter(lot => {
+  const filtered = lots.filter(lot => {
     // 1. Keyword search (Location matches name, area, address)
     if (keyword) {
       const matchKeyword = lot.name.toLowerCase().includes(keyword) ||
@@ -386,14 +409,18 @@ export default function SearchPage() {
                                     {isMotorcycle ? "Giá vé ban ngày cho xe máy" : "Giá cho 1 giờ sử dụng"}
                                   </div>
                                   <div className="fw-bold text-dark small mt-1">Gói tháng: {monthlyPriceLabel}</div>
-                                  <div className="text-primary small fw-bold mb-3" style={{ fontSize: '0.75rem' }}>Hủy MIỄN PHÍ</div>
                                   <button 
                                     type="button" 
-                                    onClick={() => handleBooking(lot)}
-                                    className="btn text-white w-100 fw-bold shadow-sm"
-                                    style={{ backgroundColor: '#3b82f6', border: 'none' }}
+                                    onClick={() => !isMotorcycle && handleBooking(lot)}
+                                    className={`btn w-100 fw-bold shadow-sm ${isMotorcycle ? 'btn-secondary text-white' : 'text-white'}`}
+                                    disabled={isMotorcycle}
+                                    style={{ 
+                                      backgroundColor: isMotorcycle ? '#cbd5e1' : '#3b82f6', 
+                                      border: 'none',
+                                      cursor: isMotorcycle ? 'not-allowed' : 'pointer'
+                                    }}
                                   >
-                                    Đặt Chỗ Ngay
+                                    {isMotorcycle ? 'Không hỗ trợ đặt trước xe máy' : 'Đặt Chỗ Ngay'}
                                   </button>
                                 </div>
                               </div>

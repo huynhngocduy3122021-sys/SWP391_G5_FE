@@ -6,16 +6,18 @@ import VehicleSection from '../components/user-dashboard/VehicleSection';
 import WalletSection from '../components/user-dashboard/WalletSection';
 import ProfileSection from '../components/user-dashboard/ProfileSection';
 import HistorySection from '../components/user-dashboard/HistorySection';
+import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history', 'bookings'
 
   useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
+    const tabFromState = location.state?.activeTab || location.state?.tab;
+    if (tabFromState) {
+      setActiveTab(tabFromState);
     }
-  }, [location.state?.activeTab]);
+  }, [location.state]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -27,6 +29,8 @@ export default function UserDashboardPage() {
         return <WalletSection />;
       case 'history':
         return <HistorySection />;
+      case 'bookings':
+        return <BookingsSection />;
       default:
         return <VehicleSection />;
     }
