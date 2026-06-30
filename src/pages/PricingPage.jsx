@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { PARKING_LOTS } from '../data/parkingData';
+import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import parkingApi from '../api/parkingApi';
 import { CheckCircle2, ChevronLeft, Bell, User, Info, MapPin, Car, Clock, ShieldCheck } from 'lucide-react';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [lots, setLots] = useState(PARKING_LOTS);
+  const [loading, setLoading] = useState(true);
   const [selectedLotId, setSelectedLotId] = useState(() => {
     if (location.state?.selectedLotId) {
       return Number(location.state.selectedLotId);
@@ -19,6 +22,27 @@ export default function PricingPage() {
       setSelectedLotId(Number(location.state.selectedLotId));
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const fetchLots = async () => {
+      try {
+        const branches = await parkingApi.getAllBranches();
+        if (branches && branches.length > 0) {
+          const mapped = branches.map(mapBranchToParkingLot);
+          setLots(mapped);
+          const exists = mapped.some(lot => lot.id === Number(selectedLotId));
+          if (!exists) {
+            setSelectedLotId(mapped[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching branches in PricingPage:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLots();
+  }, []);
 
   const [activeSubPlan, setActiveSubPlan] = useState(null);
   const [subModalStep, setSubModalStep] = useState(1);
@@ -39,7 +63,7 @@ export default function PricingPage() {
   ];
 
   // Find currently selected lot or default to the first one
-  const currentLot = PARKING_LOTS.find(lot => lot.id === Number(selectedLotId)) || PARKING_LOTS[0];
+  const currentLot = lots.find(lot => lot.id === Number(selectedLotId)) || lots[0];
 
   const getSubPrices = (lot) => {
     const vipCarPrice = parseInt(lot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
@@ -67,7 +91,7 @@ export default function PricingPage() {
   const dropdownRef = useRef(null);
 
   // Derived filtered lots for search inside dropdown menu
-  const dropdownFilteredLots = PARKING_LOTS.filter(lot =>
+  const dropdownFilteredLots = lots.filter(lot =>
     lot.name.toLowerCase().includes(dropdownSearchQuery.toLowerCase()) ||
     lot.area.toLowerCase().includes(dropdownSearchQuery.toLowerCase())
   );
@@ -386,11 +410,11 @@ export default function PricingPage() {
               
               <button 
                 type="button" 
-                onClick={() => handleBookNow('Standard', 'Xe máy')}
-                className="btn text-white fw-bold py-2.5 rounded-3 w-100 mt-auto"
-                style={{ backgroundColor: '#164e63' }}
+                disabled
+                className="btn btn-secondary fw-bold py-2.5 rounded-3 w-100 mt-auto"
+                style={{ cursor: 'not-allowed' }}
               >
-                Đặt chỗ ngay
+                Không hỗ trợ đặt trước xe máy
               </button>
             </div>
           </div>

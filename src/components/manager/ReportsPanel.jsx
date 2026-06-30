@@ -1,15 +1,82 @@
+import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
-
-const EMPTY_STATS = [
-  { label: 'TONG DOANH THU', value: '0d' },
-  { label: 'TB GIAI DOAN', value: '0d' },
-  { label: 'LUOT GIAO DICH', value: '0' },
-  { label: 'TANG TRUONG NAM', value: '0%' },
-];
+import managerApi from '../../api/managerApi';
 
 export default function ReportsPanel() {
-  const rows = [];
-  const chartBars = [];
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    totalRevenue: 0,
+    txCount: 0,
+    dailyData: []
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const sessions = await managerApi.getSessions();
+      
+      // Filter sessions that have checked out
+      const completedSessions = sessions.filter(s => s.checkOutTime);
+      const totalRevenue = completedSessions.reduce((sum, s) => sum + (s.totalFee || 0), 0);
+      
+      // Group by day
+      const dailyMap = {};
+      completedSessions.forEach(s => {
+        const date = s.checkOutTime.split('T')[0];
+        if (!dailyMap[date]) dailyMap[date] = { oto: 0, xemay: 0, xedien: 0, total: 0 };
+        
+        const fee = s.totalFee || 0;
+        dailyMap[date].total += fee;
+        
+        const type = s.vehicleTypeName?.toLowerCase() || '';
+        if (type.includes('ô tô') || type.includes('car')) dailyMap[date].oto += fee;
+        else if (type.includes('xe máy') || type.includes('motor')) dailyMap[date].xemay += fee;
+        else dailyMap[date].xedien += fee; // Default fallback for electric or others
+      });
+
+      const sortedDates = Object.keys(dailyMap).sort();
+      const dailyData = sortedDates.map(date => {
+        const d = date.split('-'); // YYYY-MM-DD
+        return {
+          time: `${d[2]}/${d[1]}`,
+          oto: dailyMap[date].oto,
+          xemay: dailyMap[date].xemay,
+          xedien: dailyMap[date].xedien,
+          total: dailyMap[date].total,
+          rawDate: date
+        };
+      }).reverse(); // Newest first for table
+
+      setData({
+        totalRevenue,
+        txCount: completedSessions.length,
+        dailyData
+      });
+    } catch (err) {
+      console.error('Lỗi khi tải báo cáo:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatVND = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+
+  const STATS = [
+    { label: 'TỔNG DOANH THU', value: formatVND(data.totalRevenue), delta: null, good: true },
+    { label: 'LƯỢT GIAO DỊCH (XE RA)', value: data.txCount, delta: null, good: true },
+  ];
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>Đang tải báo cáo...</div>;
+  }
+
+  // Chart heights logic (relative to max daily revenue)
+  const chartData = [...data.dailyData].reverse(); // oldest to newest
+  const maxRevenue = Math.max(...chartData.map(d => d.total), 1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -23,19 +90,19 @@ export default function ReportsPanel() {
       </div>
 
       <div style={card}>
-        <div style={{ fontWeight: 700, color: mt.text, marginBottom: 4 }}>Bieu do xu huong doanh thu</div>
-        <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginBottom: 12 }}>Du lieu se hien thi khi backend tra ve bao cao doanh thu.</div>
-        {chartBars.length === 0 ? (
-          <div style={{ height: 200, borderRadius: 8, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: mt.textMuted }}>
-            Chua co du lieu bao cao tu backend
-          </div>
-        ) : (
-          <div style={{ height: 200, borderRadius: 8, background: '#f8fafc', display: 'flex', alignItems: 'flex-end', gap: 4, padding: '0.75rem' }}>
-            {chartBars.map((h, i) => (
-              <div key={i} style={{ flex: 1, height: `${h}%`, borderRadius: 3, background: mt.primary, opacity: 0.85 }} />
-            ))}
-          </div>
-        )}
+        <div style={{ fontWeight: 700, color: mt.text, marginBottom: 4 }}>Biểu đồ xu hướng doanh thu</div>
+        <div style={{ fontSize: '0.75rem', color: mt.textMuted, marginBottom: 12 }}>Doanh thu theo ngày</div>
+        <div style={{
+          height: 200, borderRadius: 8, background: '#f8fafc',
+          display: 'flex', alignItems: 'flex-end', gap: 4, padding: '0.75rem',
+        }}>
+          {chartData.length === 0 ? <div style={{width: '100%', textAlign: 'center', color: mt.textMuted}}>Không có dữ liệu</div> : chartData.map((d, i) => {
+            const h = Math.max((d.total / maxRevenue) * 100, 5); // min 5% height
+            return (
+              <div key={i} title={`${d.time}: ${formatVND(d.total)}`} style={{ flex: 1, height: `${h}%`, borderRadius: 3, background: mt.primary, opacity: 0.85 }} />
+            );
+          })}
+        </div>
       </div>
 
       <div style={card}>
@@ -43,27 +110,23 @@ export default function ReportsPanel() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
             <tr style={{ color: mt.textMuted, textAlign: 'left' }}>
-              <th style={{ padding: '6px 8px' }}>THOI GIAN</th>
-              <th style={{ padding: '6px 8px' }}>O TO</th>
-              <th style={{ padding: '6px 8px' }}>XE MAY</th>
-              <th style={{ padding: '6px 8px' }}>XE DIEN</th>
-              <th style={{ padding: '6px 8px' }}>TONG DOANH THU</th>
+              <th style={{ padding: '6px 8px' }}>THỜI GIAN</th>
+              <th style={{ padding: '6px 8px' }}>Ô TÔ</th>
+              <th style={{ padding: '6px 8px' }}>XE MÁY</th>
+              <th style={{ padding: '6px 8px' }}>XE ĐIỆN / KHÁC</th>
+              <th style={{ padding: '6px 8px' }}>TỔNG DOANH THU</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: mt.textMuted }}>
-                  Chua co du lieu doanh thu tu backend.
-                </td>
-              </tr>
-            ) : rows.map((r) => (
-              <tr key={r.time} style={{ borderTop: `1px solid ${mt.border}` }}>
+            {data.dailyData.length === 0 ? (
+              <tr><td colSpan="5" style={{ padding: '10px', textAlign: 'center', color: mt.textMuted }}>Chưa có giao dịch nào</td></tr>
+            ) : data.dailyData.map((r) => (
+              <tr key={r.rawDate} style={{ borderTop: `1px solid ${mt.border}` }}>
                 <td style={{ padding: '8px' }}>{r.time}</td>
-                <td style={{ padding: '8px' }}>{r.oto}</td>
-                <td style={{ padding: '8px' }}>{r.xemay}</td>
-                <td style={{ padding: '8px' }}>{r.xedien}</td>
-                <td style={{ padding: '8px', fontWeight: 700 }}>{r.total}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.oto)}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.xemay)}</td>
+                <td style={{ padding: '8px' }}>{formatVND(r.xedien)}</td>
+                <td style={{ padding: '8px', fontWeight: 700 }}>{formatVND(r.total)}</td>
               </tr>
             ))}
           </tbody>
