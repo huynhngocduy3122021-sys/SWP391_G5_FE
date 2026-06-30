@@ -19,13 +19,17 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('email');
-      localStorage.removeItem('fullName');
-      localStorage.removeItem('userId');
-      window.dispatchEvent(new Event('storage'));
-      window.location.href = '/auth'; // Redirect to login
+      const url = error.config?.url || '';
+      // Không tự động redirect nếu đang thực hiện login, reset password hoặc register
+      if (!url.includes('/api/auth/login') && !url.includes('/api/auth/reset-password') && !url.includes('/api/auth/register')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('email');
+        localStorage.removeItem('fullName');
+        localStorage.removeItem('userId');
+        window.dispatchEvent(new Event('storage'));
+        window.location.href = '/auth'; // Redirect to login
+      }
     }
     return Promise.reject(error);
   }

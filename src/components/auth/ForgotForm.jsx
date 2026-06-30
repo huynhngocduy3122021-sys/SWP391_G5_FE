@@ -18,7 +18,8 @@ export default function ForgotForm({ onBack }) {
       toast.success('Đặt lại mật khẩu thành công!');
       onBack();
     } catch (err) {
-      toast.error(err.response?.data || 'Lỗi đặt lại mật khẩu!');
+      const msg = err.response?.data?.message || err.response?.data;
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi đặt lại mật khẩu!');
     } finally {
       setLoading(false);
     }
