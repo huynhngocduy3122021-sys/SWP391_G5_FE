@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -60,6 +61,30 @@ function PublicLayout({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const updateThemeColors = () => {
+      const role = localStorage.getItem('role');
+      let color = '#125b71'; // default primary
+      if (role === 'USER') {
+        color = localStorage.getItem('sys_color_user') || '#125b71';
+      } else if (role === 'MANAGER') {
+        color = localStorage.getItem('sys_color_manager') || '#0f172a';
+      } else if (role === 'STAFF') {
+        color = localStorage.getItem('sys_color_staff') || '#125b71';
+      } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+        color = localStorage.getItem('sys_primary_color') || '#1b6eff';
+      }
+      
+      document.documentElement.style.setProperty('--vin-primary', color);
+      document.documentElement.style.setProperty('--vin-teal', color);
+      document.documentElement.style.setProperty('--vin-indigo', color);
+    };
+
+    updateThemeColors();
+    window.addEventListener('storage', updateThemeColors);
+    return () => window.removeEventListener('storage', updateThemeColors);
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

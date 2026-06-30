@@ -7,11 +7,12 @@ export default function SystemSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Branding & Logo States
+  // Branding States
   const [systemName, setSystemName] = useState(() => localStorage.getItem('sys_name') || 'VinParking');
-  const [primaryColor, setPrimaryColor] = useState(() => localStorage.getItem('sys_primary_color') || '#1b6eff');
-  const [secondaryColor, setSecondaryColor] = useState(() => localStorage.getItem('sys_secondary_color') || '#10b981');
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [faviconPreview, setFaviconPreview] = useState(null);
+  const [primaryColor, setPrimaryColor] = useState(() => localStorage.getItem('sys_primary_color') || '#1b6eff'); // Admin
+  const [userColor, setUserColor] = useState(() => localStorage.getItem('sys_color_user') || '#125b71'); // User
+  const [managerColor, setManagerColor] = useState(() => localStorage.getItem('sys_color_manager') || '#0f172a'); // Manager
+  const [staffColor, setStaffColor] = useState(() => localStorage.getItem('sys_color_staff') || '#125b71'); // Staff
 
   // Security Settings States
   const [enableMfa, setEnableMfa] = useState(true);
@@ -31,7 +32,9 @@ export default function SystemSettingsPage() {
     setOriginalSettings({
       systemName,
       primaryColor,
-      secondaryColor,
+      userColor,
+      managerColor,
+      staffColor,
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -44,7 +47,9 @@ export default function SystemSettingsPage() {
     const current = {
       systemName,
       primaryColor,
-      secondaryColor,
+      userColor,
+      managerColor,
+      staffColor,
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -63,50 +68,23 @@ export default function SystemSettingsPage() {
     checkDirty({ systemName: val });
   };
 
-  const handlePrimaryChange = (val) => {
-    setPrimaryColor(val);
-    checkDirty({ primaryColor: val });
-  };
-
-  const handleSecondaryChange = (val) => {
-    setSecondaryColor(val);
-    checkDirty({ secondaryColor: val });
-  };
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result);
-        setIsDirty(true);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFaviconUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFaviconPreview(reader.result);
-        setIsDirty(true);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSave = () => {
     localStorage.setItem('sys_name', systemName);
     localStorage.setItem('sys_primary_color', primaryColor);
-    localStorage.setItem('sys_secondary_color', secondaryColor);
+    localStorage.setItem('sys_color_user', userColor);
+    localStorage.setItem('sys_color_manager', managerColor);
+    localStorage.setItem('sys_color_staff', staffColor);
     
+    // Dispatch a storage event to notify themes/layouts to refresh immediately
+    window.dispatchEvent(new Event('storage'));
+
     // Update original state to current values
     setOriginalSettings({
       systemName,
       primaryColor,
-      secondaryColor,
+      userColor,
+      managerColor,
+      staffColor,
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -120,7 +98,9 @@ export default function SystemSettingsPage() {
   const handleCancel = () => {
     setSystemName(originalSettings.systemName);
     setPrimaryColor(originalSettings.primaryColor);
-    setSecondaryColor(originalSettings.secondaryColor);
+    setUserColor(originalSettings.userColor);
+    setManagerColor(originalSettings.managerColor);
+    setStaffColor(originalSettings.staffColor);
     setEnableMfa(originalSettings.enableMfa);
     setPwPolicy(originalSettings.pwPolicy);
     setSessionTimeout(originalSettings.sessionTimeout);
@@ -218,11 +198,9 @@ export default function SystemSettingsPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
           
-          {/* Left Column: Forms */}
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', padding: '24px' }}>
-          
-          {/* TAB: GENERAL */}
-          {activeTab === 'general' && (
+            {/* TAB: GENERAL */}
+            {activeTab === 'general' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Tùy biến thương hiệu (Branding)</h3>
 
@@ -236,80 +214,83 @@ export default function SystemSettingsPage() {
                 />
               </div>
 
+              <h3 style={{ margin: '10px 0 0 0', fontSize: '16px', fontWeight: '700', color: '#111322' }}>Màu sắc giao diện theo vai trò (Role Theme Colors)</h3>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: '-12px 0 10px 0' }}>Cấu hình màu sắc chủ đạo riêng biệt cho từng vai trò người dùng trong hệ thống.</p>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {/* Admin Color */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>MÀU SẮC CHỦ ĐẠO (PRIMARY)</label>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU QUẢN TRỊ VIÊN (ADMIN)</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input 
                       type="color" 
                       value={primaryColor} 
-                      onChange={e => handlePrimaryChange(e.target.value)}
+                      onChange={e => { setPrimaryColor(e.target.value); checkDirty({ primaryColor: e.target.value }); }}
                       style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
                     />
                     <input 
                       type="text" 
                       value={primaryColor} 
-                      onChange={e => handlePrimaryChange(e.target.value)}
+                      onChange={e => { setPrimaryColor(e.target.value); checkDirty({ primaryColor: e.target.value }); }}
                       style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
                     />
                   </div>
                 </div>
 
+                {/* Manager Color */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>MÀU PHỤ TRỢ (SECONDARY)</label>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU BAN QUẢN LÝ (MANAGER)</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input 
                       type="color" 
-                      value={secondaryColor} 
-                      onChange={e => handleSecondaryChange(e.target.value)}
+                      value={managerColor} 
+                      onChange={e => { setManagerColor(e.target.value); checkDirty({ managerColor: e.target.value }); }}
                       style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
                     />
                     <input 
                       type="text" 
-                      value={secondaryColor} 
-                      onChange={e => handleSecondaryChange(e.target.value)}
+                      value={managerColor} 
+                      onChange={e => { setManagerColor(e.target.value); checkDirty({ managerColor: e.target.value }); }}
                       style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
                     />
                   </div>
                 </div>
-              </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #eef0f3', margin: '12px 0' }} />
-
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Logo Hệ thống (System Logos)</h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>LOGO DASHBOARD (SVG/PNG)</label>
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    style={{ fontSize: '13px' }}
-                  />
-                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Logo Preview" style={{ maxHeight: '60px' }} />
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Chưa chọn logo mới</span>
-                    )}
+                {/* Staff Color */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU NHÂN VIÊN BÃI XE (STAFF)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="color" 
+                      value={staffColor} 
+                      onChange={e => { setStaffColor(e.target.value); checkDirty({ staffColor: e.target.value }); }}
+                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={staffColor} 
+                      onChange={e => { setStaffColor(e.target.value); checkDirty({ staffColor: e.target.value }); }}
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
+                    />
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>FAVICON BROWSER (ICO/PNG)</label>
-                  <input 
-                    type="file" 
-                    accept=".ico,image/png"
-                    onChange={handleFaviconUpload}
-                    style={{ fontSize: '13px' }}
-                  />
-                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                    {faviconPreview ? (
-                      <img src={faviconPreview} alt="Favicon Preview" style={{ width: '32px', height: '32px' }} />
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Chưa chọn favicon (32x32px)</span>
-                    )}
+                {/* User Color */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU KHÁCH HÀNG (USER/CUSTOMER)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="color" 
+                      value={userColor} 
+                      onChange={e => { setUserColor(e.target.value); checkDirty({ userColor: e.target.value }); }}
+                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={userColor} 
+                      onChange={e => { setUserColor(e.target.value); checkDirty({ userColor: e.target.value }); }}
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
+                    />
                   </div>
                 </div>
               </div>
