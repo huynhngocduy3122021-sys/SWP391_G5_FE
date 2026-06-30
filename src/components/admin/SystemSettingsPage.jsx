@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import PricingSettingsPanel from './PricingSettingsPanel';
 
 export default function SystemSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
@@ -190,7 +191,8 @@ export default function SystemSettingsPage() {
           { key: 'general', label: '🎨 General (Thương hiệu)' },
           { key: 'security', label: '🔒 Security (Bảo mật)' },
           { key: 'notifications', label: '🔔 Notifications (Thông báo)' },
-          { key: 'maintenance', label: '🛠️ Maintenance (Bảo trì)' }
+          { key: 'maintenance', label: '🛠️ Maintenance (Bảo trì)' },
+          { key: 'pricing', label: '💰 Pricing (Bảng giá & Gói cước)' }
         ].map(tab => (
           <button
             key={tab.key}
@@ -209,10 +211,15 @@ export default function SystemSettingsPage() {
       </div>
 
       {/* Two Column Layout: Controls and UI Live Preview */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
-        
-        {/* Left Column: Forms */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', padding: '24px' }}>
+      {activeTab === 'pricing' ? (
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '24px' }}>
+          <PricingSettingsPanel />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
+          
+          {/* Left Column: Forms */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', padding: '24px' }}>
           
           {/* TAB: GENERAL */}
           {activeTab === 'general' && (
@@ -486,7 +493,8 @@ export default function SystemSettingsPage() {
           </div>
         </div>
 
-      </div>
+        </div>
+      )}
 
       {/* Fixed Confirm Action Bar at the Bottom */}
       {isDirty && (

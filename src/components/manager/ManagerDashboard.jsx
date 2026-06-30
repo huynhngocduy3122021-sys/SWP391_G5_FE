@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import ManagerTopbar from './ManagerTopbar';
 import ZoneOverviewPanel from './ZoneOverviewPanel';
-import SettingsPanel from './SettingsPanel';
 import OverviewPanel from './OverviewPanel';
 import IncidentPanel from './IncidentPanel';
 import BookingPanel from './BookingPanel';
@@ -17,7 +16,6 @@ const NAV_ITEMS = [
   { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
   { key: 'iot',       label: 'IoT',                icon: '\u25C9' },
   { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
-  { key: 'settings',  label: 'Cấu hình hệ thống', icon: '\u2699' },
 ];
 
 export default function ManagerDashboard() {
@@ -66,7 +64,6 @@ export default function ManagerDashboard() {
       case 'zones':     return <ZoneOverviewPanel />;
       case 'iot':       return <IotPanel />;
       case 'incidents': return <IncidentPanel />;
-      case 'settings':  return <SettingsPanel />;
       default:          return <OverviewPanel onNavigate={setTab} />;
     }
   };
