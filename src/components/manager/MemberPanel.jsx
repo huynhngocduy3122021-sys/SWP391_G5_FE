@@ -31,13 +31,27 @@ export default function MemberPanel() {
 
   const fetchCardsAndBranches = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const [cardsData, branchesData] = await Promise.all([
         managerApi.getParkingCards(),
         managerApi.getParkingBranches(),
       ]);
-      setCards(Array.isArray(cardsData) ? cardsData : []);
-      setBranches(Array.isArray(branchesData) ? branchesData : []);
+      const parsedCards = Array.isArray(cardsData) ? cardsData : [];
+      const parsedBranches = Array.isArray(branchesData) ? branchesData : [];
+
+      setCards(managerBranchId
+        ? parsedCards.filter(c => String(c.parkingBranchId) === String(managerBranchId))
+        : parsedCards
+      );
+      setBranches(managerBranchId
+        ? parsedBranches.filter(b => String(b.parkingBranchId) === String(managerBranchId))
+        : parsedBranches
+      );
+
+      if (managerBranchId) {
+        setCreateForm(prev => ({ ...prev, parkingBranchId: managerBranchId }));
+      }
     } catch (err) {
       console.error(err);
       toast.error('Không tải được dữ liệu thẻ hoặc chi nhánh!');
