@@ -244,9 +244,6 @@ export default function MemberPanel() {
             <div style={{ fontSize: '2.5rem', fontWeight: 800, color: mt.text, marginBottom: 4 }}>{totalCount}</div>
             <div style={{ color: mt.textMuted, fontSize: '0.8rem' }}>Mã thẻ hoạt động trên hệ thống</div>
           </div>
-          <div style={{ background: '#f1f5f9', width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
-            💳
-          </div>
         </div>
 
         <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -254,9 +251,6 @@ export default function MemberPanel() {
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, textTransform: 'uppercase', marginBottom: 8 }}>ĐANG SỬ DỤNG</div>
             <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#3b82f6', marginBottom: 4 }}>{inUseCount}</div>
             <div style={{ color: mt.textMuted, fontSize: '0.8rem' }}>Thẻ đang gán trong các lượt gửi</div>
-          </div>
-          <div style={{ background: '#dbeafe', color: '#1d4ed8', width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
-            🚗
           </div>
         </div>
 
@@ -266,9 +260,6 @@ export default function MemberPanel() {
             <div style={{ fontSize: '2.5rem', fontWeight: 800, color: mt.success, marginBottom: 4 }}>{availableCount}</div>
             <div style={{ color: mt.textMuted, fontSize: '0.8rem' }}>Thẻ sẵn sàng để cấp cho xe vào</div>
           </div>
-          <div style={{ background: '#dcfce7', color: '#16a34a', width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
-            ✔️
-          </div>
         </div>
 
         <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -276,9 +267,6 @@ export default function MemberPanel() {
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, textTransform: 'uppercase', marginBottom: 8 }}>BÁO MẤT / BỊ KHÓA</div>
             <div style={{ fontSize: '2.5rem', fontWeight: 800, color: mt.danger, marginBottom: 4 }}>{lockedOrLostCount}</div>
             <div style={{ color: mt.textMuted, fontSize: '0.8rem' }}>Thẻ bị khóa hoặc làm mất</div>
-          </div>
-          <div style={{ background: '#fee2e2', color: '#b91c1c', width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
-            🔒
           </div>
         </div>
       </div>
