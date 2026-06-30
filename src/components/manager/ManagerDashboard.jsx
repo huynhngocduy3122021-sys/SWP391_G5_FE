@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ManagerTopbar from './ManagerTopbar';
 import ZoneOverviewPanel from './ZoneOverviewPanel';
 import SettingsPanel from './SettingsPanel';
@@ -8,6 +8,7 @@ import BookingPanel from './BookingPanel';
 import MemberPanel from './MemberPanel';
 import IotPanel from './IotPanel';
 import { mt } from './managerTheme';
+import authApi from '../../api/authApi';
 
 const NAV_ITEMS = [
   { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
@@ -21,14 +22,40 @@ const NAV_ITEMS = [
 
 export default function ManagerDashboard() {
   const [tab, setTab] = useState('overview');
+  const [loadingBranch, setLoadingBranch] = useState(true);
+  const [branchName, setBranchName] = useState('');
+  
+  const userId = localStorage.getItem('userId');
   const managerName = localStorage.getItem('fullName') || 'Manager';
 
+  useEffect(() => {
+    const fetchManagerBranch = async () => {
+      if (!userId) {
+        setLoadingBranch(false);
+        return;
+      }
+      try {
+        const user = await authApi.getUserById(userId);
+        if (user && user.parkingBranchId) {
+          localStorage.setItem('parkingBranchId', user.parkingBranchId);
+          localStorage.setItem('parkingBranchName', user.parkingBranchName || '');
+          setBranchName(user.parkingBranchName || '');
+        } else {
+          localStorage.removeItem('parkingBranchId');
+          localStorage.removeItem('parkingBranchName');
+          setBranchName('');
+        }
+      } catch (err) {
+        console.error("Failed to fetch manager branch info:", err);
+      } finally {
+        setLoadingBranch(false);
+      }
+    };
+    fetchManagerBranch();
+  }, [userId]);
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('email');
-    localStorage.removeItem('fullName');
-    localStorage.removeItem('userId');
+    localStorage.clear();
     window.location.href = '/auth';
   };
 
@@ -43,6 +70,18 @@ export default function ManagerDashboard() {
       default:          return <OverviewPanel onNavigate={setTab} />;
     }
   };
+
+  if (loadingBranch) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', background: mt.bg, color: mt.text
+      }}>
+        <div className="spinner-border" style={{ color: mt.primary, marginBottom: '1rem' }} role="status" />
+        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Đang xác thực chi nhánh quản lý...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: mt.bg, fontFamily: 'inherit' }}>
@@ -59,7 +98,10 @@ export default function ManagerDashboard() {
           }}>P</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.95rem', color: mt.text, lineHeight: 1.1 }}>{managerName}</div>
-            <div style={{ fontSize: '0.65rem', color: mt.textMuted, letterSpacing: '0.05em' }}>PARKING MANAGEMENT</div>
+            <div style={{ fontSize: '0.65rem', color: mt.textMuted, letterSpacing: '0.05em', marginBottom: '2px' }}>PARKING MANAGEMENT</div>
+            {branchName && (
+              <div style={{ fontSize: '0.7rem', color: mt.primary, fontWeight: 700 }}>📍 {branchName}</div>
+            )}
           </div>
         </div>
 
