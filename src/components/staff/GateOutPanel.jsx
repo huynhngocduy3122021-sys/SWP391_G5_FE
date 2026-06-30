@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
+import managerApi from '../../api/manager';
 import { CameraFeed } from './GateInPanel';
 import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
@@ -18,6 +19,33 @@ export default function GateOutPanel() {
   const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [zones, setZones] = useState([]);
+
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const data = await managerApi.getAllZones();
+        if (Array.isArray(data)) {
+          const formatted = data.map(z => {
+            const used = z.capacity - z.availableCapacity;
+            return {
+              category: z.zoneName,
+              current: used,
+              max: z.capacity,
+              status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
+              flowPerHour: Math.max(1, Math.round(used / 4))
+            };
+          });
+          setZones(formatted);
+        }
+      } catch (err) {
+        console.error("Failed to fetch zones for table:", err);
+      }
+    };
+    fetchZones();
+    const interval = setInterval(fetchZones, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -181,7 +209,7 @@ export default function GateOutPanel() {
           />
         </div>
 
-        <ZoneOccupancyTable zones={[]} />
+        <ZoneOccupancyTable zones={zones} />
       </div>
 
       {/* ── Cột phải: payment summary + support ── */}

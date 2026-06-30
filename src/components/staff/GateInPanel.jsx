@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import staffApi from '../../api/staffApi';
 import parkingApi from '../../api/parkingApi';
+import managerApi from '../../api/manager';
 import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
@@ -24,6 +25,33 @@ export default function GateInPanel() {
   const [previewUrls, setPreviewUrls] = useState([]);
   const [suggestion, setSuggestion] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [zones, setZones] = useState([]);
+
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const data = await managerApi.getAllZones();
+        if (Array.isArray(data)) {
+          const formatted = data.map(z => {
+            const used = z.capacity - z.availableCapacity;
+            return {
+              category: z.zoneName,
+              current: used,
+              max: z.capacity,
+              status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
+              flowPerHour: Math.max(1, Math.round(used / 4))
+            };
+          });
+          setZones(formatted);
+        }
+      } catch (err) {
+        console.error("Failed to fetch zones for table:", err);
+      }
+    };
+    fetchZones();
+    const interval = setInterval(fetchZones, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchVehicleTypes = async () => {
@@ -311,7 +339,7 @@ export default function GateInPanel() {
           </button>
         </div>
 
-        <ZoneOccupancyTable zones={[]} />
+        <ZoneOccupancyTable zones={zones} />
       </div>
 
       {/* ── Cột phải: AI suggestion + support ── */}
