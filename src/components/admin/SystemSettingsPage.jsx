@@ -7,12 +7,45 @@ export default function SystemSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Branding & Logo States
+  // Theme Settings per Role
+  const [selectedThemeRole, setSelectedThemeRole] = useState('USER');
+  const [themes, setThemes] = useState({
+    USER: {
+      primary: localStorage.getItem('theme_USER_primary') || '#125b71',
+      accent: localStorage.getItem('theme_USER_accent') || '#10b981',
+      text: localStorage.getItem('theme_USER_text') || '#1e293b',
+      textMuted: localStorage.getItem('theme_USER_textMuted') || '#64748b',
+      cardBg: localStorage.getItem('theme_USER_cardBg') || '#ffffff',
+      border: localStorage.getItem('theme_USER_border') || '#e2e8f0',
+    },
+    MANAGER: {
+      primary: localStorage.getItem('theme_MANAGER_primary') || '#0f172a',
+      accent: localStorage.getItem('theme_MANAGER_accent') || '#0d9488',
+      text: localStorage.getItem('theme_MANAGER_text') || '#0f172a',
+      textMuted: localStorage.getItem('theme_MANAGER_textMuted') || '#64748b',
+      cardBg: localStorage.getItem('theme_MANAGER_cardBg') || '#ffffff',
+      border: localStorage.getItem('theme_MANAGER_border') || '#cbd5e1',
+    },
+    STAFF: {
+      primary: localStorage.getItem('theme_STAFF_primary') || '#125b71',
+      accent: localStorage.getItem('theme_STAFF_accent') || '#0c4355',
+      text: localStorage.getItem('theme_STAFF_text') || '#1e293b',
+      textMuted: localStorage.getItem('theme_STAFF_textMuted') || '#64748b',
+      cardBg: localStorage.getItem('theme_STAFF_cardBg') || '#ffffff',
+      border: localStorage.getItem('theme_STAFF_border') || '#e2e8f0',
+    },
+    ADMIN: {
+      primary: localStorage.getItem('theme_ADMIN_primary') || '#1b6eff',
+      accent: localStorage.getItem('theme_ADMIN_accent') || '#10b981',
+      text: localStorage.getItem('theme_ADMIN_text') || '#1e293b',
+      textMuted: localStorage.getItem('theme_ADMIN_textMuted') || '#64748b',
+      cardBg: localStorage.getItem('theme_ADMIN_cardBg') || '#ffffff',
+      border: localStorage.getItem('theme_ADMIN_border') || '#cbd5e1',
+    }
+  });
+
   // Branding States
   const [systemName, setSystemName] = useState(() => localStorage.getItem('sys_name') || 'VinParking');
-  const [primaryColor, setPrimaryColor] = useState(() => localStorage.getItem('sys_primary_color') || '#1b6eff'); // Admin
-  const [userColor, setUserColor] = useState(() => localStorage.getItem('sys_color_user') || '#125b71'); // User
-  const [managerColor, setManagerColor] = useState(() => localStorage.getItem('sys_color_manager') || '#0f172a'); // Manager
-  const [staffColor, setStaffColor] = useState(() => localStorage.getItem('sys_color_staff') || '#125b71'); // Staff
 
   // Security Settings States
   const [enableMfa, setEnableMfa] = useState(true);
@@ -31,10 +64,7 @@ export default function SystemSettingsPage() {
     // Store initial values to compare changes
     setOriginalSettings({
       systemName,
-      primaryColor,
-      userColor,
-      managerColor,
-      staffColor,
+      themes: JSON.parse(JSON.stringify(themes)),
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -46,10 +76,7 @@ export default function SystemSettingsPage() {
   const checkDirty = (updates = {}) => {
     const current = {
       systemName,
-      primaryColor,
-      userColor,
-      managerColor,
-      staffColor,
+      themes,
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -57,8 +84,9 @@ export default function SystemSettingsPage() {
       telegramAlerts,
       ...updates
     };
-    const dirty = Object.keys(originalSettings).some(
-      key => String(originalSettings[key]) !== String(current[key])
+    const themesChanged = JSON.stringify(originalSettings.themes || {}) !== JSON.stringify(current.themes);
+    const dirty = themesChanged || Object.keys(originalSettings).some(
+      key => key !== 'themes' && String(originalSettings[key]) !== String(current[key])
     );
     setIsDirty(dirty);
   };
@@ -68,12 +96,33 @@ export default function SystemSettingsPage() {
     checkDirty({ systemName: val });
   };
 
+  const handleColorChange = (role, field, val) => {
+    const updated = {
+      ...themes,
+      [role]: {
+        ...themes[role],
+        [field]: val
+      }
+    };
+    setThemes(updated);
+    checkDirty({ themes: updated });
+  };
+
   const handleSave = () => {
     localStorage.setItem('sys_name', systemName);
-    localStorage.setItem('sys_primary_color', primaryColor);
-    localStorage.setItem('sys_color_user', userColor);
-    localStorage.setItem('sys_color_manager', managerColor);
-    localStorage.setItem('sys_color_staff', staffColor);
+    
+    // Save all theme variables
+    Object.keys(themes).forEach(role => {
+      Object.keys(themes[role]).forEach(field => {
+        localStorage.setItem(`theme_${role}_${field}`, themes[role][field]);
+      });
+    });
+
+    // Support legacy variables
+    localStorage.setItem('sys_primary_color', themes.ADMIN.primary);
+    localStorage.setItem('sys_color_user', themes.USER.primary);
+    localStorage.setItem('sys_color_manager', themes.MANAGER.primary);
+    localStorage.setItem('sys_color_staff', themes.STAFF.primary);
     
     // Dispatch a storage event to notify themes/layouts to refresh immediately
     window.dispatchEvent(new Event('storage'));
@@ -81,10 +130,7 @@ export default function SystemSettingsPage() {
     // Update original state to current values
     setOriginalSettings({
       systemName,
-      primaryColor,
-      userColor,
-      managerColor,
-      staffColor,
+      themes: JSON.parse(JSON.stringify(themes)),
       enableMfa,
       pwPolicy,
       sessionTimeout,
@@ -97,10 +143,9 @@ export default function SystemSettingsPage() {
 
   const handleCancel = () => {
     setSystemName(originalSettings.systemName);
-    setPrimaryColor(originalSettings.primaryColor);
-    setUserColor(originalSettings.userColor);
-    setManagerColor(originalSettings.managerColor);
-    setStaffColor(originalSettings.staffColor);
+    if (originalSettings.themes) {
+      setThemes(JSON.parse(JSON.stringify(originalSettings.themes)));
+    }
     setEnableMfa(originalSettings.enableMfa);
     setPwPolicy(originalSettings.pwPolicy);
     setSessionTimeout(originalSettings.sessionTimeout);
@@ -132,7 +177,7 @@ export default function SystemSettingsPage() {
     }
   };
 
-  const contrastRatio = getContrastRatio(primaryColor);
+  const contrastRatio = getContrastRatio(themes[selectedThemeRole]?.primary);
   const isContrastPass = Number(contrastRatio) >= 4.5;
 
   return (
@@ -180,9 +225,9 @@ export default function SystemSettingsPage() {
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
               fontSize: '14px', fontWeight: '600', transition: 'all 0.2s',
-              backgroundColor: activeTab === tab.key ? primaryColor : '#fff',
+              backgroundColor: activeTab === tab.key ? themes.ADMIN.primary : '#fff',
               color: activeTab === tab.key ? '#fff' : '#475569',
-              border: activeTab === tab.key ? `1px solid ${primaryColor}` : '1px solid #cbd5e1',
+              border: activeTab === tab.key ? `1px solid ${themes.ADMIN.primary}` : '1px solid #cbd5e1',
             }}
           >
             {tab.label}
@@ -215,83 +260,56 @@ export default function SystemSettingsPage() {
               </div>
 
               <h3 style={{ margin: '10px 0 0 0', fontSize: '16px', fontWeight: '700', color: '#111322' }}>Màu sắc giao diện theo vai trò (Role Theme Colors)</h3>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: '-12px 0 10px 0' }}>Cấu hình màu sắc chủ đạo riêng biệt cho từng vai trò người dùng trong hệ thống.</p>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: '-12px 0 10px 0' }}>Tùy chỉnh chi tiết tất cả các thành phần màu sắc giao diện tương ứng cho từng vai trò.</p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                {/* Admin Color */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU QUẢN TRỊ VIÊN (ADMIN)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="color" 
-                      value={primaryColor} 
-                      onChange={e => { setPrimaryColor(e.target.value); checkDirty({ primaryColor: e.target.value }); }}
-                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
-                    />
-                    <input 
-                      type="text" 
-                      value={primaryColor} 
-                      onChange={e => { setPrimaryColor(e.target.value); checkDirty({ primaryColor: e.target.value }); }}
-                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
-                    />
-                  </div>
-                </div>
+              {/* Step 1: Selector for Role */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>BƯỚC 1: CHỌN VAI TRÒ ĐỂ CẤU HÌNH</label>
+                <select
+                  value={selectedThemeRole}
+                  onChange={e => setSelectedThemeRole(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', fontWeight: '600', outline: 'none', backgroundColor: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="USER">👤 Khách hàng (User/Customer)</option>
+                  <option value="MANAGER">💼 Ban quản lý (Manager)</option>
+                  <option value="STAFF">👮 Nhân viên bãi xe (Staff)</option>
+                  <option value="ADMIN">👑 Quản trị viên tối cao (Admin)</option>
+                </select>
+              </div>
 
-                {/* Manager Color */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU BAN QUẢN LÝ (MANAGER)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="color" 
-                      value={managerColor} 
-                      onChange={e => { setManagerColor(e.target.value); checkDirty({ managerColor: e.target.value }); }}
-                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
-                    />
-                    <input 
-                      type="text" 
-                      value={managerColor} 
-                      onChange={e => { setManagerColor(e.target.value); checkDirty({ managerColor: e.target.value }); }}
-                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Staff Color */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU NHÂN VIÊN BÃI XE (STAFF)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="color" 
-                      value={staffColor} 
-                      onChange={e => { setStaffColor(e.target.value); checkDirty({ staffColor: e.target.value }); }}
-                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
-                    />
-                    <input 
-                      type="text" 
-                      value={staffColor} 
-                      onChange={e => { setStaffColor(e.target.value); checkDirty({ staffColor: e.target.value }); }}
-                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
-                    />
-                  </div>
-                </div>
-
-                {/* User Color */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>MÀU KHÁCH HÀNG (USER/CUSTOMER)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="color" 
-                      value={userColor} 
-                      onChange={e => { setUserColor(e.target.value); checkDirty({ userColor: e.target.value }); }}
-                      style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
-                    />
-                    <input 
-                      type="text" 
-                      value={userColor} 
-                      onChange={e => { setUserColor(e.target.value); checkDirty({ userColor: e.target.value }); }}
-                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%' }}
-                    />
-                  </div>
+              {/* Step 2: Config colors for selected role */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b' }}>
+                  BƯỚC 2: THIẾT LẬP MÀU CHO CÁC THÀNH PHẦN [{selectedThemeRole}]
+                </label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {[
+                    { key: 'primary', label: '🎨 MÀU CHỦ ĐẠO (PRIMARY/TEAL)' },
+                    { key: 'accent', label: '✨ MÀU PHỤ TRỢ (SECONDARY/ACCENT)' },
+                    { key: 'text', label: '🔤 CHỮ CHÍNH (TEXT MAIN)' },
+                    { key: 'textMuted', label: '🔡 CHỮ PHỤ (TEXT MUTED)' },
+                    { key: 'cardBg', label: '🔲 NỀN KHỐI/CARD (CARD BG)' },
+                    { key: 'border', label: '➖ ĐƯỜNG VIỀN (BORDER COLOR)' },
+                  ].map(field => (
+                    <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569' }}>{field.label}</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                          type="color" 
+                          value={themes[selectedThemeRole][field.key]} 
+                          onChange={e => handleColorChange(selectedThemeRole, field.key, e.target.value)}
+                          style={{ border: 'none', width: '42px', height: '42px', padding: 0, borderRadius: '8px', cursor: 'pointer' }}
+                        />
+                        <input 
+                          type="text" 
+                          value={themes[selectedThemeRole][field.key]} 
+                          onChange={e => handleColorChange(selectedThemeRole, field.key, e.target.value)}
+                          style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', width: '100%', fontFamily: 'monospace' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -422,12 +440,12 @@ export default function SystemSettingsPage() {
             </div>
 
             {/* Mock Dashboard Preview */}
-            <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', height: '240px', display: 'flex', flexDirection: 'column', fontSize: '12px', backgroundColor: '#f8fafc' }}>
+            <div style={{ border: `1px solid ${themes[selectedThemeRole]?.border || '#cbd5e1'}`, borderRadius: '8px', overflow: 'hidden', height: '240px', display: 'flex', flexDirection: 'column', fontSize: '12px', backgroundColor: '#f8fafc' }}>
               
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: '#1e293b' }}>
-                  <div style={{ width: '16px', height: '16px', borderRadius: '4px', backgroundColor: primaryColor }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: themes[selectedThemeRole]?.cardBg || '#fff', borderBottom: `1px solid ${themes[selectedThemeRole]?.border || '#cbd5e1'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: themes[selectedThemeRole]?.text || '#1e293b' }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '4px', backgroundColor: themes[selectedThemeRole]?.primary }} />
                   {systemName}
                 </div>
                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#e2e8f0' }} />
@@ -437,8 +455,8 @@ export default function SystemSettingsPage() {
               <div style={{ display: 'flex', flex: 1 }}>
                 
                 {/* Sidebar */}
-                <div style={{ width: '60px', backgroundColor: '#fff', borderRight: '1px solid #e2e8f0', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ height: '8px', width: '100%', backgroundColor: primaryColor, borderRadius: '4px' }} />
+                <div style={{ width: '60px', backgroundColor: themes[selectedThemeRole]?.cardBg || '#fff', borderRight: `1px solid ${themes[selectedThemeRole]?.border || '#cbd5e1'}`, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ height: '8px', width: '100%', backgroundColor: themes[selectedThemeRole]?.primary, borderRadius: '4px' }} />
                   <div style={{ height: '8px', width: '80%', backgroundColor: '#e2e8f0', borderRadius: '4px' }} />
                   <div style={{ height: '8px', width: '90%', backgroundColor: '#e2e8f0', borderRadius: '4px' }} />
                 </div>
@@ -446,20 +464,20 @@ export default function SystemSettingsPage() {
                 {/* Main panel */}
                 <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ height: '10px', width: '80px', backgroundColor: '#1e293b', borderRadius: '4px', fontWeight: '700' }} />
-                    <button style={{ border: 'none', backgroundColor: primaryColor, color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '600' }}>
+                    <div style={{ height: '10px', width: '80px', backgroundColor: themes[selectedThemeRole]?.text || '#1e293b', borderRadius: '4px', fontWeight: '700' }} />
+                    <button style={{ border: 'none', backgroundColor: themes[selectedThemeRole]?.primary, color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '600' }}>
                       + Action
                     </button>
                   </div>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', backgroundColor: '#fff' }}>
-                      <div style={{ height: '14px', width: '20px', backgroundColor: userColor, borderRadius: '4px', marginBottom: '4px' }} />
+                    <div style={{ border: `1px solid ${themes[selectedThemeRole]?.border || '#e2e8f0'}`, borderRadius: '6px', padding: '8px', backgroundColor: themes[selectedThemeRole]?.cardBg || '#fff' }}>
+                      <div style={{ height: '14px', width: '20px', backgroundColor: themes[selectedThemeRole]?.accent, borderRadius: '4px', marginBottom: '4px' }} />
                       <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '3px' }} />
                     </div>
 
-                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', backgroundColor: '#fff' }}>
-                      <div style={{ height: '14px', width: '35px', backgroundColor: '#1e293b', borderRadius: '4px', marginBottom: '4px' }} />
+                    <div style={{ border: `1px solid ${themes[selectedThemeRole]?.border || '#e2e8f0'}`, borderRadius: '6px', padding: '8px', backgroundColor: themes[selectedThemeRole]?.cardBg || '#fff' }}>
+                      <div style={{ height: '14px', width: '35px', backgroundColor: themes[selectedThemeRole]?.text || '#1e293b', borderRadius: '4px', marginBottom: '4px' }} />
                       <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '3px' }} />
                     </div>
                   </div>

@@ -63,21 +63,34 @@ function PublicLayout({ children }) {
 export default function App() {
   useEffect(() => {
     const updateThemeColors = () => {
-      const role = localStorage.getItem('role');
-      let color = '#125b71'; // default primary
-      if (role === 'USER') {
-        color = localStorage.getItem('sys_color_user') || '#125b71';
-      } else if (role === 'MANAGER') {
-        color = localStorage.getItem('sys_color_manager') || '#0f172a';
-      } else if (role === 'STAFF') {
-        color = localStorage.getItem('sys_color_staff') || '#125b71';
-      } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-        color = localStorage.getItem('sys_primary_color') || '#1b6eff';
-      }
-      
-      document.documentElement.style.setProperty('--vin-primary', color);
-      document.documentElement.style.setProperty('--vin-teal', color);
-      document.documentElement.style.setProperty('--vin-indigo', color);
+      const role = localStorage.getItem('role') || 'USER';
+      const fallback = {
+        USER: { primary: '#125b71', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#e2e8f0' },
+        MANAGER: { primary: '#0f172a', accent: '#0d9488', text: '#0f172a', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' },
+        STAFF: { primary: '#125b71', accent: '#0c4355', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#e2e8f0' },
+        ADMIN: { primary: '#1b6eff', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' }
+      };
+
+      const currentRole = ['USER', 'MANAGER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(role) 
+        ? (role === 'SUPER_ADMIN' ? 'ADMIN' : role) 
+        : 'USER';
+
+      const primary = localStorage.getItem(`theme_${currentRole}_primary`) || fallback[currentRole].primary;
+      const accent = localStorage.getItem(`theme_${currentRole}_accent`) || fallback[currentRole].accent;
+      const text = localStorage.getItem(`theme_${currentRole}_text`) || fallback[currentRole].text;
+      const textMuted = localStorage.getItem(`theme_${currentRole}_textMuted`) || fallback[currentRole].textMuted;
+      const cardBg = localStorage.getItem(`theme_${currentRole}_cardBg`) || fallback[currentRole].cardBg;
+      const border = localStorage.getItem(`theme_${currentRole}_border`) || fallback[currentRole].border;
+
+      document.documentElement.style.setProperty('--vin-primary', primary);
+      document.documentElement.style.setProperty('--vin-teal', primary);
+      document.documentElement.style.setProperty('--vin-teal-hover', accent);
+      document.documentElement.style.setProperty('--vin-indigo', primary);
+      document.documentElement.style.setProperty('--vin-accent', accent);
+      document.documentElement.style.setProperty('--vin-text-main', text);
+      document.documentElement.style.setProperty('--vin-text-muted', textMuted);
+      document.documentElement.style.setProperty('--vin-bg-card', cardBg);
+      document.documentElement.style.setProperty('--vin-border', border);
     };
 
     updateThemeColors();
