@@ -399,7 +399,7 @@ export default function SystemSettingsPage() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ systemName, primaryColor, userColor, managerColor, staffColor, timestamp: new Date().toISOString() }));
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ systemName, themes, timestamp: new Date().toISOString() }));
                     const downloadAnchor = document.createElement('a');
                     downloadAnchor.setAttribute("href",     dataStr);
                     downloadAnchor.setAttribute("download", `vinparking_backup_${new Date().toLocaleDateString()}.json`);
@@ -514,7 +514,7 @@ export default function SystemSettingsPage() {
           </button>
           <button 
             onClick={handleSave}
-            style={{ padding: '8px 16px', backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+            style={{ padding: '8px 16px', backgroundColor: themes.ADMIN.primary, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
           >
             Lưu cấu hình
           </button>
