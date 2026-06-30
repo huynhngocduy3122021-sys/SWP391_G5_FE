@@ -31,31 +31,29 @@ export default function GateInPanel() {
   const fetchStatsData = async () => {
     try {
       const data = await managerApi.getAllZones();
-      if (Array.isArray(data)) {
-        const formatted = data.map(z => {
-          const used = z.capacity - z.availableCapacity;
-          return {
-            category: z.zoneName,
-            current: used,
-            max: z.capacity,
-            status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
-            flowPerHour: Math.max(1, Math.round(used / 4))
-          };
-        });
-        setZones(formatted);
-      }
+      const zoneList = Array.isArray(data) ? data : (data?.content || []);
+      const formatted = zoneList.map(z => {
+        const used = z.capacity - z.availableCapacity;
+        return {
+          category: z.zoneName,
+          current: used,
+          max: z.capacity,
+          status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
+          flowPerHour: Math.max(1, Math.round(used / 4))
+        };
+      });
+      setZones(formatted);
     } catch (err) {
       console.error("Failed to fetch zones for table:", err);
     }
 
     try {
       const data = await managerApi.getAllSessions();
-      if (Array.isArray(data)) {
-        const sorted = data
-          .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
-          .slice(0, 6);
-        setRecentSessions(sorted);
-      }
+      const sessionList = Array.isArray(data) ? data : (data?.content || []);
+      const sorted = sessionList
+        .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+        .slice(0, 6);
+      setRecentSessions(sorted);
     } catch (err) {
       console.error("Failed to fetch recent sessions:", err);
     }

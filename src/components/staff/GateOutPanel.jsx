@@ -25,19 +25,18 @@ export default function GateOutPanel() {
     const fetchZones = async () => {
       try {
         const data = await managerApi.getAllZones();
-        if (Array.isArray(data)) {
-          const formatted = data.map(z => {
-            const used = z.capacity - z.availableCapacity;
-            return {
-              category: z.zoneName,
-              current: used,
-              max: z.capacity,
-              status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
-              flowPerHour: Math.max(1, Math.round(used / 4))
-            };
-          });
-          setZones(formatted);
-        }
+        const zoneList = Array.isArray(data) ? data : (data?.content || []);
+        const formatted = zoneList.map(z => {
+          const used = z.capacity - z.availableCapacity;
+          return {
+            category: z.zoneName,
+            current: used,
+            max: z.capacity,
+            status: z.availableCapacity === 0 ? 'FULL' : 'NORMAL',
+            flowPerHour: Math.max(1, Math.round(used / 4))
+          };
+        });
+        setZones(formatted);
       } catch (err) {
         console.error("Failed to fetch zones for table:", err);
       }
