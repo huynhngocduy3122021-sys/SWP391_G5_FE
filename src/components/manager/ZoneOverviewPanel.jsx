@@ -83,6 +83,7 @@ export default function ZoneOverviewPanel() {
   /* ── fetch ── */
   const fetchData = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const [fl, zo, vt, se] = await Promise.all([
         managerApi.getAllFloors(),
@@ -90,11 +91,25 @@ export default function ZoneOverviewPanel() {
         managerApi.getVehicleTypes(),
         managerApi.getAllSessions(),
       ]);
-      setFloors(Array.isArray(fl) ? fl : []);
-      setZones(Array.isArray(zo) ? zo : []);
+      const parsedFloors = Array.isArray(fl) ? fl : (fl?.content || []);
+      const parsedZones = Array.isArray(zo) ? zo : (zo?.content || []);
+      const parsedSessions = Array.isArray(se) ? se : (se?.content || []);
+
+      setFloors(managerBranchId
+        ? parsedFloors.filter(f => String(f.parkingBranchId) === String(managerBranchId))
+        : parsedFloors
+      );
+      setZones(managerBranchId
+        ? parsedZones.filter(z => String(z.parkingBranchId) === String(managerBranchId))
+        : parsedZones
+      );
       setVtypes(Array.isArray(vt) ? vt : []);
-      setSessions(Array.isArray(se) ? se : []);
-    } catch { 
+      setSessions(managerBranchId
+        ? parsedSessions.filter(s => String(s.parkingBranchId) === String(managerBranchId))
+        : parsedSessions
+      );
+    } catch (err) { 
+      console.error("fetchData error:", err);
       setFloors([]); setZones([]); setVtypes([]); setSessions([]); 
     } finally { 
       setLoading(false); 
@@ -187,9 +202,15 @@ export default function ZoneOverviewPanel() {
   const handleAddFloor = async () => {
     setFErr('');
     if (!fForm.name.trim()) return setFErr('Vui lòng nhập tên tầng.');
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       setSaving(true);
-      const payload = { floorName: fForm.name.trim(), ...(fForm.code && { floorCode: fForm.code }), ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }) };
+      const payload = { 
+        floorName: fForm.name.trim(), 
+        ...(fForm.code && { floorCode: fForm.code }), 
+        ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }),
+        parkingBranchId: managerBranchId ? Number(managerBranchId) : 1
+      };
       await managerApi.createFloor(payload);
       setModFloor(false); setFForm(emptyFloor); fetchData();
     } catch (e) { setFErr(apiErr(e)); } finally { setSaving(false); }

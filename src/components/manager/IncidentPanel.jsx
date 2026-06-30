@@ -62,10 +62,15 @@ export default function IncidentPanel() {
   /* ── fetch ── */
   const fetchIncidents = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const data = await managerApi.getIncidentReports({ page: 0, size: 100 });
       const arr  = data?.content || data || [];
-      setIncidents(Array.isArray(arr) ? arr : []);
+      const parsed = Array.isArray(arr) ? arr : [];
+      setIncidents(managerBranchId 
+        ? parsed.filter(i => String(i.parkingBranchId) === String(managerBranchId))
+        : parsed
+      );
     } catch {
       setIncidents([]);
     } finally {

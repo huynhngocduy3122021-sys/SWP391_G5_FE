@@ -17,6 +17,8 @@ export default function LoginForm({ onSuccess, onForgot }) {
       localStorage.setItem('role', data.userRole);
       localStorage.setItem('fullName', data.userFullName);
       localStorage.setItem('userId', data.userId);
+      localStorage.setItem('parkingBranchId', data.parkingBranchId || '');
+      localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
       toast.success('Đăng nhập thành công!');
       onSuccess(data);
     } catch (err) {

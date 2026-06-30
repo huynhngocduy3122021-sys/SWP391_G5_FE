@@ -33,13 +33,23 @@ export default function BookingPanel() {
 
   const fetchBookings = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const [bookingsData, zonesData] = await Promise.all([
         bookingApi.getAllBookings(),
         managerApi.getAllZones(),
       ]);
-      setBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData?.content || []);
-      setZones(Array.isArray(zonesData) ? zonesData : []);
+      const parsedBookings = Array.isArray(bookingsData) ? bookingsData : bookingsData?.content || [];
+      const parsedZones = Array.isArray(zonesData) ? zonesData : zonesData?.content || [];
+      
+      setBookings(managerBranchId 
+        ? parsedBookings.filter(b => String(b.parkingBranchId) === String(managerBranchId))
+        : parsedBookings
+      );
+      setZones(managerBranchId
+        ? parsedZones.filter(z => String(z.parkingBranchId) === String(managerBranchId))
+        : parsedZones
+      );
     } catch (err) {
       console.error(err);
       toast.error('Không tải được danh sách đặt chỗ hoặc dữ liệu bãi xe!');
