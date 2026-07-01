@@ -3,14 +3,12 @@ import { useLocation } from 'react-router-dom';
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
 import VehicleSection from '../components/user-dashboard/VehicleSection';
-import WalletSection from '../components/user-dashboard/WalletSection';
 import ProfileSection from '../components/user-dashboard/ProfileSection';
-import HistorySection from '../components/user-dashboard/HistorySection';
 import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'wallet', 'history', 'bookings'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
 
   useEffect(() => {
     const tabFromState = location.state?.activeTab || location.state?.tab;
@@ -25,10 +23,6 @@ export default function UserDashboardPage() {
         return <ProfileSection />;
       case 'vehicles':
         return <VehicleSection />;
-      case 'wallet':
-        return <WalletSection />;
-      case 'history':
-        return <HistorySection />;
       case 'bookings':
         return <BookingsSection />;
       default:

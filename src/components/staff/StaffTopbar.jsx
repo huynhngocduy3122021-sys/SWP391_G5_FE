@@ -1,15 +1,78 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import managerApi from '../../api/manager';
+import bookingApi from '../../api/bookingApi';
 
 // Topbar "PARK-OPS PRO" — giống header trong cả 2 ảnh thiết kế
 export default function StaffTopbar({ mode, onModeChange, stats }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  
+  // Real stats state
+  const [realStats, setRealStats] = useState({
+    totalVehicles: 0,
+    maxVehicles: 2000,
+    todayRevenue: 0,
+    bookings: 0,
+    exited: 0,
+    slotsLeft: 2000
+  });
+
+  const fetchStats = async () => {
+    try {
+      const [sessions, bookings, zones] = await Promise.all([
+        managerApi.getAllSessions(),
+        bookingApi.getAllBookings(),
+        managerApi.getAllZones()
+      ]);
+
+      // Calculate total capacity
+      const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || 0), 0);
+      
+      // Calculate total active vehicles (status is ACTIVE or check-out is missing)
+      const activeSessions = sessions.filter(s => s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime));
+      const totalVehiclesCount = activeSessions.length;
+
+      // Exited today (sessions checked out today)
+      const todayStr = new Date().toDateString();
+      const exitedToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr).length;
+
+      // Bookings count
+      const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
+
+      // Today's revenue (sum of totalAmount for checkout sessions today)
+      const todayRevenue = sessions
+        .filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && s.totalAmount)
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+
+      // Slots left
+      const slotsLeft = Math.max(0, totalCapacity - totalVehiclesCount);
+
+      setRealStats({
+        totalVehicles: totalVehiclesCount,
+        maxVehicles: totalCapacity || 2000,
+        todayRevenue: todayRevenue,
+        bookings: activeBookings,
+        exited: exitedToday,
+        slotsLeft: slotsLeft
+      });
+    } catch (err) {
+      console.error('Lỗi khi tải số liệu thống kê Staff:', err);
+    }
+  };
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    
+    // Poll API stats every 10 seconds
+    fetchStats();
+    const statsId = setInterval(fetchStats, 10000);
+
+    return () => {
+      clearInterval(id);
+      clearInterval(statsId);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -19,6 +82,9 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
   };
 
   const fullName = localStorage.getItem('fullName') || 'Staff';
+
+  // Prefer real API stats
+  const displayStats = realStats.maxVehicles > 0 ? realStats : (stats || MOCK_STATS);
 
   return (
     <header style={{
@@ -34,11 +100,11 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TOTAL VEHICLES" value={`${stats.totalVehicles} / ${stats.maxVehicles}`} />
-        <StatItem label="TODAY'S REVENUE" value={`$${stats.todayRevenue.toLocaleString()}`} color="var(--vin-success)" />
-        <StatItem label="BOOKINGS" value={stats.bookings} />
-        <StatItem label="EXITED" value={stats.exited} />
-        <StatItem label="SLOTS LEFT" value={stats.slotsLeft} color="var(--vin-success)" />
+        <StatItem label="TOTAL VEHICLES" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
+        <StatItem label="TODAY'S REVENUE" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="BOOKINGS" value={displayStats.bookings} />
+        <StatItem label="EXITED" value={displayStats.exited} />
+        <StatItem label="SLOTS LEFT" value={displayStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}
@@ -85,7 +151,6 @@ function StatItem({ label, value, color }) {
   );
 }
 
-// Mock — thay bằng kết quả staffApi.getShiftOverview()
 export const MOCK_STATS = {
   totalVehicles: 1245, maxVehicles: 2000, todayRevenue: 14580,
   bookings: 42, exited: 391, slotsLeft: 755,

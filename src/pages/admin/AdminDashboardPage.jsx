@@ -32,11 +32,11 @@ export default function AdminDashboardPage() {
         managerApi.getAllZones().catch(() => []),
       ]);
 
-      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || []));
-      setSessions(Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.content || []));
-      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || []));
-      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || []));
-      setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || []));
+      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || usersRes?.data || []));
+      setSessions(Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.content || sessionsRes?.data || []));
+      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || bookingsRes?.data || []));
+      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || branchesRes?.data || []));
+      setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || zonesRes?.data || []));
     } catch (err) {
       console.error(err);
       toast.error('Không tải được dữ liệu Dashboard!');
@@ -264,7 +264,7 @@ export default function AdminDashboardPage() {
                   backgroundColor: timeFilter === tab ? '#fff' : 'transparent',
                   border: 'none',
                   borderRadius: '4px',
-                  color: timeFilter === tab ? '#1b6eff' : '#475569',
+                  color: timeFilter === tab ? 'var(--vin-primary)' : '#475569',
                   fontWeight: timeFilter === tab ? '600' : '500',
                   fontSize: '12px',
                   cursor: 'pointer',
@@ -277,7 +277,7 @@ export default function AdminDashboardPage() {
           </div>
           <button 
             onClick={fetchDashboardData}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
           >
             <RefreshCw size={14} /> Làm mới
           </button>
@@ -346,9 +346,9 @@ export default function AdminDashboardPage() {
                 const labelAmount = d.revenue > 0 ? (d.revenue >= 1000000 ? `${(d.revenue / 1000000).toFixed(1)}M` : `${Math.round(d.revenue / 1000)}k`) : '';
                 return (
                   <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '8px', fontWeight: '700', color: '#1b6eff', whiteSpace: 'nowrap' }}>{labelAmount}</span>
+                    <span style={{ fontSize: '8px', fontWeight: '700', color: 'var(--vin-primary)', whiteSpace: 'nowrap' }}>{labelAmount}</span>
                     <div style={{
-                      width: '100%', height: `${heightPct}%`, backgroundColor: '#1b6eff', borderRadius: '2px 2px 0 0',
+                      width: '100%', height: `${heightPct}%`, backgroundColor: 'var(--vin-primary)', borderRadius: '2px 2px 0 0',
                       transition: 'height 0.3s'
                     }} />
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', whiteSpace: 'nowrap' }}>{d.label}</span>
@@ -365,7 +365,7 @@ export default function AdminDashboardPage() {
           
           <div style={{
             width: '120px', height: '120px', borderRadius: '50%',
-            background: `conic-gradient(#1b6eff ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)`,
+            background: `conic-gradient(var(--vin-primary) ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: '12px'
           }}>
@@ -381,7 +381,7 @@ export default function AdminDashboardPage() {
 
           <div style={{ display: 'flex', gap: '16px', fontSize: '11px', width: '100%', justifyContent: 'space-around' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#1b6eff' }}></div> Online: {cashlessRate}%
+              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--vin-primary)' }}></div> Online: {cashlessRate}%
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#cbd5e1' }}></div> Tiền mặt: {100 - cashlessRate}%
@@ -409,7 +409,7 @@ export default function AdminDashboardPage() {
                     <span style={{ color: '#0f172a' }}>{Number(br.amount || 0).toLocaleString('vi-VN')} đ</span>
                   </div>
                   <div style={{ height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#1b6eff', borderRadius: '3px' }}></div>
+                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--vin-primary)', borderRadius: '3px' }}></div>
                   </div>
                 </div>
               );
@@ -436,7 +436,7 @@ export default function AdminDashboardPage() {
                 </tr>
               ) : filteredSessions.slice(0, 5).map((s, i) => (
                 <tr key={s.parkingSessionId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '8px 0', color: '#1b6eff', fontWeight: '700' }}>{s.licensePlate}</td>
+                  <td style={{ padding: '8px 0', color: 'var(--vin-primary)', fontWeight: '700' }}>{s.licensePlate}</td>
                   <td style={{ padding: '8px 0', color: '#475569' }}>{s.parkingBranchName}</td>
                   <td style={{ padding: '8px 0', color: '#0f172a', fontWeight: '700' }}>{Number(s.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
                   <td style={{ padding: '8px 0', textAlign: 'right' }}>
@@ -464,7 +464,7 @@ export default function AdminDashboardPage() {
           </div>
           <button
             onClick={() => { setEditingBranch(null); setBranchForm({ branchName: '', address: '', phoneNumber: '', description: '' }); setShowBranchModal(true); }}
-            style={{ padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+            style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
           >
             ➕ Thêm Chi Nhánh
           </button>
@@ -502,7 +502,7 @@ export default function AdminDashboardPage() {
                 <td style={{ padding: '8px', textAlign: 'center' }}>
                   <button
                     onClick={() => openEditBranchModal(b)}
-                    style={{ background: 'none', border: 'none', color: '#1b6eff', cursor: 'pointer', fontWeight: '600', marginRight: '10px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--vin-primary)', cursor: 'pointer', fontWeight: '600', marginRight: '10px' }}
                   >
                     Sửa
                   </button>
@@ -583,7 +583,7 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
                   disabled={submitting}
                 >
                   {submitting ? 'Đang lưu...' : 'Lưu lại'}

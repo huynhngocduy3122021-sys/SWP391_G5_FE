@@ -11,9 +11,14 @@ export default function ReportsPanel() {
   useEffect(() => {
     const fetchSessions = async () => {
       setLoading(true);
+      const managerBranchId = localStorage.getItem('parkingBranchId');
       try {
         const data = await managerApi.getAllSessions();
-        setSessions(Array.isArray(data) ? data : []);
+        const parsed = Array.isArray(data) ? data : data?.content || [];
+        setSessions(managerBranchId 
+          ? parsed.filter(s => String(s.parkingBranchId) === String(managerBranchId))
+          : parsed
+        );
       } catch (err) {
         console.error('Failed to fetch sessions for report', err);
       } finally {

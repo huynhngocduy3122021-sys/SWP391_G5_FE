@@ -10,7 +10,7 @@ export default function SlotsSection() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const isAdmin = localStorage.getItem('role') === 'ADMIN';
+  const isAdmin = localStorage.getItem('role')?.toUpperCase() === 'ADMIN';
 
   const load = async () => {
     setLoading(true);

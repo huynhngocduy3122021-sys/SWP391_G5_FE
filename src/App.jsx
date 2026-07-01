@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -60,6 +61,48 @@ function PublicLayout({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const updateThemeColors = () => {
+      const rawRole = (localStorage.getItem('role') || 'USER').toUpperCase();
+      const fallback = {
+        USER: { primary: '#125b71', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#e2e8f0' },
+        MANAGER: { primary: '#0f172a', accent: '#0d9488', text: '#0f172a', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' },
+        STAFF: { primary: '#125b71', accent: '#0c4355', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#e2e8f0' },
+        ADMIN: { primary: '#1b6eff', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' }
+      };
+
+      const currentRole = ['USER', 'MANAGER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(rawRole) 
+        ? (rawRole === 'SUPER_ADMIN' ? 'ADMIN' : rawRole) 
+        : 'USER';
+
+      const primary = localStorage.getItem(`theme_${currentRole}_primary`) || fallback[currentRole].primary;
+      const accent = localStorage.getItem(`theme_${currentRole}_accent`) || fallback[currentRole].accent;
+      const text = localStorage.getItem(`theme_${currentRole}_text`) || fallback[currentRole].text;
+      const textMuted = localStorage.getItem(`theme_${currentRole}_textMuted`) || fallback[currentRole].textMuted;
+      const cardBg = localStorage.getItem(`theme_${currentRole}_cardBg`) || fallback[currentRole].cardBg;
+      const border = localStorage.getItem(`theme_${currentRole}_border`) || fallback[currentRole].border;
+
+      document.documentElement.style.setProperty('--vin-primary', primary);
+      document.documentElement.style.setProperty('--vin-teal', primary);
+      document.documentElement.style.setProperty('--vin-teal-hover', accent);
+      document.documentElement.style.setProperty('--vin-indigo', primary);
+      document.documentElement.style.setProperty('--vin-accent', accent);
+      document.documentElement.style.setProperty('--vin-text-main', text);
+      document.documentElement.style.setProperty('--vin-text-muted', textMuted);
+      document.documentElement.style.setProperty('--vin-bg-card', cardBg);
+      document.documentElement.style.setProperty('--vin-bg-glass', cardBg);
+      document.documentElement.style.setProperty('--vin-border', border);
+    };
+
+    updateThemeColors();
+    window.addEventListener('storage', updateThemeColors);
+    window.addEventListener('themechange', updateThemeColors);
+    return () => {
+      window.removeEventListener('storage', updateThemeColors);
+      window.removeEventListener('themechange', updateThemeColors);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

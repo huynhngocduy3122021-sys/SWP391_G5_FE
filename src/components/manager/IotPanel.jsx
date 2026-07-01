@@ -14,11 +14,15 @@ export default function IotPanel() {
 
   const fetchSessions = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const data = await managerApi.getAllSessions();
+      const parsed = Array.isArray(data) ? data : data?.content || [];
+      const filtered = managerBranchId
+        ? parsed.filter(s => String(s.parkingBranchId) === String(managerBranchId))
+        : parsed;
       // Sắp xếp thời gian check-in mới nhất lên đầu
-      const sorted = (Array.isArray(data) ? data : data?.content || [])
-        .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime));
+      const sorted = filtered.sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime));
       setSessions(sorted);
       
       // Mặc định chọn dòng đầu tiên nếu có dữ liệu và chưa chọn dòng nào

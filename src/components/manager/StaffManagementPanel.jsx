@@ -28,9 +28,14 @@ export default function StaffManagementPanel() {
   /* ── fetch ── */
   const fetchUsers = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const data = await authApi.getAllUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      const parsed = Array.isArray(data) ? data : [];
+      setUsers(managerBranchId 
+        ? parsed.filter(u => String(u.parkingBranchId) === String(managerBranchId))
+        : parsed
+      );
     } catch {
       setUsers([]);
     } finally {

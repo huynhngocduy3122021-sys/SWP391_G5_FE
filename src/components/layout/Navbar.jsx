@@ -116,8 +116,6 @@ export default function Navbar() {
                   {[
                     { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard', tab: 'profile' },
                     { icon: '🚗', label: 'Phương tiện & Gói cước', to: '/user-dashboard', tab: 'vehicles' },
-                    { icon: '💳', label: 'Ví và thanh toán', to: '/user-dashboard', tab: 'wallet' },
-                    { icon: '🕒', label: 'Lịch sử giao dịch', to: '/user-dashboard', tab: 'history' },
                   ].map((item) => (
                     <Link key={item.label} to={item.to} state={{ activeTab: item.tab }}
                       onClick={() => setDropdownOpen(false)}

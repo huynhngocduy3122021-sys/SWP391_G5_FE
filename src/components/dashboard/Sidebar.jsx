@@ -1,5 +1,5 @@
 export default function Sidebar({ activeTab, onTabChange, onLogout }) {
-  const role     = localStorage.getItem('role');
+  const role     = localStorage.getItem('role')?.toUpperCase();
   const fullName = localStorage.getItem('fullName') || 'User';
   const email    = localStorage.getItem('email')    || '';
 

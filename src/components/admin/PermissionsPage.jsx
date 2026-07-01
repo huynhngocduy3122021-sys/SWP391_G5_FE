@@ -114,7 +114,7 @@ const PermissionsPage = () => {
                 backgroundColor: '#fff', 
                 padding: '20px', 
                 borderRadius: '12px', 
-                border: isSelected ? '2px solid #1b6eff' : '1px solid #eef0f3', 
+                border: isSelected ? '2px solid var(--vin-primary)' : '1px solid #eef0f3', 
                 boxShadow: isSelected ? '0 4px 12px rgba(27, 110, 255, 0.15)' : 'none',
                 position: 'relative',
                 cursor: 'pointer',
@@ -122,9 +122,9 @@ const PermissionsPage = () => {
               }}
             >
               <span style={{ position: 'absolute', top: '20px', right: '20px', fontSize: '11px', backgroundColor: '#e2f5ea', color: '#10b981', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>ACTIVE</span>
-              <div style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', color: isSelected ? '#1b6eff' : '#1e293b' }}>{role}</div>
+              <div style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', color: isSelected ? 'var(--vin-primary)' : '#1e293b' }}>{role}</div>
               <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', minHeight: '36px' }}>{getRoleDesc(role)}</div>
-              <button style={{ border: 'none', background: 'transparent', color: isSelected ? '#1b6eff' : '#64748b', fontWeight: '600', fontSize: '13px', padding: 0 }}>
+              <button style={{ border: 'none', background: 'transparent', color: isSelected ? 'var(--vin-primary)' : '#64748b', fontWeight: '600', fontSize: '13px', padding: 0 }}>
                 {isSelected ? 'Currently Selected' : 'Configure Permissions'}
               </button>
             </div>
@@ -136,7 +136,7 @@ const PermissionsPage = () => {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>
-            Permissions Matrix: <span style={{ color: '#1b6eff' }}>{selectedRole}</span>
+            Permissions Matrix: <span style={{ color: 'var(--vin-primary)' }}>{selectedRole}</span>
           </h4>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button 

@@ -35,9 +35,13 @@ export default function AIConfigPage() {
         adminApi.getAllIncidents().catch(() => ({ content: [] })),
       ]);
 
-      setBranches(br);
-      setSessions(se);
-      setZones(zo);
+      const brList = Array.isArray(br) ? br : (br?.content || br?.data || []);
+      const seList = Array.isArray(se) ? se : (se?.content || se?.data || []);
+      const zoList = Array.isArray(zo) ? zo : (zo?.content || zo?.data || []);
+
+      setBranches(brList);
+      setSessions(seList);
+      setZones(zoList);
       
       const incList = Array.isArray(incRes) ? incRes : (incRes?.content || incRes?.data || []);
       setIncidents(incList);
@@ -171,7 +175,7 @@ export default function AIConfigPage() {
         </div>
         <button 
           onClick={fetchAnalyticsData}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#1b6eff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'var(--vin-primary)', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer' }}
         >
           <RefreshCw size={15} /> Đồng bộ dữ liệu
         </button>
@@ -214,7 +218,7 @@ export default function AIConfigPage() {
               ) : branchAnalytics.map(row => (
                 <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '12px 8px', fontWeight: '700', color: '#1e293b' }}>{row.name}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1b6eff' }}>
+                  <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--vin-primary)' }}>
                     {row.revenue.toLocaleString('vi-VN')}đ
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600' }}>{row.txCount} lượt</td>
@@ -224,7 +228,7 @@ export default function AIConfigPage() {
                   <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                     <button
                       onClick={() => { setSelectedBranchForSessions(row); setSessionSearchQuery(''); }}
-                      style={{ padding: '4px 10px', backgroundColor: '#eff6ff', border: 'none', borderRadius: '4px', color: '#1b6eff', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}
+                      style={{ padding: '4px 10px', backgroundColor: '#eff6ff', border: 'none', borderRadius: '4px', color: 'var(--vin-primary)', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}
                     >
                       Xem lượt xe
                     </button>
@@ -404,7 +408,7 @@ export default function AIConfigPage() {
                     </tr>
                   ) : branchSessionsFiltered.map(s => (
                     <tr key={s.parkingSessionId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 8px', fontWeight: '700', color: '#1b6eff' }}>{s.licensePlate}</td>
+                      <td style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--vin-primary)' }}>{s.licensePlate}</td>
                       <td style={{ padding: '10px 8px', color: '#475569' }}>{s.vehicleTypeName}</td>
                       <td style={{ padding: '10px 8px', color: '#475569' }}>
                         {s.checkInTime ? new Date(s.checkInTime).toLocaleString('vi-VN') : '—'}

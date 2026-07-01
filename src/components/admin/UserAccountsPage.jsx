@@ -86,12 +86,12 @@ const UserAccountsPage = () => {
           onClick={() => setShowModal(true)}
           style={{ 
             display: 'flex', alignItems: 'center', gap: '8px',
-            backgroundColor: '#1b6eff', color: '#fff', border: 'none', 
+            backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', 
             padding: '10px 16px', borderRadius: '8px', fontWeight: '600',
             cursor: 'pointer', transition: 'background 0.2s'
           }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1557cc'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1b6eff'}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--vin-teal-hover)'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--vin-primary)'}
         >
           <MdAdd size={20} /> Create Account
         </button>
@@ -118,7 +118,7 @@ const UserAccountsPage = () => {
                   <tr key={u.userId} style={{ borderBottom: '1px solid #eef0f3', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#f8fafc'} onMouseOut={e => e.currentTarget.style.backgroundColor='transparent'}>
                     <td style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1b6eff' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vin-primary)' }}>
                           <MdPerson size={20} />
                         </div>
                         <div>
@@ -217,7 +217,7 @@ const UserAccountsPage = () => {
             <Button variant="light" onClick={() => setShowModal(false)} style={{ fontSize: '14px', fontWeight: '500' }}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={submitting} style={{ backgroundColor: '#1b6eff', border: 'none', fontSize: '14px', fontWeight: '500', padding: '8px 16px' }}>
+            <Button variant="primary" type="submit" disabled={submitting} style={{ backgroundColor: 'var(--vin-primary)', border: 'none', fontSize: '14px', fontWeight: '500', padding: '8px 16px' }}>
               {submitting ? <Spinner size="sm" animation="border" className="me-2"/> : null}
               {submitting ? 'Creating...' : 'Create Account'}
             </Button>

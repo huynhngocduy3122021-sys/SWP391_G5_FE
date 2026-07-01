@@ -19,6 +19,11 @@ const parkingApi = {
   // New Methods for Booking form
   getAllVehicleTypes: async () => (await API.get('/api/vehicle-types')).data,
   getAllPricePolicies: async () => (await API.get('/api/price-policies')).data,
+  // Vehicle management
+  getAllVehicles: async () => (await API.get('/api/vehicles')).data,
+  createVehicle: async (data) => (await API.post('/api/vehicles', data)).data,
+  updateVehicle: async (id, data) => (await API.put(`/api/vehicles/${id}`, data)).data,
+  deleteVehicle: async (id) => (await API.delete(`/api/vehicles/${id}`)).data,
 };
 
 export default parkingApi;

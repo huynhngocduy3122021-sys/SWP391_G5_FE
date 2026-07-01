@@ -22,22 +22,38 @@ export default function OverviewPanel({ onNavigate }) {
 
   const fetchAll = async () => {
     setLoading(true);
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       const [zo, se] = await Promise.all([
         managerApi.getAllZones(),
         managerApi.getAllSessions(),
       ]);
-      setZones(Array.isArray(zo) ? zo : []);
-      setSessions(Array.isArray(se) ? se : []);
+      
+      const parsedZones = Array.isArray(zo) ? zo : (zo?.content || []);
+      const parsedSessions = Array.isArray(se) ? se : (se?.content || []);
+
+      setZones(managerBranchId 
+        ? parsedZones.filter(z => String(z.parkingBranchId) === String(managerBranchId)) 
+        : parsedZones
+      );
+      setSessions(managerBranchId 
+        ? parsedSessions.filter(s => String(s.parkingBranchId) === String(managerBranchId)) 
+        : parsedSessions
+      );
 
       // Incidents: cần token có quyền STAFF/MANAGER/ADMIN
       try {
         const inc = await managerApi.getIncidentReports({ page: 0, size: 100 });
         const incArr = inc?.content || inc || [];
-        setIncidents(Array.isArray(incArr) ? incArr : []);
+        const parsedInc = Array.isArray(incArr) ? incArr : [];
+        setIncidents(managerBranchId 
+          ? parsedInc.filter(i => String(i.parkingBranchId) === String(managerBranchId)) 
+          : parsedInc
+        );
       } catch { setIncidents([]); }
 
-    } catch {
+    } catch (err) {
+      console.error("Overview fetch error:", err);
       setZones([]); setSessions([]);
     } finally {
       setLoading(false);
