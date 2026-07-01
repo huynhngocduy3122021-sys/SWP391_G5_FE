@@ -37,8 +37,9 @@ export default function SearchPage() {
   useEffect(() => {
     const fetchLots = async () => {
       try {
-        const branches = await parkingApi.getAllBranches();
-        if (branches && branches.length > 0) {
+        const branchesData = await parkingApi.getAllBranches();
+        const branches = Array.isArray(branchesData) ? branchesData : (branchesData?.content || branchesData?.data || []);
+        if (branches.length > 0) {
           setLots(branches.map(mapBranchToParkingLot));
         } else {
           setLots(PARKING_LOTS);

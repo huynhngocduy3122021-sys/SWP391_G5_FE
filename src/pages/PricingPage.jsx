@@ -26,8 +26,9 @@ export default function PricingPage() {
   useEffect(() => {
     const fetchLots = async () => {
       try {
-        const branches = await parkingApi.getAllBranches();
-        if (branches && branches.length > 0) {
+        const branchesData = await parkingApi.getAllBranches();
+        const branches = Array.isArray(branchesData) ? branchesData : (branchesData?.content || branchesData?.data || []);
+        if (branches.length > 0) {
           const mapped = branches.map(mapBranchToParkingLot);
           setLots(mapped);
           const exists = mapped.some(lot => lot.id === Number(selectedLotId));
