@@ -9,13 +9,12 @@ export default function ProfileSection() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    apartment: '',
-    address: ''
+    fullName: localStorage.getItem('fullName') || '',
+    email: localStorage.getItem('email') || '',
+    phone: localStorage.getItem('phone') || localStorage.getItem('userPhone') || '',
+    apartment: localStorage.getItem('apartment') || '',
+    address: localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
   });
 
   const [vehicles, setVehicles] = useState([]);
@@ -32,13 +31,24 @@ export default function ProfileSection() {
     try {
       // 1. Get user profile details
       const profile = await authApi.getUserById(userId);
-      setFormData({
-        fullName: profile.userFullName || '',
-        email: profile.userEmail || '',
-        phone: profile.userPhone || '',
-        apartment: localStorage.getItem('apartment') || 'S1.02 - 1509',
-        address: profile.userAddress || ''
-      });
+      const email = localStorage.getItem('email');
+      
+      const nextProfile = {
+        fullName: profile.userFullName || localStorage.getItem('fullName') || '',
+        email: profile.userEmail || email || '',
+        phone: profile.userPhone || localStorage.getItem('phone') || localStorage.getItem('userPhone') || '',
+        apartment: localStorage.getItem('apartment') || '',
+        address: profile.userAddress || localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
+      };
+      
+      localStorage.setItem('fullName', nextProfile.fullName);
+      localStorage.setItem('email', nextProfile.email);
+      localStorage.setItem('phone', nextProfile.phone);
+      localStorage.setItem('userPhone', nextProfile.phone);
+      localStorage.setItem('address', nextProfile.address);
+      localStorage.setItem('userAddress', nextProfile.address);
+      
+      setFormData(nextProfile);
 
       // 2. Load user's vehicles
       const allVehicles = await parkingApi.getAllVehicles();
@@ -79,25 +89,30 @@ export default function ProfileSection() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await authApi.updateUser(userId, {
-        userFullName: formData.fullName,
-        userEmail: formData.email,
-        userPhone: formData.phone,
-        userAddress: formData.address
-      });
-      
-      localStorage.setItem('fullName', response.userFullName || '');
-      localStorage.setItem('email', response.userEmail || '');
-      localStorage.setItem('phone', response.userPhone || '');
-      localStorage.setItem('address', response.userAddress || '');
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        await authApi.updateUser(userId, {
+          userFullName: formData.fullName,
+          userEmail: formData.email,
+          userPhone: formData.phone,
+          userAddress: formData.address
+        });
+      }
+
+      localStorage.setItem('fullName', formData.fullName);
+      localStorage.setItem('email', formData.email);
+      localStorage.setItem('phone', formData.phone);
+      localStorage.setItem('userPhone', formData.phone);
       localStorage.setItem('apartment', formData.apartment);
+      localStorage.setItem('address', formData.address);
+      localStorage.setItem('userAddress', formData.address);
       
       setIsEditing(false);
       toast.success('Cập nhật thông tin thành công!');
       window.dispatchEvent(new Event('storage'));
     } catch (err) {
       console.error("Save profile error:", err);
-      const msg = err.response?.data?.message || err.response?.data || 'Cập nhật thất bại!';
+      const msg = err.response?.data?.message || err.response?.data || 'Cập nhật thông tin thất bại!';
       toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối!');
     } finally {
       setSaving(false);
@@ -105,6 +120,13 @@ export default function ProfileSection() {
   };
 
   const handleCancel = () => {
+    setFormData({
+      fullName: localStorage.getItem('fullName') || '',
+      email: localStorage.getItem('email') || '',
+      phone: localStorage.getItem('phone') || localStorage.getItem('userPhone') || '',
+      apartment: localStorage.getItem('apartment') || '',
+      address: localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
+    });
     loadProfileAndData();
     setIsEditing(false);
   };

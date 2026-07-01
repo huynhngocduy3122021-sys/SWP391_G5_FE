@@ -37,8 +37,8 @@ export default function MemberPanel() {
         managerApi.getParkingCards(),
         managerApi.getParkingBranches(),
       ]);
-      const parsedCards = Array.isArray(cardsData) ? cardsData : [];
-      const parsedBranches = Array.isArray(branchesData) ? branchesData : [];
+      const parsedCards = Array.isArray(cardsData) ? cardsData : (cardsData?.content || cardsData?.data || []);
+      const parsedBranches = Array.isArray(branchesData) ? branchesData : (branchesData?.content || branchesData?.data || []);
 
       setCards(managerBranchId
         ? parsedCards.filter(c => String(c.parkingBranchId) === String(managerBranchId))

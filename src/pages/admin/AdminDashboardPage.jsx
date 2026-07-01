@@ -32,11 +32,11 @@ export default function AdminDashboardPage() {
         managerApi.getAllZones().catch(() => []),
       ]);
 
-      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || []));
-      setSessions(Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.content || []));
-      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || []));
-      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || []));
-      setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || []));
+      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || usersRes?.data || []));
+      setSessions(Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.content || sessionsRes?.data || []));
+      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || bookingsRes?.data || []));
+      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || branchesRes?.data || []));
+      setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || zonesRes?.data || []));
     } catch (err) {
       console.error(err);
       toast.error('Không tải được dữ liệu Dashboard!');

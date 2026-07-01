@@ -76,7 +76,7 @@ export default function ZoneOverviewPanel() {
 
   // form states
   const emptyZone  = { name: '', total: '', floorId: '', vtId: '' };
-  const emptyFloor = { name: '', code: '', capacity: '' };
+  const emptyFloor = { name: '', code: '', floorNumber: '' };
   const [zForm, setZForm] = useState(emptyZone);
   const [fForm, setFForm] = useState(emptyFloor);
 
@@ -149,7 +149,7 @@ export default function ZoneOverviewPanel() {
         setFForm({
           name: originalFloor.floorName || '',
           code: originalFloor.floorCode || '',
-          capacity: String(originalFloor.capacity || '')
+          floorNumber: String(originalFloor.floorNumber !== undefined && originalFloor.floorNumber !== null ? originalFloor.floorNumber : '')
         });
       }
     } else {
@@ -280,7 +280,7 @@ export default function ZoneOverviewPanel() {
       const payload = { 
         floorName: fForm.name.trim(), 
         ...(fForm.code && { floorCode: fForm.code }), 
-        ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }),
+        ...(fForm.floorNumber !== '' && { floorNumber: Number(fForm.floorNumber) }),
         parkingBranchId: managerBranchId ? Number(managerBranchId) : 1
       };
       await managerApi.createFloor(payload);
@@ -298,7 +298,7 @@ export default function ZoneOverviewPanel() {
       const payload = { 
         floorName: fForm.name.trim(), 
         ...(fForm.code && { floorCode: fForm.code }), 
-        ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }),
+        ...(fForm.floorNumber !== '' && { floorNumber: Number(fForm.floorNumber) }),
         parkingBranchId: managerBranchId ? Number(managerBranchId) : 1
       };
       await managerApi.updateFloor(editFloorTarget.id, payload);
@@ -519,14 +519,14 @@ export default function ZoneOverviewPanel() {
           <Form className="d-flex flex-column gap-3">
             {[
               { label: 'Tên tầng *', icon: 'bi-building', field: 'name', placeholder: 'Ví dụ: Tầng 1, Tầng trệt...' },
+              { label: 'Số tầng (floor number)', icon: 'bi-sort-numeric-down', field: 'floorNumber', placeholder: 'Ví dụ: 1, 2, -1...', type: 'number' },
               { label: 'Mã tầng (tuỳ chọn)', icon: 'bi-tag', field: 'code', placeholder: 'Ví dụ: F1, G0, B1...' },
-              { label: 'Sức chứa (tuỳ chọn)', icon: 'bi-hash', field: 'capacity', placeholder: 'Tổng số chỗ đỗ...', type: 'number' },
             ].map(({ label, icon, field, placeholder, type }) => (
               <Form.Group key={field}>
                 <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">{label}</Form.Label>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0"><i className={`bi ${icon}`} /></span>
-                  <Form.Control type={type || 'text'} placeholder={placeholder} value={fForm[field]} min={type === 'number' ? 1 : undefined}
+                  <Form.Control type={type || 'text'} placeholder={placeholder} value={fForm[field]}
                     onChange={e => { setFErr(''); setFForm({ ...fForm, [field]: e.target.value }); }}
                     className="border-start-0" />
                 </div>

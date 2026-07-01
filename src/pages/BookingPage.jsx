@@ -4,6 +4,11 @@ import { toast } from 'react-toastify';
 import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
 import parkingApi from '../api/parkingApi';
 
+const isMotorbikeType = (typeName = '') => {
+  const normalizedName = typeName.toLowerCase();
+  return normalizedName.includes('motorbike') || normalizedName.includes('xe máy') || normalizedName.includes('xe may');
+};
+
 export default function BookingPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -15,26 +20,46 @@ export default function BookingPage() {
   // Selected state
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
+  const bookableVehicleTypes = vehicleTypes.filter(v => !isMotorbikeType(v.typeName));
+
+  const [userVehicles, setUserVehicles] = useState([]);
+  const [selectedUserVehicleId, setSelectedUserVehicleId] = useState('other');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [branchesData, vtData, policiesData] = await Promise.all([
+        const [branchesData, vtData, policiesData, allVehiclesData] = await Promise.all([
           parkingApi.getAllBranches(),
           parkingApi.getAllVehicleTypes(),
-          parkingApi.getAllPricePolicies()
+          parkingApi.getAllPricePolicies(),
+          parkingApi.getAllVehicles().catch(() => [])
         ]);
         
         setBranches(branchesData);
         setVehicleTypes(vtData);
         setPricePolicies(policiesData);
 
+        const userId = localStorage.getItem('userId');
+        const userVehiclesList = Array.isArray(allVehiclesData)
+          ? allVehiclesData.filter(v => String(v.userId) === String(userId) && !v.deleted)
+          : [];
+        setUserVehicles(userVehiclesList);
+
         if (branchesData.length > 0) {
           setSelectedBranchId(branchesData[0].parkingBranchId || branchesData[0].branchId || branchesData[0].id);
         }
         if (vtData.length > 0) {
-          const carType = vtData.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
-          setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : vtData[0].vehicleTypeId);
+          const filteredTypes = vtData.filter(v => !isMotorbikeType(v.typeName));
+          const carType = filteredTypes.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
+          setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : filteredTypes[0]?.vehicleTypeId || '');
+        }
+
+        if (userVehiclesList.length > 0) {
+          const firstV = userVehiclesList[0];
+          setSelectedUserVehicleId(firstV.vehicleId || firstV.id);
+          setLicensePlate(firstV.licensePlate || '');
+          setVehicleColor(firstV.color || '');
+          setVehicleBrand(firstV.brand || '');
         }
       } catch (error) {
         console.error('Error fetching booking data:', error);
@@ -53,12 +78,29 @@ export default function BookingPage() {
   const [showCustomTimeInput, setShowCustomTimeInput] = useState(false);
 
   // Driver details
-  const [licensePlate, setLicensePlate] = useState('51H-123.45');
+  const [licensePlate, setLicensePlate] = useState('');
   const [isEditingPlate, setIsEditingPlate] = useState(false);
   const [fullName, setFullName] = useState(localStorage.getItem('fullName') || 'Nguyễn Văn A');
-  const [phoneNumber, setPhoneNumber] = useState('0901 234 567');
+  const [phoneNumber, setPhoneNumber] = useState(localStorage.getItem('phone') || localStorage.getItem('userPhone') || '0901 234 567');
   const [vehicleColor, setVehicleColor] = useState('');
   const [vehicleBrand, setVehicleBrand] = useState('');
+
+  const handleUserVehicleChange = (e) => {
+    const val = e.target.value;
+    setSelectedUserVehicleId(val);
+    if (val === 'other') {
+      setLicensePlate('');
+      setVehicleColor('');
+      setVehicleBrand('');
+    } else {
+      const v = userVehicles.find(x => String(x.vehicleId || x.id) === String(val));
+      if (v) {
+        setLicensePlate(v.licensePlate || '');
+        setVehicleColor(v.color || '');
+        setVehicleBrand(v.brand || '');
+      }
+    }
+  };
 
   // Booking details confirmation
   const [confirmedBookingId, setConfirmedBookingId] = useState('');
@@ -290,7 +332,7 @@ export default function BookingPage() {
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>LOẠI PHƯƠNG TIỆN</h6>
               <div className="row g-3">
-                {vehicleTypes.map(v => {
+                {bookableVehicleTypes.map(v => {
                   const isSelected = String(selectedVehicleTypeId) === String(v.vehicleTypeId);
                   return (
                     <div className="col-6" key={v.vehicleTypeId}>
@@ -443,20 +485,42 @@ export default function BookingPage() {
                   <h6 className="text-muted fw-bold small mb-2 d-flex align-items-center gap-1.5">
                     <span>🚙</span> THÔNG TIN XE
                   </h6>
+
+                  {userVehicles.length > 0 && (
+                    <div className="mb-3">
+                      <label className="text-muted small mb-1" style={{ fontSize: '0.75rem' }}>Chọn xe của bạn</label>
+                      <select 
+                        className="form-select form-select-sm text-dark fw-medium"
+                        value={selectedUserVehicleId}
+                        onChange={handleUserVehicleChange}
+                      >
+                        {userVehicles.map(v => (
+                          <option key={v.vehicleId || v.id} value={v.vehicleId || v.id}>
+                            {v.licensePlate} {v.brand || v.color ? `(${v.brand || ''} ${v.color || ''})` : ''}
+                          </option>
+                        ))}
+                        <option value="other">+ Đặt cho xe khác</option>
+                      </select>
+                    </div>
+                  )}
+
                   <p className="text-muted small mb-1">Biển số xe</p>
                   
-                  {isEditingPlate ? (
+                  {isEditingPlate || selectedUserVehicleId === 'other' ? (
                     <div className="d-flex gap-2">
                       <input 
                         type="text" 
                         className="form-control form-control-sm text-dark fw-bold uppercase"
                         value={licensePlate}
                         onChange={e => setLicensePlate(e.target.value)}
-                        onBlur={() => setIsEditingPlate(false)}
-                        onKeyDown={e => e.key === 'Enter' && setIsEditingPlate(false)}
-                        autoFocus
+                        onBlur={() => selectedUserVehicleId !== 'other' && setIsEditingPlate(false)}
+                        onKeyDown={e => e.key === 'Enter' && selectedUserVehicleId !== 'other' && setIsEditingPlate(false)}
+                        autoFocus={isEditingPlate}
+                        placeholder="Nhập biển số..."
                       />
-                      <button type="button" className="btn btn-sm btn-secondary" onClick={() => setIsEditingPlate(false)}>Lưu</button>
+                      {selectedUserVehicleId !== 'other' && (
+                        <button type="button" className="btn btn-sm btn-secondary" onClick={() => setIsEditingPlate(false)}>Lưu</button>
+                      )}
                     </div>
                   ) : (
                     <div className="d-flex align-items-center justify-content-between border rounded p-2.5 bg-light">
@@ -481,6 +545,7 @@ export default function BookingPage() {
                         className="form-control form-control-sm text-dark fw-medium"
                         value={vehicleColor}
                         onChange={e => setVehicleColor(e.target.value)}
+                        disabled={selectedUserVehicleId !== 'other'}
                       />
                     </div>
                     <div className="col-6">
@@ -491,6 +556,7 @@ export default function BookingPage() {
                         className="form-control form-control-sm text-dark fw-medium"
                         value={vehicleBrand}
                         onChange={e => setVehicleBrand(e.target.value)}
+                        disabled={selectedUserVehicleId !== 'other'}
                       />
                     </div>
                   </div>

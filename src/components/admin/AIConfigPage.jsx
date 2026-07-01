@@ -35,9 +35,13 @@ export default function AIConfigPage() {
         adminApi.getAllIncidents().catch(() => ({ content: [] })),
       ]);
 
-      setBranches(br);
-      setSessions(se);
-      setZones(zo);
+      const brList = Array.isArray(br) ? br : (br?.content || br?.data || []);
+      const seList = Array.isArray(se) ? se : (se?.content || se?.data || []);
+      const zoList = Array.isArray(zo) ? zo : (zo?.content || zo?.data || []);
+
+      setBranches(brList);
+      setSessions(seList);
+      setZones(zoList);
       
       const incList = Array.isArray(incRes) ? incRes : (incRes?.content || incRes?.data || []);
       setIncidents(incList);
