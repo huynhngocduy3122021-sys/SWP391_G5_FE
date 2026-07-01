@@ -29,6 +29,13 @@ const managerApi = {
   // ── Vehicle Types ─────────────────────────────────────────
   getVehicleTypes:          async ()           => (await API.get('/api/vehicle-types')).data,
 
+  // ── Vehicles ──────────────────────────────────────────────
+  getAllVehicles:            async ()           => (await API.get('/api/vehicles')).data,
+  getVehicleById:           async (id)         => (await API.get(`/api/vehicles/${id}`)).data,
+  createVehicle:            async (data)       => (await API.post('/api/vehicles', data)).data,
+  updateVehicle:            async (id, data)   => (await API.put(`/api/vehicles/${id}`, data)).data,
+  deleteVehicle:            async (id)         => (await API.delete(`/api/vehicles/${id}`)).data,
+
   // ── Price Policy ──────────────────────────────────────────
   getPricePolicies:         async ()           => (await API.get('/api/price-policies')).data,
   createPricePolicy:        async (data)       => (await API.post('/api/price-policies', data)).data,
@@ -41,15 +48,23 @@ const managerApi = {
   updateParkingCard:        async (id, data)   => (await API.put(`/api/parking-cards/${id}`, data)).data,
   deleteParkingCard:        async (id)         => (await API.delete(`/api/parking-cards/${id}`)).data,
 
+  // ── Monthly Ticket (Vé Tháng) ─────────────────────────────
+  // POST body: { vehicleId, parkingCardId, guestName?, guestPhone?, startDate, endDate, status? }
+  getAllMonthlyTickets:      async ()           => (await API.get('/api/monthly-tickets')).data,
+  getMonthlyTicketById:     async (id)         => (await API.get(`/api/monthly-tickets/${id}`)).data,
+  createMonthlyTicket:      async (data)       => (await API.post('/api/monthly-tickets', data)).data,
+  updateMonthlyTicket:      async (id, data)   => (await API.put(`/api/monthly-tickets/${id}`, data)).data,
+  deleteMonthlyTicket:      async (id)         => (await API.delete(`/api/monthly-tickets/${id}`)).data,
+
   // ── Incident Report ───────────────────────────────────────
   getIncidentReports:       async (params = {}) => (await API.get('/api/incidents', { params })).data,
   createIncidentReport:     async (data)        => (await API.post('/api/incidents', data)).data,
   resolveIncident:          async (id, data)    => (await API.put(`/api/incidents/${id}/resolve`, data)).data,
   cancelIncident:           async (id, data)    => (await API.put(`/api/incidents/${id}/cancel`, data)).data,
+  assignIncident:           async (id, staffId) => (await API.put(`/api/incidents/${id}/assign`, { staffId: Number(staffId), assignedStaffId: Number(staffId), id: Number(staffId), userId: Number(staffId) })).data,
 
   // ── Parking Sessions (dùng cho Overview) ──────────────────
-  getAllSessions:            async ()            => (await API.get('/api/parking-sessions')).data,
-  getSessionImages:          async (sessionId)   => (await API.get(`/api/parking-session/${sessionId}/images`)).data,
+  getAllSessions:            async (params = {}) => (await API.get('/api/parking-sessions', { params })).data,
 };
 
 export default managerApi;

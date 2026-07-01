@@ -35,7 +35,7 @@ const fmtDt = (dt) => {
 };
 
 /* ── main component ──────────────────────── */
-export default function IncidentPanel() {
+export default function IncidentPanel({ branchId }) {
   const [incidents, setIncidents] = useState([]);
   const [loading,   setLoading]   = useState(false);
 
@@ -62,10 +62,32 @@ export default function IncidentPanel() {
   /* ── fetch ── */
   const fetchIncidents = async () => {
     setLoading(true);
+    const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null') ? String(branchId) : null;
     try {
       const data = await managerApi.getIncidentReports({ page: 0, size: 100 });
       const arr  = data?.content || data || [];
-      setIncidents(Array.isArray(arr) ? arr : []);
+      const parsed = Array.isArray(arr) ? arr : [];
+      
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
+      setIncidents(cleanBranchId 
+        ? parsed.filter(i => getBranchId(i) === cleanBranchId)
+        : parsed
+      );
     } catch {
       setIncidents([]);
     } finally {
@@ -73,7 +95,7 @@ export default function IncidentPanel() {
     }
   };
 
-  useEffect(() => { fetchIncidents(); }, []);
+  useEffect(() => { fetchIncidents(); }, [branchId]);
 
   /* ── derived ── */
   const filtered = incidents.filter(i => {

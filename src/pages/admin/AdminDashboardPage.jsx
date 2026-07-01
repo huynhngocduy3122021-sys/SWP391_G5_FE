@@ -7,6 +7,7 @@ import { RefreshCw, Activity, CreditCard, DollarSign, Users, Search, BarChart2 }
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('Tháng này');
+  const [revenueChartType, setRevenueChartType] = useState('ALL'); // 'ALL', 'WALK_IN', 'CARD'
 
   // Data states
   const [users, setUsers] = useState([]);
@@ -14,6 +15,9 @@ export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState([]);
   const [branches, setBranches] = useState([]);
   const [zones, setZones] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [pricePolicies, setPricePolicies] = useState([]);
 
   // Branch CRUD modal & form states
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -24,12 +28,15 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [usersRes, sessionsRes, bookingsRes, branchesRes, zonesRes] = await Promise.all([
+      const [usersRes, sessionsRes, bookingsRes, branchesRes, zonesRes, ticketsRes, policiesRes, cardsRes] = await Promise.all([
         adminApi.getAllUsers().catch(() => []),
         adminApi.getAllSessions().catch(() => []),
         adminApi.getAllBookings().catch(() => []),
         managerApi.getParkingBranches().catch(() => []),
         managerApi.getAllZones().catch(() => []),
+        managerApi.getAllMonthlyTickets().catch(() => []),
+        managerApi.getPricePolicies().catch(() => []),
+        managerApi.getParkingCards().catch(() => []),
       ]);
 
       setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || []));
@@ -37,6 +44,9 @@ export default function AdminDashboardPage() {
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || []));
       setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || []));
       setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || []));
+      setTickets(Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || []));
+      setPricePolicies(Array.isArray(policiesRes) ? policiesRes : (policiesRes?.content || []));
+      setCards(Array.isArray(cardsRes) ? cardsRes : (cardsRes?.content || []));
     } catch (err) {
       console.error(err);
       toast.error('Không tải được dữ liệu Dashboard!');
@@ -97,10 +107,41 @@ export default function AdminDashboardPage() {
     return true; // 'Tất cả'
   });
 
-  // Tính toán KPI Doanh thu
-  const totalRevenue = filteredSessions.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
-  const totalTransactions = filteredSessions.length;
+  // Tính toán KPI Doanh thu theo phương thức nghiệp vụ mới:
+  // Lấy đơn giá thực tế từ Price Policies
+  const monthlyPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói Tháng]'));
+  const vipPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói VIP President]'));
   
+  const MONTHLY_PRICE = monthlyPolicy ? Number(monthlyPolicy.basePrice || 200000) : 200000;
+  const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
+
+  // Lọc thẻ tháng & VIP có trạng thái IN_USE hoặc AVAILABLE (đang dùng hoặc còn trống)
+  const monthlyCardsCount = cards.filter(c => {
+    const code = c.cardCode || '';
+    const status = String(c.status || '').toUpperCase();
+    return code.startsWith('MONTH-') && (status === 'IN_USE' || status === 'AVAILABLE');
+  }).length;
+
+  const vipCardsCount = cards.filter(c => {
+    const code = c.cardCode || '';
+    const status = String(c.status || '').toUpperCase();
+    return code.startsWith('VIP-') && (status === 'IN_USE' || status === 'AVAILABLE');
+  }).length;
+
+  const monthlyCardRevenue = monthlyCardsCount * MONTHLY_PRICE;
+  const vipCardRevenue = vipCardsCount * VIP_PRICE;
+  const totalCardRevenue = monthlyCardRevenue + vipCardRevenue;
+
+  // Khách vãng lai: lọc các session đỗ xe của thẻ REGULAR (không bắt đầu bằng MONTH- hoặc VIP-)
+  const walkInSessions = filteredSessions.filter(s => {
+    const code = s.cardCode || s.parkingCard?.cardCode || '';
+    return !code.startsWith('MONTH-') && !code.startsWith('VIP-');
+  });
+
+  const walkInRevenue = walkInSessions.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+  const totalRevenue = walkInRevenue + totalCardRevenue;
+  
+  const totalTransactions = filteredSessions.length;
   const cashlessCount = filteredSessions.filter(s => String(s.paymentMethod || '').toUpperCase() === 'VNPAY').length;
   const cashlessRate = totalTransactions > 0 ? Math.round((cashlessCount / totalTransactions) * 100) : 0;
 
@@ -130,13 +171,26 @@ export default function AdminDashboardPage() {
         const d = new Date(now);
         d.setHours(now.getHours() - i);
         const hourStr = String(d.getHours()).padStart(2, '0') + 'h';
-        dates[hourStr] = 0;
+        dates[hourStr] = { walkIn: 0, monthly: 0, vip: 0 };
       }
       
-      filteredSessions.forEach(s => {
+      walkInSessions.forEach(s => {
         const hourStr = getHourKey(s.checkOutTime);
         if (dates[hourStr] !== undefined) {
-          dates[hourStr] += Number(s.totalAmount || 0);
+          dates[hourStr].walkIn += Number(s.totalAmount || 0);
+        }
+      });
+
+      tickets.forEach(t => {
+        if (!t.startDate) return;
+        const hourStr = getHourKey(t.startDate);
+        if (dates[hourStr] !== undefined) {
+          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          if (isVip) {
+            dates[hourStr].vip += VIP_PRICE;
+          } else {
+            dates[hourStr].monthly += MONTHLY_PRICE;
+          }
         }
       });
     } else if (timeFilter === 'Tháng này') {
@@ -146,51 +200,93 @@ export default function AdminDashboardPage() {
       for (let i = 1; i <= numDays; i++) {
         const day = String(i).padStart(2, '0');
         const monthStr = String(month + 1).padStart(2, '0');
-        dates[`${day}/${monthStr}`] = 0;
+        dates[`${day}/${monthStr}`] = { walkIn: 0, monthly: 0, vip: 0 };
       }
 
-      filteredSessions.forEach(s => {
+      walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key] += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.totalAmount || 0);
+        }
+      });
+
+      tickets.forEach(t => {
+        if (!t.startDate) return;
+        const key = getFormatKey(t.startDate);
+        if (dates[key] !== undefined) {
+          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          if (isVip) {
+            dates[key].vip += VIP_PRICE;
+          } else {
+            dates[key].monthly += MONTHLY_PRICE;
+          }
         }
       });
     } else if (timeFilter === '7 ngày qua') {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(now.getDate() - i);
-        dates[getFormatKey(d)] = 0;
+        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0 };
       }
 
-      filteredSessions.forEach(s => {
+      walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key] += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.totalAmount || 0);
+        }
+      });
+
+      tickets.forEach(t => {
+        if (!t.startDate) return;
+        const key = getFormatKey(t.startDate);
+        if (dates[key] !== undefined) {
+          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          if (isVip) {
+            dates[key].vip += VIP_PRICE;
+          } else {
+            dates[key].monthly += MONTHLY_PRICE;
+          }
         }
       });
     } else {
       for (let i = 14; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(now.getDate() - i);
-        dates[getFormatKey(d)] = 0;
+        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0 };
       }
 
-      filteredSessions.forEach(s => {
+      walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key] += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.totalAmount || 0);
+        }
+      });
+
+      tickets.forEach(t => {
+        if (!t.startDate) return;
+        const key = getFormatKey(t.startDate);
+        if (dates[key] !== undefined) {
+          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          if (isVip) {
+            dates[key].vip += VIP_PRICE;
+          } else {
+            dates[key].monthly += MONTHLY_PRICE;
+          }
         }
       });
     }
 
     return Object.keys(dates).map(key => ({
       label: key,
-      revenue: dates[key]
+      walkIn: dates[key].walkIn,
+      monthly: dates[key].monthly,
+      vip: dates[key].vip,
+      total: dates[key].walkIn + dates[key].monthly + dates[key].vip
     }));
   };
 
   const chartData = getChartData();
-  const maxRevenue = Math.max(...chartData.map(d => d.revenue), 10000);
+  const maxRevenue = Math.max(...chartData.map(d => d.total), 10000);
 
   // Branch CRUD Handlers
   const handleSaveBranch = async (e) => {
@@ -264,7 +360,7 @@ export default function AdminDashboardPage() {
                   backgroundColor: timeFilter === tab ? '#fff' : 'transparent',
                   border: 'none',
                   borderRadius: '4px',
-                  color: timeFilter === tab ? '#1b6eff' : '#475569',
+                  color: timeFilter === tab ? 'var(--vin-primary)' : '#475569',
                   fontWeight: timeFilter === tab ? '600' : '500',
                   fontSize: '12px',
                   cursor: 'pointer',
@@ -277,7 +373,7 @@ export default function AdminDashboardPage() {
           </div>
           <button 
             onClick={fetchDashboardData}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
           >
             <RefreshCw size={14} /> Làm mới
           </button>
@@ -293,7 +389,16 @@ export default function AdminDashboardPage() {
           <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
             {Number(totalRevenue || 0).toLocaleString('vi-VN')} đ
           </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>Phạm vi: {timeFilter}</div>
+          <div style={{ fontSize: '10px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid #f1f5f9', paddingTop: '4px', marginTop: '2px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>🚶 Vãng lai:</span>
+              <span style={{ fontWeight: 600 }}>{Number(walkInRevenue).toLocaleString('vi-VN')}đ</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>🎟️ Thẻ Tháng/VIP:</span>
+              <span style={{ fontWeight: 600 }}>{Number(totalCardRevenue).toLocaleString('vi-VN')}đ</span>
+            </div>
+          </div>
         </div>
 
         <div style={{ backgroundColor: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -332,30 +437,125 @@ export default function AdminDashboardPage() {
         
         {/* Daily Revenue Chart */}
         <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Biểu đồ Doanh thu theo Ngày</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Biểu đồ Doanh thu phân bổ</h3>
+            
+            {/* Toggles chọn loại doanh thu */}
+            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+              {[
+                { key: 'ALL', label: 'Tất cả' },
+                { key: 'WALK_IN', label: 'Vãng lai' },
+                { key: 'CARD', label: 'Thẻ Tháng/VIP' }
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setRevenueChartType(opt.key)}
+                  style={{
+                    padding: '4px 10px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: revenueChartType === opt.key ? '#fff' : 'transparent',
+                    color: revenueChartType === opt.key ? '#0f172a' : '#64748b',
+                    boxShadow: revenueChartType === opt.key ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           
           <div style={{ overflowX: 'auto', width: '100%' }}>
             <div style={{ 
-              display: 'flex', alignItems: 'flex-end', height: '130px', 
+              display: 'flex', alignItems: 'flex-end', height: '140px', 
               gap: timeFilter === 'Tháng này' ? '6px' : '16px', 
-              padding: '6px 0', borderBottom: '1px solid #cbd5e1',
+              padding: '8px 0', borderBottom: '1px solid #cbd5e1',
               minWidth: timeFilter === 'Tháng này' ? '600px' : 'auto'
             }}>
               {chartData.map((d, index) => {
-                const heightPct = Math.max(5, Math.round((d.revenue / maxRevenue) * 100));
-                const labelAmount = d.revenue > 0 ? (d.revenue >= 1000000 ? `${(d.revenue / 1000000).toFixed(1)}M` : `${Math.round(d.revenue / 1000)}k`) : '';
+                let showVal = d.total;
+                if (revenueChartType === 'WALK_IN') showVal = d.walkIn;
+                else if (revenueChartType === 'CARD') showVal = d.monthly + d.vip;
+
+                const walkInHeightPct = showVal > 0 && revenueChartType !== 'CARD' ? (d.walkIn / maxRevenue) * 100 : 0;
+                const monthlyHeightPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.monthly / maxRevenue) * 100 : 0;
+                const vipHeightPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.vip / maxRevenue) * 100 : 0;
+                const totalHeightPct = Math.max(5, walkInHeightPct + monthlyHeightPct + vipHeightPct);
+                
+                const labelAmount = showVal > 0 
+                  ? (showVal >= 1000000 ? `${(showVal / 1000000).toFixed(1)}M` : `${Math.round(showVal / 1000)}k`) 
+                  : '';
+                
                 return (
                   <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '8px', fontWeight: '700', color: '#1b6eff', whiteSpace: 'nowrap' }}>{labelAmount}</span>
-                    <div style={{
-                      width: '100%', height: `${heightPct}%`, backgroundColor: '#1b6eff', borderRadius: '2px 2px 0 0',
-                      transition: 'height 0.3s'
-                    }} />
+                    <span style={{ fontSize: '8px', fontWeight: '700', color: '#475569', whiteSpace: 'nowrap' }}>{labelAmount}</span>
+                    
+                    {/* Cột xếp chồng phân màu */}
+                    <div style={{ width: '100%', height: `${totalHeightPct}%`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', borderRadius: '2px 2px 0 0', overflow: 'hidden' }}>
+                      {revenueChartType !== 'WALK_IN' && d.vip > 0 && (
+                        <div 
+                          style={{ 
+                            height: showVal > 0 ? `${(d.vip / showVal) * 100}%` : '0%', 
+                            backgroundColor: '#f59e0b', 
+                            transition: 'height 0.3s'
+                          }} 
+                          title={`Thẻ VIP: ${Number(d.vip).toLocaleString()}đ`}
+                        />
+                      )}
+                      {revenueChartType !== 'WALK_IN' && d.monthly > 0 && (
+                        <div 
+                          style={{ 
+                            height: showVal > 0 ? `${(d.monthly / showVal) * 100}%` : '0%', 
+                            backgroundColor: '#10b981', 
+                            transition: 'height 0.3s'
+                          }} 
+                          title={`Thẻ Tháng: ${Number(d.monthly).toLocaleString()}đ`}
+                        />
+                      )}
+                      {revenueChartType !== 'CARD' && d.walkIn > 0 && (
+                        <div 
+                          style={{ 
+                            height: showVal > 0 ? `${(d.walkIn / showVal) * 100}%` : '100%', 
+                            backgroundColor: '#3b82f6', 
+                            transition: 'height 0.3s'
+                          }} 
+                          title={`Khách vãng lai: ${Number(d.walkIn).toLocaleString()}đ`}
+                        />
+                      )}
+                    </div>
+                    
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', whiteSpace: 'nowrap' }}>{d.label}</span>
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          {/* Chú thích biểu đồ */}
+          <div style={{ display: 'flex', gap: '16px', marginTop: '12px', justifyContent: 'center', fontSize: '11px', flexWrap: 'wrap' }}>
+            {revenueChartType !== 'CARD' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#3b82f6' }} />
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Khách vãng lai</span>
+              </div>
+            )}
+            {revenueChartType !== 'WALK_IN' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#10b981' }} />
+                  <span style={{ color: '#64748b', fontWeight: '500' }}>Thẻ Tháng</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#f59e0b' }} />
+                  <span style={{ color: '#64748b', fontWeight: '500' }}>Thẻ VIP</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -365,7 +565,7 @@ export default function AdminDashboardPage() {
           
           <div style={{
             width: '120px', height: '120px', borderRadius: '50%',
-            background: `conic-gradient(#1b6eff ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)`,
+            background: `conic-gradient(var(--vin-primary) ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: '12px'
           }}>
@@ -381,7 +581,7 @@ export default function AdminDashboardPage() {
 
           <div style={{ display: 'flex', gap: '16px', fontSize: '11px', width: '100%', justifyContent: 'space-around' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#1b6eff' }}></div> Online: {cashlessRate}%
+              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--vin-primary)' }}></div> Online: {cashlessRate}%
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#cbd5e1' }}></div> Tiền mặt: {100 - cashlessRate}%
@@ -409,7 +609,7 @@ export default function AdminDashboardPage() {
                     <span style={{ color: '#0f172a' }}>{Number(br.amount || 0).toLocaleString('vi-VN')} đ</span>
                   </div>
                   <div style={{ height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#1b6eff', borderRadius: '3px' }}></div>
+                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--vin-primary)', borderRadius: '3px' }}></div>
                   </div>
                 </div>
               );
@@ -436,7 +636,7 @@ export default function AdminDashboardPage() {
                 </tr>
               ) : filteredSessions.slice(0, 5).map((s, i) => (
                 <tr key={s.parkingSessionId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '8px 0', color: '#1b6eff', fontWeight: '700' }}>{s.licensePlate}</td>
+                  <td style={{ padding: '8px 0', color: 'var(--vin-primary)', fontWeight: '700' }}>{s.licensePlate}</td>
                   <td style={{ padding: '8px 0', color: '#475569' }}>{s.parkingBranchName}</td>
                   <td style={{ padding: '8px 0', color: '#0f172a', fontWeight: '700' }}>{Number(s.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
                   <td style={{ padding: '8px 0', textAlign: 'right' }}>
@@ -464,7 +664,7 @@ export default function AdminDashboardPage() {
           </div>
           <button
             onClick={() => { setEditingBranch(null); setBranchForm({ branchName: '', address: '', phoneNumber: '', description: '' }); setShowBranchModal(true); }}
-            style={{ padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+            style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
           >
             ➕ Thêm Chi Nhánh
           </button>
@@ -502,7 +702,7 @@ export default function AdminDashboardPage() {
                 <td style={{ padding: '8px', textAlign: 'center' }}>
                   <button
                     onClick={() => openEditBranchModal(b)}
-                    style={{ background: 'none', border: 'none', color: '#1b6eff', cursor: 'pointer', fontWeight: '600', marginRight: '10px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--vin-primary)', cursor: 'pointer', fontWeight: '600', marginRight: '10px' }}
                   >
                     Sửa
                   </button>
@@ -583,7 +783,7 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '6px 12px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
                   disabled={submitting}
                 >
                   {submitting ? 'Đang lưu...' : 'Lưu lại'}

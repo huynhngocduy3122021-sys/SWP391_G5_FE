@@ -4,7 +4,7 @@ import bookingApi from '../../api/bookingApi';
 import managerApi from '../../api/manager';
 import { toast } from 'react-toastify';
 
-export default function BookingPanel() {
+export default function BookingPanel({ branchId }) {
   const [bookings, setBookings] = useState([]);
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,13 +33,64 @@ export default function BookingPanel() {
 
   const fetchBookings = async () => {
     setLoading(true);
+    const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null' && branchId !== '') ? String(branchId) : null;
     try {
-      const [bookingsData, zonesData] = await Promise.all([
-        bookingApi.getAllBookings(),
-        managerApi.getAllZones(),
-      ]);
-      setBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData?.content || []);
-      setZones(Array.isArray(zonesData) ? zonesData : []);
+      let bookingsData;
+      let zonesData;
+
+      try {
+        bookingsData = await bookingApi.getAllBookings();
+      } catch (err) {
+        console.error('Failed to fetch bookings', err);
+        bookingsData = [];
+      }
+
+      // Lấy zones theo chi nhánh nếu có branchId (API thật)
+      let usedBranchApi = false;
+      if (cleanBranchId) {
+        try {
+          zonesData = await managerApi.getParkingZonesByBranch(cleanBranchId);
+          usedBranchApi = true; // API branch-specific đã filter sẵn
+        } catch (err) {
+          console.warn('getParkingZonesByBranch failed, falling back to getAllZones', err);
+          zonesData = await managerApi.getAllZones();
+        }
+      } else {
+        zonesData = await managerApi.getAllZones();
+      }
+
+      const parsedBookings = Array.isArray(bookingsData) ? bookingsData : bookingsData?.content || [];
+      const parsedZones = Array.isArray(zonesData) ? zonesData : zonesData?.content || [];
+      
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
+      // Filter bookings theo chi nhánh
+      const filteredBookings = cleanBranchId
+        ? parsedBookings.filter(b => getBranchId(b) === cleanBranchId)
+        : parsedBookings;
+
+      // Nếu đã dùng getParkingZonesByBranch thì zones đã đúng chi nhánh rồi
+      // Nếu dùng fallback getAllZones thì cần filter thêm
+      const filteredZones = (cleanBranchId && !usedBranchApi)
+        ? parsedZones.filter(z => getBranchId(z) === cleanBranchId)
+        : parsedZones;
+
+      setBookings(filteredBookings);
+      setZones(filteredZones);
     } catch (err) {
       console.error(err);
       toast.error('Không tải được danh sách đặt chỗ hoặc dữ liệu bãi xe!');
@@ -50,7 +101,7 @@ export default function BookingPanel() {
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [branchId]);
 
   const handleCancel = async (bookingId) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy lượt đặt chỗ này?')) return;
@@ -133,19 +184,28 @@ export default function BookingPanel() {
   const checkedInCount = Math.max(0, totalCount - cancelledCount - expiredCount);
   const cancelRate = totalCount > 0 ? (((cancelledCount + expiredCount) / totalCount) * 100).toFixed(1) : '0.0';
 
-  // Tính tổng số slot ô tô của bãi đỗ
+  // Tính tổng số slot ô tô của bãi đỗ:
+  // vehicleTypeId = 3 (Ô tô) và 4 (Ô tô điện / Electric Car)
+  const CAR_VEHICLE_TYPE_IDS = [3, 4];
+
+  const getZoneVehicleTypeId = (z) => {
+    // Thử lấy vehicleTypeId từ nhiều dạng cấu trúc
+    const raw =
+      z.vehicleTypeId ||
+      z.vehicleType?.vehicleTypeId ||
+      z.vehicleType?.id ||
+      z.vehicleType ||
+      null;
+    return raw !== null ? Number(raw) : null;
+  };
+
   const totalCarSlots = zones.reduce((sum, z) => {
-    const isCarZone = (z.vehicleTypeName || '').toLowerCase().includes('ô tô') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('car') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('xe con') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('o to');
-    if (isCarZone) {
-      return sum + Number(z.capacity || 0);
-    }
-    return sum;
+    const vtId = getZoneVehicleTypeId(z);
+    const isCarZone = vtId !== null && CAR_VEHICLE_TYPE_IDS.includes(vtId);
+    return isCarZone ? sum + Number(z.capacity || 0) : sum;
   }, 0);
 
-  // Slot dự kiến giải phóng = tổng slot xe ô tô nhân với phần trăm của bán quá tải
+  // Slot dự kiến giải phóng = tổng slot ô tô (type 3+4) × tỷ lệ overbooking
   const freedSlots = Math.round(totalCarSlots * (overbookingRate / 100));
 
   return (

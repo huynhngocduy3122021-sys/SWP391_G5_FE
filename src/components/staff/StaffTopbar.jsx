@@ -5,11 +5,12 @@ import managerApi from '../../api/manager';
 import bookingApi from '../../api/bookingApi';
 
 // Topbar "PARK-OPS PRO" — giống header trong cả 2 ảnh thiết kế
-export default function StaffTopbar({ mode, onModeChange }) {
+export default function StaffTopbar({ mode, onModeChange, stats }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   
-  const [liveStats, setLiveStats] = useState({
+  // Real stats state
+  const [realStats, setRealStats] = useState({
     totalVehicles: 0,
     maxVehicles: 2000,
     todayRevenue: 0,
@@ -18,82 +19,64 @@ export default function StaffTopbar({ mode, onModeChange }) {
     slotsLeft: 2000
   });
 
-  const branchIdStr = localStorage.getItem('parkingBranchId');
-  const branchId = branchIdStr ? Number(branchIdStr) : null;
-
-  const fetchLiveStats = async () => {
+  const fetchStats = async () => {
     try {
-      const [sessionsData, bookingsData, zonesData] = await Promise.all([
-        managerApi.getAllSessions().catch(() => []),
-        bookingApi.getAllBookings().catch(() => []),
-        managerApi.getAllZones().catch(() => [])
+      const [sessions, bookings, zones] = await Promise.all([
+        managerApi.getAllSessions(),
+        bookingApi.getAllBookings(),
+        managerApi.getAllZones()
       ]);
 
-      const branchSessions = branchId 
-        ? sessionsData.filter(s => s.parkingBranchId === branchId)
-        : sessionsData;
-      const branchBookings = branchId
-        ? bookingsData.filter(b => b.parkingBranchId === branchId)
-        : bookingsData;
-      const branchZones = branchId
-        ? zonesData.filter(z => z.parkingBranchId === branchId)
-        : zonesData;
+      // Calculate total capacity
+      const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || 0), 0);
+      
+      // Calculate total active vehicles (status is ACTIVE or check-out is missing)
+      const activeSessions = sessions.filter(s => s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime));
+      const totalVehiclesCount = activeSessions.length;
 
-      const maxVehicles = branchZones.reduce((sum, z) => sum + Number(z.capacity || 0), 0) || 2000;
-      const totalVehicles = branchSessions.filter(s => String(s.sessionStatus || '').toUpperCase() === 'ACTIVE').length;
+      // Exited today (sessions checked out today)
+      const todayStr = new Date().toDateString();
+      const exitedToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr).length;
 
-      const getRefDate = () => {
-        if (branchSessions.length === 0) return new Date();
-        const dates = branchSessions
-          .map(s => s.checkOutTime || s.checkInTime ? new Date(s.checkOutTime || s.checkInTime) : null)
-          .filter(Boolean);
-        if (dates.length === 0) return new Date();
-        return new Date(Math.max(...dates));
-      };
+      // Bookings count
+      const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
 
-      const refDate = getRefDate();
-      const todayStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
-      const todayEnd = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), 23, 59, 59, 999);
+      // Today's revenue (sum of totalAmount for checkout sessions today, excluding monthly/VIP)
+      const todayRevenue = sessions
+        .filter(s => {
+          const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
+                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
+          return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
+        })
+        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
 
-      const todayCompletedSessions = branchSessions.filter(s => {
-        if (!s.checkOutTime) return false;
-        const outDate = new Date(s.checkOutTime);
-        return outDate >= todayStart && outDate <= todayEnd;
-      });
+      // Slots left
+      const slotsLeft = Math.max(0, totalCapacity - totalVehiclesCount);
 
-      const exited = todayCompletedSessions.length;
-      const todayRevenue = todayCompletedSessions.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
-
-      const todayBookings = branchBookings.filter(b => {
-        if (!b.expectedArrivalTime) return false;
-        const arrDate = new Date(b.expectedArrivalTime);
-        return arrDate >= todayStart && arrDate <= todayEnd;
-      }).length;
-
-      const slotsLeft = Math.max(0, maxVehicles - totalVehicles);
-
-      setLiveStats({
-        totalVehicles,
-        maxVehicles,
-        todayRevenue,
-        bookings: todayBookings,
-        exited,
-        slotsLeft
+      setRealStats({
+        totalVehicles: totalVehiclesCount,
+        maxVehicles: totalCapacity || 2000,
+        todayRevenue: todayRevenue,
+        bookings: activeBookings,
+        exited: exitedToday,
+        slotsLeft: slotsLeft
       });
     } catch (err) {
-      console.error('Failed to fetch live stats for StaffTopbar:', err);
+      console.error('Lỗi khi tải số liệu thống kê Staff:', err);
     }
   };
 
   useEffect(() => {
-    fetchLiveStats();
-    const interval = setInterval(fetchLiveStats, 10000);
-    return () => clearInterval(interval);
-  }, [branchId]);
-
-  useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    
+    // Poll API stats every 10 seconds
+    fetchStats();
+    const statsId = setInterval(fetchStats, 10000);
+
+    return () => {
+      clearInterval(id);
+      clearInterval(statsId);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -103,6 +86,9 @@ export default function StaffTopbar({ mode, onModeChange }) {
   };
 
   const fullName = localStorage.getItem('fullName') || 'Staff';
+
+  // Prefer real API stats
+  const displayStats = realStats.maxVehicles > 0 ? realStats : (stats || MOCK_STATS);
 
   return (
     <header style={{
@@ -118,11 +104,11 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TOTAL VEHICLES" value={`${liveStats.totalVehicles} / ${liveStats.maxVehicles}`} />
-        <StatItem label="TODAY'S REVENUE" value={`${liveStats.todayRevenue.toLocaleString('vi-VN')} đ`} color="var(--vin-success)" />
-        <StatItem label="BOOKINGS" value={liveStats.bookings} />
-        <StatItem label="EXITED" value={liveStats.exited} />
-        <StatItem label="SLOTS LEFT" value={liveStats.slotsLeft} color="var(--vin-success)" />
+        <StatItem label="TOTAL VEHICLES" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
+        <StatItem label="TODAY'S REVENUE" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="BOOKINGS" value={displayStats.bookings} />
+        <StatItem label="EXITED" value={displayStats.exited} />
+        <StatItem label="SLOTS LEFT" value={displayStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}
@@ -169,7 +155,6 @@ function StatItem({ label, value, color }) {
   );
 }
 
-// Mock — thay bằng kết quả staffApi.getShiftOverview()
 export const MOCK_STATS = {
   totalVehicles: 1245, maxVehicles: 2000, todayRevenue: 14580,
   bookings: 42, exited: 391, slotsLeft: 755,

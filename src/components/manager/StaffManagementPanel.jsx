@@ -9,7 +9,7 @@ const roleColor = (r) => ({ ADMIN: '#7c3aed', MANAGER: '#0d9488', STAFF: '#1f6a8
 const EMPTY_FORM = { userFullName: '', userEmail: '', userPhone: '', userAddress: '' };
 
 /* ── main component ───────────────────────────── */
-export default function StaffManagementPanel() {
+export default function StaffManagementPanel({ branchId }) {
   const [users,   setUsers]   = useState([]);
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState('');
@@ -28,9 +28,31 @@ export default function StaffManagementPanel() {
   /* ── fetch ── */
   const fetchUsers = async () => {
     setLoading(true);
+    const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null') ? String(branchId) : null;
     try {
       const data = await authApi.getAllUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      const parsed = Array.isArray(data) ? data : [];
+      
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
+      setUsers(cleanBranchId 
+        ? parsed.filter(u => getBranchId(u) === cleanBranchId)
+        : parsed
+      );
     } catch {
       setUsers([]);
     } finally {
@@ -38,7 +60,7 @@ export default function StaffManagementPanel() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); }, [branchId]);
 
   /* ── derived ── */
   const filtered = users.filter(u => {
