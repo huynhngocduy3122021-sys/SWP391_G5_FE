@@ -36,7 +36,7 @@ const AdminSidebar = () => {
               fontSize: '14px',
               fontWeight: '500',
               transition: 'all 0.2s',
-              backgroundColor: isActive ? '#1b6eff' : 'transparent',
+              backgroundColor: isActive ? 'var(--vin-primary)' : 'transparent',
               color: isActive ? '#fff' : '#787a91',
             })}
           >
@@ -48,7 +48,7 @@ const AdminSidebar = () => {
 
       {/* Thông tin tài khoản Admin ở dưới cùng */}
       <div style={{ borderTop: '1px solid #1f2235', paddingTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#2a2d44', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#1b6eff' }}>AU</div>
+        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#2a2d44', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'var(--vin-primary)' }}>AU</div>
         <div>
           <div style={{ fontSize: '14px', fontWeight: '600' }}>Admin User</div>
           <div style={{ fontSize: '11px', color: '#464962' }}>SUPER ADMIN</div>

@@ -248,7 +248,7 @@ export default function PricingSettingsPanel() {
         <button 
           type="button" 
           onClick={activeTab === 'hourly' ? openCreate : openCreatePkg}
-          style={{ border: 'none', borderRadius: 8, padding: '10px 18px', background: '#1b6eff', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}
+          style={{ border: 'none', borderRadius: 8, padding: '10px 18px', background: 'var(--vin-primary)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}
         >
           {activeTab === 'hourly' ? '+ Thêm Vé Lượt' : '+ Thêm Gói Dịch Vụ'}
         </button>
@@ -260,8 +260,8 @@ export default function PricingSettingsPanel() {
           onClick={() => setActiveTab('hourly')}
           style={{
             background: 'none', border: 'none', padding: '10px 4px', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-            color: activeTab === 'hourly' ? '#1b6eff' : '#64748b',
-            borderBottom: activeTab === 'hourly' ? `3px solid #1b6eff` : '3px solid transparent',
+            color: activeTab === 'hourly' ? 'var(--vin-primary)' : '#64748b',
+            borderBottom: activeTab === 'hourly' ? `3px solid var(--vin-primary)` : '3px solid transparent',
             transition: 'all 0.2s'
           }}
         >
@@ -271,8 +271,8 @@ export default function PricingSettingsPanel() {
           onClick={() => setActiveTab('packages')}
           style={{
             background: 'none', border: 'none', padding: '10px 4px', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-            color: activeTab === 'packages' ? '#1b6eff' : '#64748b',
-            borderBottom: activeTab === 'packages' ? `3px solid #1b6eff` : '3px solid transparent',
+            color: activeTab === 'packages' ? 'var(--vin-primary)' : '#64748b',
+            borderBottom: activeTab === 'packages' ? `3px solid var(--vin-primary)` : '3px solid transparent',
             transition: 'all 0.2s'
           }}
         >
@@ -307,7 +307,7 @@ export default function PricingSettingsPanel() {
                     style={{
                       display: 'flex', flexDirection: 'column', width: '100%', textAlign: 'left',
                       padding: '8px 12px', borderRadius: 8, marginBottom: 6, cursor: 'pointer',
-                      border: 'none', background: isActive ? '#1b6eff' : '#f8fafc', color: isActive ? '#fff' : '#0f172a',
+                      border: 'none', background: isActive ? 'var(--vin-primary)' : '#f8fafc', color: isActive ? '#fff' : '#0f172a',
                       transition: 'all 0.2s'
                     }}>
                     <span style={{ fontWeight: 700, fontSize: '12px' }}>{vtName(v)}</span>
@@ -325,7 +325,7 @@ export default function PricingSettingsPanel() {
             {/* ──── HIỂN THỊ BẢNG GIÁ VÉ LƯỢT ──── */}
             <div>
               <div style={{ marginBottom: 16 }}>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '700', color: '#1b6eff' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '700', color: 'var(--vin-primary)' }}>
                   Bảng giá lượt: {activeVt ? vtName(activeVt) : 'Tất cả'}
                 </h3>
                 <span style={{ fontSize: '11px', color: '#64748b' }}>
@@ -411,7 +411,7 @@ export default function PricingSettingsPanel() {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 800, fontSize: '14px', color: '#1b6eff' }}>{fmt(p.basePrice)} đ</div>
+                          <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--vin-primary)' }}>{fmt(p.basePrice)} đ</div>
                           <div style={{ marginTop: 6 }}>
                             <button type="button" onClick={() => openEditPkg(p)}
                               style={{ border: 'none', background: 'transparent', color: '#2563eb', fontWeight: '700', fontSize: '11px', cursor: 'pointer', marginRight: 10 }}>
@@ -541,7 +541,7 @@ export default function PricingSettingsPanel() {
                 Hủy bỏ
               </button>
               <button type="button" onClick={handleSave} disabled={saving}
-                style={{ padding: '8px 16px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: 6, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 {saving ? 'Đang lưu...' : 'Lưu lại'}
               </button>
             </div>
@@ -606,7 +606,7 @@ export default function PricingSettingsPanel() {
                 Hủy bỏ
               </button>
               <button type="button" onClick={handleSavePkg} disabled={savingPkg}
-                style={{ padding: '8px 16px', backgroundColor: '#1b6eff', color: '#fff', border: 'none', borderRadius: 6, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 {savingPkg ? 'Đang tạo...' : 'Lưu lại'}
               </button>
             </div>

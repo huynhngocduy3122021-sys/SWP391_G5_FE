@@ -63,7 +63,7 @@ function PublicLayout({ children }) {
 export default function App() {
   useEffect(() => {
     const updateThemeColors = () => {
-      const role = localStorage.getItem('role') || 'USER';
+      const rawRole = (localStorage.getItem('role') || 'USER').toUpperCase();
       const fallback = {
         USER: { primary: '#125b71', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#e2e8f0' },
         MANAGER: { primary: '#0f172a', accent: '#0d9488', text: '#0f172a', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' },
@@ -71,8 +71,8 @@ export default function App() {
         ADMIN: { primary: '#1b6eff', accent: '#10b981', text: '#1e293b', textMuted: '#64748b', cardBg: '#ffffff', border: '#cbd5e1' }
       };
 
-      const currentRole = ['USER', 'MANAGER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(role) 
-        ? (role === 'SUPER_ADMIN' ? 'ADMIN' : role) 
+      const currentRole = ['USER', 'MANAGER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(rawRole) 
+        ? (rawRole === 'SUPER_ADMIN' ? 'ADMIN' : rawRole) 
         : 'USER';
 
       const primary = localStorage.getItem(`theme_${currentRole}_primary`) || fallback[currentRole].primary;
@@ -90,12 +90,17 @@ export default function App() {
       document.documentElement.style.setProperty('--vin-text-main', text);
       document.documentElement.style.setProperty('--vin-text-muted', textMuted);
       document.documentElement.style.setProperty('--vin-bg-card', cardBg);
+      document.documentElement.style.setProperty('--vin-bg-glass', cardBg);
       document.documentElement.style.setProperty('--vin-border', border);
     };
 
     updateThemeColors();
     window.addEventListener('storage', updateThemeColors);
-    return () => window.removeEventListener('storage', updateThemeColors);
+    window.addEventListener('themechange', updateThemeColors);
+    return () => {
+      window.removeEventListener('storage', updateThemeColors);
+      window.removeEventListener('themechange', updateThemeColors);
+    };
   }, []);
 
   return (
