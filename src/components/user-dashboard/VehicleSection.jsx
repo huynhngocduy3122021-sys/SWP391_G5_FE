@@ -28,9 +28,8 @@ export default function VehicleSection() {
     try {
       // 1. Fetch user's vehicles
       const allVehicles = await parkingApi.getAllVehicles();
-      const userVehicles = Array.isArray(allVehicles)
-        ? allVehicles.filter(v => String(v.userId) === String(userId) && !v.deleted)
-        : [];
+      const allVehiclesList = Array.isArray(allVehicles) ? allVehicles : (allVehicles?.content || allVehicles?.data || []);
+      const userVehicles = allVehiclesList.filter(v => String(v.userId) === String(userId) && !v.deleted);
       setVehicles(userVehicles);
 
       // 2. Fetch vehicle types

@@ -24,7 +24,7 @@ export default function UserSidebar({ activeTab, onTabChange }) {
           </div>
           <div>
             <h6 className="fw-bold m-0 text-dark">{fullName}</h6>
-            <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem' }}>SmartPark Resident</small>
+            <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem' }}>Khách hàng Vinparking</small>
             <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style={{ fontSize: '0.7rem' }}>
               ● Kích hoạt
             </span>

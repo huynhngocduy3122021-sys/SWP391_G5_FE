@@ -21,6 +21,7 @@ export default function ProfileSection() {
   const [vehicles, setVehicles] = useState([]);
   const [activities, setActivities] = useState([]);
   const [residentCard, setResidentCard] = useState(null); // thẻ VIP hoặc thẻ tháng đang hiệu lực
+  const [rawTickets, setRawTickets] = useState([]);
   
   // Password change states
   const [showPwModal, setShowPwModal] = useState(false);
@@ -59,40 +60,33 @@ export default function ProfileSection() {
         : [];
       setVehicles(userVehicles);
 
-      // 3. Load user's recent sessions
-      const allSessions = await parkingApi.getAllSessions();
-      const sessionsList = Array.isArray(allSessions) ? allSessions : (allSessions?.content || []);
-      
-      const userPlates = userVehicles.map(v => v.licensePlate.toUpperCase());
-      const filteredSessions = sessionsList.filter(s => 
-        userPlates.includes(s.licensePlate?.toUpperCase())
-      );
-
-      const sortedSessions = filteredSessions
-        .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
-        .slice(0, 3);
-      setActivities(sortedSessions);
-
-      // 4. Lấy thẻ VIP / thẻ tháng của user từ API monthly-tickets
+      // 3. Load user's recent sessions (tách try-catch riêng, lỗi không ảnh hưởng bước tiếp theo)
       try {
-        const allTickets = await (await import('../../api/manager')).default.getAllMonthlyTickets();
-        const ticketsList = Array.isArray(allTickets) ? allTickets : (allTickets?.content || []);
+        const allSessions = await parkingApi.getAllSessions();
+        const sessionsList = Array.isArray(allSessions) ? allSessions : (allSessions?.content || []);
+        
+        const userPlates = userVehicles.map(v => v.licensePlate.toUpperCase());
+        const filteredSessions = sessionsList.filter(s => 
+          userPlates.includes(s.licensePlate?.toUpperCase())
+        );
 
-        // Tập biển số xe của user (để so khớp)
-        const userPlateSet = new Set(userVehicles.map(v => (v.licensePlate || '').toUpperCase()));
-        // Tập vehicleId của user (để so khớp)
-        const userVehicleIds = new Set(userVehicles.map(v => String(v.vehicleId || v.id)));
+        const sortedSessions = filteredSessions
+          .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+          .slice(0, 3);
+        setActivities(sortedSessions);
+      } catch (sessionErr) {
+        console.warn('Không thể tải lịch sử đỗ xe (bỏ qua để tiếp tục):', sessionErr?.response?.status, sessionErr?.message);
+        setActivities([]);
+      }
 
-        // Helper kiểm tra thẻ có thuộc xe của user không
-        const belongsToUser = (t) => {
-          // So khớp vehicleId
-          const vid = String(t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.id || '');
-          if (vid && userVehicleIds.has(vid)) return true;
-          // So khớp licensePlate nếu có
-          const plate = (t.licensePlate || t.vehicle?.licensePlate || '').toUpperCase();
-          if (plate && userPlateSet.has(plate)) return true;
-          return false;
-        };
+
+      // 4. Lấy thẻ VIP / thẻ tháng của user từ API monthly-tickets/my-tickets
+      try {
+        console.log('--- CURRENT LOGGED-IN USER ID ---', userId);
+        const myTickets = await parkingApi.getMyMonthlyTickets();
+        console.log('--- getMyMonthlyTickets RAW RESPONSE ---', myTickets);
+        const ticketsList = Array.isArray(myTickets) ? myTickets : (myTickets?.content || myTickets?.data || []);
+        setRawTickets(ticketsList);
 
         // Trạng thái hợp lệ: trống (0 / 'AVAILABLE' / 'EMPTY') hoặc đang dùng (1 / 'IN_USE' / 'ACTIVE' / true)
         const isValidStatus = (status) => {
@@ -105,9 +99,17 @@ export default function ProfileSection() {
         const matchedCards = ticketsList.filter(t => {
           const cardCode = t.cardCode || t.parkingCard?.cardCode || '';
           const isVipOrMonthly = cardCode.startsWith('VIP-') || cardCode.startsWith('MONTH-');
-          const isNotExpired = !t.expiryDate || new Date(t.expiryDate) >= new Date();
-          return isVipOrMonthly && isValidStatus(t.status) && isNotExpired && belongsToUser(t);
+          const isNotExpired = !t.endDate || new Date(t.endDate) >= new Date();
+          console.log(`[DEBUG] Filtering card ${cardCode}:`, {
+            isVipOrMonthly,
+            status: t.status,
+            isValidStatus: isValidStatus(t.status),
+            endDate: t.endDate,
+            isNotExpired
+          });
+          return isVipOrMonthly && isValidStatus(t.status) && isNotExpired;
         });
+        console.log('--- MATCHED CARDS ---', matchedCards);
 
         // Ưu tiên thẻ đang dùng (status 1/true/IN_USE/ACTIVE) trước, rồi đến thẻ trống
         const isInUse = (status) =>
@@ -121,7 +123,7 @@ export default function ProfileSection() {
 
         setResidentCard(sorted[0] || null);
       } catch (cardErr) {
-        console.warn('Không thể tải thẻ cư dân:', cardErr);
+        console.warn('Không thể tải thẻ giữ xe siêu thị:', cardErr);
         setResidentCard(null);
       }
     } catch (err) {
@@ -226,11 +228,11 @@ export default function ProfileSection() {
               <img src={avatarUrl} alt="Avatar" className="w-100 h-100 object-fit-cover" />
             </div>
             <div>
-              <h4 className="fw-bold text-dark mb-1">{formData.fullName}</h4>
-              <p className="text-muted mb-2">{formData.apartment ? `Cư dân ${formData.apartment}` : 'Cư dân Vinparking'} - {formData.address || 'Hệ thống'}</p>
+              <h4 className="fw-bold text-dark mb-1">{formData.fullName} <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>(ID: {userId})</span></h4>
+              <p className="text-muted mb-2">{formData.email} • {formData.apartment ? `Thành viên căn hộ ${formData.apartment}` : 'Khách hàng siêu thị Vinparking'} - {formData.address || 'Hệ thống'}</p>
               <div className="d-flex gap-2">
                 <span className="badge rounded-pill bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2 fw-medium">
-                  ⭐ Tài khoản Cư dân
+                  ⭐ Tài khoản Khách hàng / Cư dân
                 </span>
                 <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-3 py-2 fw-medium">
                   🚗 {vehicles.length} Phương tiện đăng ký
@@ -322,16 +324,16 @@ export default function ProfileSection() {
         <div className="col-lg-5">
           {/* Trạng thái thẻ */}
           <div className="card border-0 shadow-sm p-4 rounded-4 mb-4" style={{ background: '#ffffff' }}>
-            <h6 className="fw-bold text-dark text-uppercase mb-3 small" style={{ letterSpacing: '1px' }}>Trạng thái thẻ cư dân</h6>
+            <h6 className="fw-bold text-dark text-uppercase mb-3 small" style={{ letterSpacing: '1px' }}>Trạng thái thẻ giữ xe siêu thị</h6>
             {residentCard ? (() => {
               const cardCode = residentCard.cardCode || residentCard.parkingCard?.cardCode || '';
               const isVip = cardCode.startsWith('VIP-');
               const cardBg = isVip
                 ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
                 : 'linear-gradient(135deg, #164e63 0%, #0e7490 100%)';
-              const cardLabel = isVip ? '👑 Thẻ VIP' : '📅 Thẻ Tháng';
-              const expiryStr = residentCard.expiryDate
-                ? new Date(residentCard.expiryDate).toLocaleDateString('vi-VN')
+              const cardLabel = isVip ? '👑 Thẻ VIP siêu thị' : '📅 Thẻ Tháng siêu thị';
+              const expiryStr = residentCard.endDate
+                ? new Date(residentCard.endDate).toLocaleDateString('vi-VN')
                 : 'Vô thời hạn';
               const startStr = residentCard.startDate
                 ? new Date(residentCard.startDate).toLocaleDateString('vi-VN')
@@ -341,7 +343,7 @@ export default function ProfileSection() {
               const st = residentCard.status;
               const isInUse = st === 1 || st === true || st === 'IN_USE' || st === 'ACTIVE';
               const statusBadge = isInUse
-                ? { bg: '#dcfce7', color: '#166534', text: '✓ Đang sử dụng' }
+                ? { bg: '#dcfce7', color: '#166534', text: '✓ Đang hoạt động' }
                 : { bg: '#eff6ff', color: '#1d4ed8', text: '○ Trống / Sẵn sàng' };
 
               return (
@@ -352,12 +354,12 @@ export default function ProfileSection() {
                     <div className="d-flex justify-content-between align-items-start mb-4">
                       <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
                       <span className="badge rounded-pill" style={{ background: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '1px', padding: '4px 10px' }}>
-                        {isVip ? 'VIP' : 'MONTHLY'}
+                        {isVip ? 'VIP-MALL' : 'MONTHLY-MALL'}
                       </span>
                     </div>
                     <div className="mt-3">
                       <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
-                      <h6 className="fw-bold mb-3 text-uppercase">{residentCard.guestName || formData.fullName || 'RESIDENT'}</h6>
+                      <h6 className="fw-bold mb-3 text-uppercase">{residentCard.guestName || formData.fullName || 'CUSTOMER'}</h6>
                       <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
                       <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.95rem' }}>{cardCode}</h5>
                     </div>
@@ -400,7 +402,7 @@ export default function ProfileSection() {
                    </div>
                    <div className="mt-4">
                      <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
-                     <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'RESIDENT'}</h6>
+                     <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'CUSTOMER'}</h6>
                      <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
                      <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>— CHƯA KÍCH HOẠT —</h5>
                    </div>
@@ -410,9 +412,9 @@ export default function ProfileSection() {
                   <div className="d-flex align-items-start gap-2">
                     <span style={{ fontSize: '1.1rem' }}>ℹ️</span>
                     <div>
-                      <p className="fw-semibold mb-1" style={{ color: '#c2410c', fontSize: '0.85rem' }}>Bạn chưa có thẻ VIP hoặc thẻ tháng</p>
+                      <p className="fw-semibold mb-1" style={{ color: '#c2410c', fontSize: '0.85rem' }}>Bạn chưa có thẻ giữ xe siêu thị</p>
                       <p className="text-muted m-0" style={{ fontSize: '0.78rem' }}>
-                        Liên hệ quản lý bãi đỗ xe hoặc đến quầy lễ tân để đăng ký thẻ VIP / thẻ tháng và hưởng ưu đãi đặc biệt.
+                        Vui lòng liên hệ quản lý bãi đỗ xe hoặc đến quầy dịch vụ khách hàng tại siêu thị để đăng ký thẻ đỗ xe siêu thị (Tháng/VIP) và nhận ưu đãi.
                       </p>
                     </div>
                   </div>
@@ -509,6 +511,22 @@ export default function ProfileSection() {
           </div>
         </div>
       )}
+      {/* Temporary Debug Info */}
+      <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 12 }}>
+        <h6 className="fw-bold text-dark mb-2">🔎 Thông tin Gỡ lỗi Bãi xe (Debug Info):</h6>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+          <div><strong>Tài khoản ID:</strong> {userId}</div>
+          <div><strong>Số lượng phương tiện của bạn:</strong> {vehicles.length} (Biển số: {vehicles.map(v => v.licensePlate).join(', ')})</div>
+          <div><strong>Số vé tháng nhận được:</strong> {rawTickets.length}</div>
+          <div><strong>Có thẻ đỗ xe siêu thị hợp lệ:</strong> {residentCard ? "CÓ" : "KHÔNG"}</div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: 4 }}>Dữ liệu vé đỗ xe thô từ API:</div>
+          <pre style={{ fontSize: '0.75rem', background: '#1e293b', color: '#f8fafc', padding: '10px', borderRadius: 8, overflow: 'auto', maxHeight: '180px' }}>
+            {JSON.stringify(rawTickets, null, 2)}
+          </pre>
+        </div>
+      </div>
     </div>
   );
 }
