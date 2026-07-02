@@ -21,7 +21,11 @@ const NAV_ITEMS = [
 export default function ManagerDashboard() {
   const [tab, setTab] = useState('overview');
   const [loadingBranch, setLoadingBranch] = useState(true);
-  const [branchName, setBranchName] = useState('');
+  const [branchName, setBranchName] = useState(() => localStorage.getItem('parkingBranchName') || '');
+  const [branchId, setBranchId] = useState(() => {
+    const cached = localStorage.getItem('parkingBranchId');
+    return (cached && cached !== 'undefined' && cached !== 'null' && cached !== '') ? cached : null;
+  });
   
   const userId = localStorage.getItem('userId');
   const managerName = localStorage.getItem('fullName') || 'Manager';
@@ -32,19 +36,71 @@ export default function ManagerDashboard() {
         setLoadingBranch(false);
         return;
       }
+      // Nếu đã có branchId trong localStorage (lưu từ lúc đăng nhập), dùng luôn và bỏ qua loading
+      const cachedBranchId = localStorage.getItem('parkingBranchId');
+      const cachedBranchName = localStorage.getItem('parkingBranchName');
+      if (cachedBranchId && cachedBranchId !== 'undefined' && cachedBranchId !== 'null' && cachedBranchId !== '') {
+        setBranchId(cachedBranchId);
+        setBranchName(cachedBranchName || '');
+        setLoadingBranch(false);
+        // Vẫn gọi API ở background để cập nhật mới nhất
+        try {
+          const user = await authApi.getUserById(userId);
+          const uBranchId =
+            user?.parkingBranchId ||
+            user?.branchId ||
+            user?.parkingBranch?.parkingBranchId ||
+            user?.parkingBranch?.id ||
+            user?.branch?.id;
+          const uBranchName =
+            user?.parkingBranchName ||
+            user?.branchName ||
+            user?.parkingBranch?.branchName ||
+            user?.parkingBranch?.parkingBranchName ||
+            user?.branch?.branchName ||
+            '';
+          if (uBranchId) {
+            localStorage.setItem('parkingBranchId', String(uBranchId));
+            localStorage.setItem('parkingBranchName', uBranchName);
+            setBranchId(String(uBranchId));
+            setBranchName(uBranchName);
+          }
+        } catch (err) {
+          console.warn('Background branch refresh failed:', err);
+        }
+        return;
+      }
+
+      // Chưa có trong localStorage => gọi API
       try {
         const user = await authApi.getUserById(userId);
-        if (user && user.parkingBranchId) {
-          localStorage.setItem('parkingBranchId', user.parkingBranchId);
-          localStorage.setItem('parkingBranchName', user.parkingBranchName || '');
-          setBranchName(user.parkingBranchName || '');
+        const uBranchId =
+          user?.parkingBranchId ||
+          user?.branchId ||
+          user?.parkingBranch?.parkingBranchId ||
+          user?.parkingBranch?.id ||
+          user?.branch?.id;
+        const uBranchName =
+          user?.parkingBranchName ||
+          user?.branchName ||
+          user?.parkingBranch?.branchName ||
+          user?.parkingBranch?.parkingBranchName ||
+          user?.branch?.branchName ||
+          '';
+        
+        if (user && uBranchId) {
+          localStorage.setItem('parkingBranchId', String(uBranchId));
+          localStorage.setItem('parkingBranchName', uBranchName);
+          setBranchName(uBranchName);
+          setBranchId(String(uBranchId));
         } else {
           localStorage.removeItem('parkingBranchId');
           localStorage.removeItem('parkingBranchName');
           setBranchName('');
+          setBranchId(null);
         }
       } catch (err) {
-        console.error("Failed to fetch manager branch info:", err);
+        console.error('Failed to fetch manager branch info:', err);
       } finally {
         setLoadingBranch(false);
       }
@@ -59,12 +115,12 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
-      case 'bookings':  return <BookingPanel />;
-      case 'members':   return <MemberPanel />;
-      case 'zones':     return <ZoneOverviewPanel />;
-      case 'iot':       return <IotPanel />;
-      case 'incidents': return <IncidentPanel />;
-      default:          return <OverviewPanel onNavigate={setTab} />;
+      case 'bookings':  return <BookingPanel branchId={branchId} />;
+      case 'members':   return <MemberPanel branchId={branchId} />;
+      case 'zones':     return <ZoneOverviewPanel branchId={branchId} />;
+      case 'iot':       return <IotPanel branchId={branchId} />;
+      case 'incidents': return <IncidentPanel branchId={branchId} />;
+      default:          return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
     }
   };
 
@@ -80,6 +136,31 @@ export default function ManagerDashboard() {
     );
   }
 
+  // Cảnh báo nếu manager chưa được gán chi nhánh
+  if (!branchId) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', background: mt.bg, color: mt.text, gap: '1rem', padding: '2rem'
+      }}>
+        <div style={{ fontSize: '3rem' }}>⚠️</div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: mt.text }}>Tài khoản chưa được gán chi nhánh</div>
+        <div style={{ fontSize: '0.875rem', color: mt.textMuted, textAlign: 'center', maxWidth: 400 }}>
+          Tài khoản manager của bạn (<strong>{managerName}</strong>) chưa được Admin gán vào chi nhánh nào.
+          Vui lòng liên hệ Quản trị viên hệ thống để được cấp quyền quản lý chi nhánh.
+        </div>
+        <button
+          onClick={handleLogout}
+          style={{
+            marginTop: '1rem', padding: '10px 24px', background: mt.danger,
+            color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
+          }}
+        >
+          ← Đăng xuất
+        </button>
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: mt.bg, fontFamily: 'inherit' }}>
       {/* Sidebar */}

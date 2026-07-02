@@ -393,14 +393,7 @@ export default function SearchPage() {
                                 )}
                               </div>
 
-                              <div className="col-sm-4 text-end d-flex flex-column justify-content-between ps-sm-3 mt-3 mt-sm-0">
-                                <div className="d-flex justify-content-end align-items-start gap-2">
-                                  <div className="text-end text-dark">
-                                    <div className="fw-bold">{lot.scoreLabel}</div>
-                                    <div className="text-muted small">{lot.reviews}</div>
-                                  </div>
-                                  <div className="bg-primary text-white fw-bold rounded px-2 py-1 fs-5 shadow-sm">{lot.score}</div>
-                                </div>
+                              <div className="col-sm-4 text-end d-flex flex-column justify-content-end ps-sm-3 mt-3 mt-sm-0">
 
                                 <div className="mt-4 text-dark">
                                   <div className="d-flex align-items-center justify-content-end gap-2 mb-1">
