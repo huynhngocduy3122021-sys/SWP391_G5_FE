@@ -204,6 +204,25 @@ export default function GateOutPanel() {
       });
       const paidAmount = getSessionAmount(res) ?? parkingCharge?.amount;
 
+      // Tự động đưa thẻ về trạng thái AVAILABLE (còn trống) đối với TẤT CẢ CÁC THẺ sau khi checkout xong
+      try {
+        const cleanCode = cardCode.trim().toUpperCase();
+        const cardsData = await managerApi.getParkingCards();
+        const parsedCards = Array.isArray(cardsData) ? cardsData : [];
+        const matchedCard = parsedCards.find(c => (c.cardCode || '').trim().toUpperCase() === cleanCode);
+        if (matchedCard) {
+          const type = cleanCode.startsWith('VIP-') ? 'VIP' : cleanCode.startsWith('MONTH-') ? 'MONTHLY' : 'REGULAR';
+          await managerApi.updateParkingCard(matchedCard.parkingCardId, {
+            cardCode: matchedCard.matchedCard || matchedCard.cardCode,
+            parkingBranchId: Number(matchedCard.parkingBranchId),
+            status: 'AVAILABLE',
+            type: type
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to reset card status to AVAILABLE during checkout:", err);
+      }
+
       if (selectedMethod === 'CASH') {
         toast.success(`Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`);
         setActiveSession(null);
@@ -327,18 +346,27 @@ export default function GateOutPanel() {
           </div>
 
           {activeSession ? (
-            <div style={{ background: 'rgba(34,197,94,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)', marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                🟢 ĐÃ TÌM THẤY PHIÊN GỬI XE
+            <>
+              <div style={{ background: 'rgba(34,197,94,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                  🟢 ĐÃ TÌM THẤY PHIÊN GỬI XE
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
+                  <div><strong>Biển số lúc vào:</strong> {activeSession.licensePlate}</div>
+                  <div><strong>Loại xe:</strong> {activeSession.vehicleTypeName}</div>
+                  <div><strong>Màu xe:</strong> {activeSession.vehicleColor || 'Không rõ'}</div>
+                  <div><strong>Hiệu xe:</strong> {activeSession.vehicleBrand || 'Không rõ'}</div>
+                  <div><strong>Giờ vào:</strong> {new Date(activeSession.checkInTime).toLocaleString()}</div>
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                <div><strong>Biển số lúc vào:</strong> {activeSession.licensePlate}</div>
-                <div><strong>Loại xe:</strong> {activeSession.vehicleTypeName}</div>
-                <div><strong>Màu xe:</strong> {activeSession.vehicleColor || 'Không rõ'}</div>
-                <div><strong>Hiệu xe:</strong> {activeSession.vehicleBrand || 'Không rõ'}</div>
-                <div><strong>Giờ vào:</strong> {new Date(activeSession.checkInTime).toLocaleString()}</div>
-              </div>
-            </div>
+
+              {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-')) && (
+                <div style={{ background: 'rgba(59,130,246,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #3b82f6', marginBottom: '1rem', color: '#60a5fa' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: '#93c5fd' }}>🎟️ THẺ THÁNG / VIP HỢP LỆ</div>
+                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Hệ thống ghi nhận thẻ tháng hoặc VIP còn hiệu lực. <strong style={{ color: '#fff' }}>Khách được miễn phí (Thanh toán = 0đ)</strong>. Không cần thu tiền!</div>
+                </div>
+              )}
+            </>
           ) : (
             <div style={{ background: 'rgba(239,68,68,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#ef4444' }}>
               ⚠️ Vui lòng tìm kiếm thẻ để nạp phiên gửi xe!
@@ -414,7 +442,7 @@ export default function GateOutPanel() {
 
           <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: '#fff', padding: '0.85rem', fontSize: '1rem' }}
             disabled={confirming} onClick={handleConfirm}>
-            {confirming ? <span className="vin-spinner" /> : '✅'} XÁC NHẬN & MỞ CỔNG RA
+            {confirming ? <span className="vin-spinner" /> : '✅'} {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-')) ? 'XÁC NHẬN CHO XE RA (MIỄN PHÍ - 0đ)' : 'XÁC NHẬN & MỞ CỔNG RA'}
           </button>
         </div>
 

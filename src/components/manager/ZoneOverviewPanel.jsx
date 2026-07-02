@@ -10,15 +10,56 @@ const gId   = (o, ...ks) => { for (const k of ks) if (o?.[k]) return o[k]; retur
 const gName = (o, ...ks) => { for (const k of ks) if (o?.[k]) return o[k]; return ''; };
 const sid   = (a, b) => String(a || '') === String(b || '');
 
-const floorId   = (f) => gId(f,   'parkingFloorId', 'id');
-const floorName = (f) => gName(f, 'floorName', 'name', 'floorCode') || String(floorId(f));
-const zoneId    = (z) => gId(z,   'parkingZoneId', 'id', 'zoneId');
-const zoneName  = (z) => gName(z, 'zoneName', 'name') || `Zone ${zoneId(z)}`;
-const zoneCap   = (z) => Number(z?.capacity || z?.totalSlots || z?.total || 0);
-const zoneUsed  = (z) => Number(z?.usedSlots || z?.occupiedSlots || z?.currentOccupancy || z?.used || 0);
-const zoneFlId  = (z) => gId(z,   'parkingFloorId', 'floorId');
-const vtId      = (v) => gId(v,   'vehicleTypeId', 'id');
-const vtName    = (v) => gName(v, 'typeName', 'vehicleTypeName', 'name') || `Loại xe ${vtId(v)}`;
+const floorId = (f) => {
+  if (!f) return '';
+  if (f.parkingFloorId) return String(f.parkingFloorId);
+  if (f.id) return String(f.id);
+  return '';
+};
+
+const floorName = (f) => {
+  if (!f) return '';
+  return f.floorName || f.name || f.floorCode || String(floorId(f));
+};
+
+const zoneId = (z) => {
+  if (!z) return '';
+  if (z.parkingZoneId) return String(z.parkingZoneId);
+  if (z.id) return String(z.id);
+  if (z.zoneId) return String(z.zoneId);
+  return '';
+};
+
+const zoneName = (z) => {
+  if (!z) return '';
+  return z.zoneName || z.name || `Zone ${zoneId(z)}`;
+};
+
+const zoneCap = (z) => Number(z?.capacity || z?.totalSlots || z?.total || 0);
+
+const zoneUsed = (z) => Number(z?.usedSlots || z?.occupiedSlots || z?.currentOccupancy || z?.used || 0);
+
+const zoneFlId = (z) => {
+  if (!z) return '';
+  if (z.parkingFloorId) return String(z.parkingFloorId);
+  if (z.floorId) return String(z.floorId);
+  if (z.parkingFloor?.parkingFloorId) return String(z.parkingFloor.parkingFloorId);
+  if (z.parkingFloor?.id) return String(z.parkingFloor.id);
+  if (z.floor?.id) return String(z.floor.id);
+  return '';
+};
+
+const vtId = (v) => {
+  if (!v) return '';
+  if (v.vehicleTypeId) return String(v.vehicleTypeId);
+  if (v.id) return String(v.id);
+  return '';
+};
+
+const vtName = (v) => {
+  if (!v) return '';
+  return v.typeName || v.vehicleTypeName || v.name || `Loại xe ${vtId(v)}`;
+};
 
 const apiErr = (err) => {
   const msg = err?.response?.data?.message || err?.response?.data || '';
@@ -56,7 +97,7 @@ function GradientModalHeader({ icon: Icon, title, subtitle, gradient, onClose, d
 }
 
 /* ── main component ──────────────────────────────────────── */
-export default function ZoneOverviewPanel() {
+export default function ZoneOverviewPanel({ branchId }) {
   const [selFloor, setSelFloor] = useState('ALL');
   const [floors,   setFloors]   = useState([]);
   const [zones,    setZones]    = useState([]);
@@ -76,7 +117,7 @@ export default function ZoneOverviewPanel() {
 
   // form states
   const emptyZone  = { name: '', total: '', floorId: '', vtId: '' };
-  const emptyFloor = { name: '', code: '', floorNumber: '' };
+  const emptyFloor = { name: '', code: '', floorNumber: '', capacity: '' };
   const [zForm, setZForm] = useState(emptyZone);
   const [fForm, setFForm] = useState(emptyFloor);
 
@@ -89,29 +130,78 @@ export default function ZoneOverviewPanel() {
   /* ── fetch ── */
   const fetchData = async () => {
     setLoading(true);
-    const managerBranchId = localStorage.getItem('parkingBranchId');
+    const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null') ? String(branchId) : localStorage.getItem('parkingBranchId');
     try {
-      const [fl, zo, vt, se] = await Promise.all([
-        managerApi.getAllFloors(),
-        managerApi.getAllZones(),
-        managerApi.getVehicleTypes(),
-        managerApi.getAllSessions(),
-      ]);
+      let fl, zo, vt, se;
+      
+      // Fetch floors with fallback
+      if (cleanBranchId) {
+        try {
+          fl = await managerApi.getParkingFloorsByBranch(cleanBranchId);
+        } catch (err) {
+          console.warn("getParkingFloorsByBranch failed, falling back to getAllFloors", err);
+          fl = await managerApi.getAllFloors();
+        }
+      } else {
+        fl = await managerApi.getAllFloors();
+      }
+
+      // Fetch zones with fallback
+      if (cleanBranchId) {
+        try {
+          zo = await managerApi.getParkingZonesByBranch(cleanBranchId);
+        } catch (err) {
+          console.warn("getParkingZonesByBranch failed, falling back to getAllZones", err);
+          zo = await managerApi.getAllZones();
+        }
+      } else {
+        zo = await managerApi.getAllZones();
+      }
+
+      // Fetch vehicle types & sessions
+      try {
+        const [vtData, seData] = await Promise.all([
+          managerApi.getVehicleTypes(),
+          managerApi.getAllSessions(cleanBranchId ? { parkingBranchId: Number(cleanBranchId), branchId: Number(cleanBranchId) } : {})
+        ]);
+        vt = vtData;
+        se = seData;
+      } catch (err) {
+        console.error("Failed to fetch vehicle types or sessions", err);
+        vt = [];
+        se = [];
+      }
       const parsedFloors = Array.isArray(fl) ? fl : (fl?.content || []);
       const parsedZones = Array.isArray(zo) ? zo : (zo?.content || []);
       const parsedSessions = Array.isArray(se) ? se : (se?.content || []);
 
-      setFloors(managerBranchId
-        ? parsedFloors.filter(f => String(f.parkingBranchId) === String(managerBranchId))
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
+      setFloors(cleanBranchId
+        ? parsedFloors.filter(f => getBranchId(f) === cleanBranchId)
         : parsedFloors
       );
-      setZones(managerBranchId
-        ? parsedZones.filter(z => String(z.parkingBranchId) === String(managerBranchId))
+      setZones(cleanBranchId
+        ? parsedZones.filter(z => getBranchId(z) === cleanBranchId)
         : parsedZones
       );
       setVtypes(Array.isArray(vt) ? vt : []);
-      setSessions(managerBranchId
-        ? parsedSessions.filter(s => String(s.parkingBranchId) === String(managerBranchId))
+      setSessions(cleanBranchId
+        ? parsedSessions.filter(s => getBranchId(s) === cleanBranchId)
         : parsedSessions
       );
     } catch (err) { 
@@ -122,7 +212,7 @@ export default function ZoneOverviewPanel() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [branchId]);
 
   // Sync Form Data when Edit Zone Target changes
   useEffect(() => {
@@ -149,6 +239,7 @@ export default function ZoneOverviewPanel() {
         setFForm({
           name: originalFloor.floorName || '',
           code: originalFloor.floorCode || '',
+          capacity: String(originalFloor.capacity || ''),
           floorNumber: String(originalFloor.floorNumber !== undefined && originalFloor.floorNumber !== null ? originalFloor.floorNumber : '')
         });
       }
@@ -239,13 +330,15 @@ export default function ZoneOverviewPanel() {
     if (!zForm.floorId)      return setZErr('Vui lòng chọn tầng.');
     if (!zForm.vtId)         return setZErr('Vui lòng chọn loại phương tiện.');
     if (Number(zForm.total) <= 0) return setZErr('Tổng slots phải lớn hơn 0.');
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       setSaving(true);
       await managerApi.createZone({ 
         zoneName: zForm.name.trim(), 
         capacity: Number(zForm.total), 
         parkingFloorId: Number(zForm.floorId), 
-        vehicleTypeId: Number(zForm.vtId) 
+        vehicleTypeId: Number(zForm.vtId),
+        ...(managerBranchId && { parkingBranchId: Number(managerBranchId) })
       });
       setModZone(false); setZForm(emptyZone); fetchData();
       toast.success('Thêm phân khu mới thành công!');
@@ -258,13 +351,15 @@ export default function ZoneOverviewPanel() {
     if (!zForm.floorId)      return setZErr('Vui lòng chọn tầng.');
     if (!zForm.vtId)         return setZErr('Vui lòng chọn loại phương tiện.');
     if (Number(zForm.total) <= 0) return setZErr('Tổng slots phải lớn hơn 0.');
+    const managerBranchId = localStorage.getItem('parkingBranchId');
     try {
       setSaving(true);
       await managerApi.updateZone(editZoneTarget.id, { 
         zoneName: zForm.name.trim(), 
         capacity: Number(zForm.total), 
         parkingFloorId: Number(zForm.floorId), 
-        vehicleTypeId: Number(zForm.vtId) 
+        vehicleTypeId: Number(zForm.vtId),
+        ...(managerBranchId && { parkingBranchId: Number(managerBranchId) })
       });
       setEditZoneTarget(null); setZForm(emptyZone); fetchData();
       toast.success('Cập nhật phân khu thành công!');
@@ -281,6 +376,7 @@ export default function ZoneOverviewPanel() {
         floorName: fForm.name.trim(), 
         ...(fForm.code && { floorCode: fForm.code }), 
         ...(fForm.floorNumber !== '' && { floorNumber: Number(fForm.floorNumber) }),
+        ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }),
         parkingBranchId: managerBranchId ? Number(managerBranchId) : 1
       };
       await managerApi.createFloor(payload);
@@ -299,6 +395,7 @@ export default function ZoneOverviewPanel() {
         floorName: fForm.name.trim(), 
         ...(fForm.code && { floorCode: fForm.code }), 
         ...(fForm.floorNumber !== '' && { floorNumber: Number(fForm.floorNumber) }),
+        ...(Number(fForm.capacity) > 0 && { capacity: Number(fForm.capacity) }),
         parkingBranchId: managerBranchId ? Number(managerBranchId) : 1
       };
       await managerApi.updateFloor(editFloorTarget.id, payload);
@@ -521,6 +618,7 @@ export default function ZoneOverviewPanel() {
               { label: 'Tên tầng *', icon: 'bi-building', field: 'name', placeholder: 'Ví dụ: Tầng 1, Tầng trệt...' },
               { label: 'Số tầng (floor number)', icon: 'bi-sort-numeric-down', field: 'floorNumber', placeholder: 'Ví dụ: 1, 2, -1...', type: 'number' },
               { label: 'Mã tầng (tuỳ chọn)', icon: 'bi-tag', field: 'code', placeholder: 'Ví dụ: F1, G0, B1...' },
+              { label: 'Sức chứa của tầng (slots)', icon: 'bi-grid-3x3-gap', field: 'capacity', placeholder: 'Ví dụ: 50, 100...', type: 'number' },
             ].map(({ label, icon, field, placeholder, type }) => (
               <Form.Group key={field}>
                 <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">{label}</Form.Label>

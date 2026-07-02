@@ -41,9 +41,13 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
       // Bookings count
       const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
 
-      // Today's revenue (sum of totalAmount for checkout sessions today)
+      // Today's revenue (sum of totalAmount for checkout sessions today, excluding monthly/VIP)
       const todayRevenue = sessions
-        .filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && s.totalAmount)
+        .filter(s => {
+          const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
+                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
+          return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
+        })
         .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
 
       // Slots left

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import authApi from '../../api/authApi';
+import managerApi from '../../api/manager';
 import { toast } from 'react-toastify';
 
 export default function LoginForm({ onSuccess, onForgot }) {
@@ -21,8 +22,48 @@ export default function LoginForm({ onSuccess, onForgot }) {
       localStorage.setItem('userPhone', data.userPhone || '');
       localStorage.setItem('address', data.userAddress || '');
       localStorage.setItem('userAddress', data.userAddress || '');
-      localStorage.setItem('parkingBranchId', data.parkingBranchId || '');
-      localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
+
+      // Nếu là MANAGER: gọi thêm API getUserById để lấy parkingBranchId chính xác
+      if (data.userRole?.toLowerCase() === 'manager' && data.userId) {
+        try {
+          const userDetail = await authApi.getUserById(data.userId);
+          const branchId =
+            userDetail?.parkingBranchId ||
+            userDetail?.branchId ||
+            userDetail?.parkingBranch?.parkingBranchId ||
+            userDetail?.parkingBranch?.id ||
+            userDetail?.branch?.id ||
+            data.parkingBranchId ||
+            '';
+          const branchName =
+            userDetail?.parkingBranchName ||
+            userDetail?.branchName ||
+            userDetail?.parkingBranch?.branchName ||
+            userDetail?.parkingBranch?.parkingBranchName ||
+            userDetail?.branch?.branchName ||
+            data.parkingBranchName ||
+            '';
+
+          // Lấy thêm branch info đầy đủ nếu có branchId
+          let finalBranchName = branchName;
+          if (branchId && !finalBranchName) {
+            try {
+              const branch = await managerApi.getParkingBranchById(branchId);
+              finalBranchName = branch?.branchName || branch?.parkingBranchName || '';
+            } catch (_) { /* ignore */ }
+          }
+
+          localStorage.setItem('parkingBranchId', branchId ? String(branchId) : '');
+          localStorage.setItem('parkingBranchName', finalBranchName);
+        } catch (err) {
+          console.warn('Không thể lấy thông tin chi nhánh manager:', err);
+          localStorage.setItem('parkingBranchId', data.parkingBranchId ? String(data.parkingBranchId) : '');
+          localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
+        }
+      } else {
+        localStorage.setItem('parkingBranchId', data.parkingBranchId ? String(data.parkingBranchId) : '');
+        localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
+      }
       toast.success('Đăng nhập thành công!');
       onSuccess(data);
     } catch (err) {

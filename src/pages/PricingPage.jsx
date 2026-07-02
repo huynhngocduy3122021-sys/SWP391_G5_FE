@@ -298,22 +298,11 @@ export default function PricingPage() {
                 <span className="badge bg-primary text-white fw-bold px-2 py-1" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
                   VINPARKING PLUS
                 </span>
-                <span className="text-warning">⭐⭐⭐⭐⭐</span>
               </div>
               <h2 className="fw-bold text-dark mb-1">{currentLot.name} - Bãi đỗ thông minh</h2>
               <p className="text-muted small d-flex align-items-center gap-1 mb-0">
                 📍 {currentLot.address}
               </p>
-            </div>
-            
-            <div className="bg-light border rounded-3 p-3 text-end d-flex align-items-center gap-3">
-              <div>
-                <span className="fw-bold text-dark d-block" style={{ fontSize: '1.1rem' }}>{currentLot.scoreLabel}</span>
-                <small className="text-muted">{currentLot.reviews}</small>
-              </div>
-              <div className="bg-teal text-white fw-bold rounded px-3 py-2 fs-4 shadow-sm" style={{ backgroundColor: '#164e63' }}>
-                {currentLot.score}
-              </div>
             </div>
           </div>
 
@@ -534,95 +523,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Customer Reviews Section */}
-        <h4 className="fw-bold text-dark mb-3 mt-5">Đánh giá từ khách hàng</h4>
-        <div className="card border-0 shadow-sm p-4 rounded-4 mb-4 bg-white">
-          <div className="row g-4 align-items-center">
-            <div className="col-md-4 text-center border-end">
-              <h1 className="fw-bold text-dark m-0" style={{ fontSize: '4rem' }}>{currentLot.score}</h1>
-              <h5 className="fw-bold text-dark mt-2 mb-1">{currentLot.scoreLabel}</h5>
-              <p className="text-muted small m-0">Dựa trên {currentLot.reviews}</p>
-            </div>
-            <div className="col-md-8 px-md-4">
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold text-dark mb-1">
-                  <span>Sạch sẽ, thông thoáng</span>
-                  <span>9.5 / 10</span>
-                </div>
-                <div className="progress" style={{ height: '6px' }}>
-                  <div className="progress-bar" style={{ width: '95%', backgroundColor: '#164e63' }} />
-                </div>
-              </div>
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold text-dark mb-1">
-                  <span>Vị trí thuận tiện</span>
-                  <span>9.8 / 10</span>
-                </div>
-                <div className="progress" style={{ height: '6px' }}>
-                  <div className="progress-bar" style={{ width: '98%', backgroundColor: '#164e63' }} />
-                </div>
-              </div>
-              <div>
-                <div className="d-flex justify-content-between small fw-semibold text-dark mb-1">
-                  <span>Dịch vụ hỗ trợ</span>
-                  <span>8.8 / 10</span>
-                </div>
-                <div className="progress" style={{ height: '6px' }}>
-                  <div className="progress-bar" style={{ width: '88%', backgroundColor: '#164e63' }} />
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <hr className="my-4 text-muted opacity-25" />
-
-          {/* Testimonial comments */}
-          <div className="d-flex flex-column gap-3">
-            <div className="border rounded-3 p-3 bg-light">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <div className="d-flex align-items-center gap-2">
-                  <div className="bg-secondary text-white rounded-circle fw-bold d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', fontSize: '0.85rem' }}>MN</div>
-                  <div>
-                    <h6 className="fw-bold text-dark mb-0 small">Minh Nguyen</h6>
-                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>👤 Verified Parker</small>
-                  </div>
-                </div>
-                <span className="badge bg-teal text-white fw-bold" style={{ backgroundColor: '#164e63' }}>9.5</span>
-              </div>
-              <p className="text-muted small m-0" style={{ italic: 'true' }}>
-                "Bãi đỗ sạch sẽ, ánh sáng cực tốt và làn đỗ rất rộng rãi. Rất thích hợp cho chiếc BMW X5 của tôi. Trạm sạc điện EV hoạt động tốt và rất dễ kết nối."
-              </p>
-              <div className="text-end mt-2">
-                <small className="text-muted cursor-pointer" style={{ fontSize: '0.7rem' }}>👍 Hữu ích (12)</small>
-              </div>
-            </div>
-
-            <div className="border rounded-3 p-3 bg-light">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <div className="d-flex align-items-center gap-2">
-                  <div className="bg-secondary text-white rounded-circle fw-bold d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', fontSize: '0.85rem' }}>HT</div>
-                  <div>
-                    <h6 className="fw-bold text-dark mb-0 small">Hanh Tran</h6>
-                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>👤 Verified Parker</small>
-                  </div>
-                </div>
-                <span className="badge bg-teal text-white fw-bold" style={{ backgroundColor: '#164e63' }}>8.8</span>
-              </div>
-              <p className="text-muted small m-0">
-                "Hệ thống sạc xe điện dễ tìm thấy và hoạt động trơn tru. Có chút hơi đắt đỏ so với các bãi đỗ ngoài trời thông thường nhưng cực kì xứng đáng với chất lượng dịch vụ của tòa nhà."
-              </p>
-              <div className="text-end mt-2">
-                <small className="text-muted cursor-pointer" style={{ fontSize: '0.7rem' }}>👍 Hữu ích (5)</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-3">
-            <button className="btn btn-link text-decoration-none fw-bold" style={{ color: '#164e63' }}>
-              Read all 1,248 reviews
-            </button>
-          </div>
-        </div>
 
         {/* Good to Know Section */}
         <h4 className="fw-bold text-dark mb-3 mt-5">Thông tin cần lưu ý (Good to Know)</h4>

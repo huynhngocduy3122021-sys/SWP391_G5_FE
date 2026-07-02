@@ -13,16 +13,8 @@ export default function GateInPanel() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
   
+  // Dữ liệu camera AI trả về — mock theo ảnh, thay bằng staffApi.getLiveEntryDetection(GATE_ID)
   const [detected] = useState({ plateNumber: '', entryTime: '' });
-  const [currentTime, setCurrentTime] = useState('');
-  
-  useEffect(() => {
-    setCurrentTime(new Date().toLocaleString('vi-VN'));
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleString('vi-VN'));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
   const [licensePlate, setLicensePlate] = useState('');
   const [cardCode, setCardCode] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
@@ -35,6 +27,12 @@ export default function GateInPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [zones, setZones] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
+  const [vehiclesList, setVehiclesList] = useState([]);
+  const [isAutoPopulated, setIsAutoPopulated] = useState(false);
+  const [vipVehicles, setVipVehicles] = useState([]);
+  const [vipOwnerName, setVipOwnerName] = useState('');
+  const [selectedVipVehicleId, setSelectedVipVehicleId] = useState('');
+  const [isMonthlyOrVipCard, setIsMonthlyOrVipCard] = useState(false);
 
   const fetchStatsData = async () => {
     try {
@@ -95,6 +93,263 @@ export default function GateInPanel() {
     }
   }, [detected.plateNumber]);
 
+  // Fetch registered vehicles list on load
+  useEffect(() => {
+    const fetchVehiclesList = async () => {
+      try {
+        const data = await managerApi.getAllVehicles();
+        const parsed = Array.isArray(data) ? data : (data?.content || []);
+        setVehiclesList(parsed);
+      } catch (err) {
+        console.error("Failed to load vehicles list for lookup:", err);
+      }
+    };
+    fetchVehiclesList();
+  }, []);
+
+  const checkIsMonthlyOrVip = (code) => {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) return false;
+    return cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || isMonthlyOrVipCard;
+  };
+
+  // Auto-populate when card code matches a registered vehicle or monthly ticket via real API
+  const lookupCardCode = async (cleanCode) => {
+    try {
+      // 1. Call API to get latest monthly tickets
+      const ticketsData = await managerApi.getAllMonthlyTickets();
+      const tickets = Array.isArray(ticketsData) ? ticketsData : (ticketsData?.content || []);
+      
+      const matchTicket = tickets.find(t => {
+        const tCode = (t.cardCode || t.parkingCard?.cardCode || '').trim().toUpperCase();
+        return tCode === cleanCode ||
+               tCode === `MONTH-${cleanCode}` ||
+               tCode === `VIP-${cleanCode}` ||
+               cleanCode === `MONTH-${tCode}` ||
+               cleanCode === `VIP-${tCode}`;
+      });
+      
+      if (matchTicket) {
+        let v = matchTicket.vehicle || {};
+        const ticketVehicleId = matchTicket.vehicleId || v.vehicleId;
+        
+        // Gọi API chi tiết xe để lấy đầy đủ thông tin màu xe, hiệu xe
+        if (ticketVehicleId) {
+          try {
+            const fetched = await managerApi.getVehicleById(ticketVehicleId);
+            if (fetched) {
+              v = fetched;
+            }
+          } catch (err) {
+            console.warn("Failed to fetch full vehicle by ID:", err);
+          }
+        }
+        
+        // Dự phòng: Tìm từ danh sách vehiclesList
+        if (!v.vehicleColor || !v.vehicleBrand) {
+          const localMatch = vehiclesList.find(x => 
+            String(x.vehicleId) === String(ticketVehicleId) ||
+            (x.licensePlate && v.licensePlate && x.licensePlate.toUpperCase().replace(/\s/g, '') === v.licensePlate.toUpperCase().replace(/\s/g, ''))
+          );
+          if (localMatch) {
+            v = { ...localMatch, ...v };
+          }
+        }
+
+        const isVip = cleanCode.startsWith('VIP-') || (matchTicket.cardCode || '').startsWith('VIP-') || (matchTicket.parkingCard?.cardCode || '').startsWith('VIP-');
+        
+        if (isVip) {
+          const ownerId = matchTicket.userId || matchTicket.user?.id || matchTicket.user?.userId || v.userId || v.user?.id || v.user?.userId;
+          const ownerName = matchTicket.userFullName || matchTicket.user?.fullName || v.userFullName || v.user?.fullName || 'VIP Member';
+          setVipOwnerName(ownerName);
+
+          const uVehicles = vehiclesList.filter(x => {
+            if (ownerId) {
+              const xOwnerId = x.userId || x.user?.id || x.user?.userId;
+              if (String(xOwnerId) === String(ownerId)) return true;
+            }
+            const xOwnerName = x.userFullName || x.user?.fullName;
+            if (xOwnerName && xOwnerName === ownerName) return true;
+            return false;
+          });
+
+          setVipVehicles(uVehicles.length > 0 ? uVehicles : [v]);
+          setSelectedVipVehicleId(v.vehicleId || v.id || '');
+        } else {
+          setVipVehicles([]);
+          setVipOwnerName('');
+          setSelectedVipVehicleId('');
+        }
+
+        const plate = v.licensePlate || matchTicket.licensePlate || '';
+        const color = v.vehicleColor || '';
+        const brand = v.vehicleBrand || '';
+        
+        setLicensePlate(plate);
+        setVehicleColor(color);
+        setVehicleBrand(brand);
+        setIsAutoPopulated(true);
+        setIsMonthlyOrVipCard(true);
+        
+        const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id || matchTicket.vehicleTypeId;
+        if (vTypeId) {
+          setVehicleTypeId(vTypeId);
+        } else {
+          const matchTypeName = (v.vehicleTypeName || v.vehicleType?.typeName || '').toLowerCase();
+          if (matchTypeName) {
+            const matchedType = vehicleTypes.find(vt => (vt.typeName || '').toLowerCase().includes(matchTypeName) || matchTypeName.includes((vt.typeName || '').toLowerCase()));
+            if (matchedType) {
+              setVehicleTypeId(matchedType.vehicleTypeId);
+            }
+          }
+        }
+        toast.success(`Tìm thấy vé tháng/VIP hoạt động cho xe: ${plate}!`);
+        return true;
+      }
+
+      // 2. Fallback to local registered vehicles list
+      const matchVehicle = vehiclesList.find(v => {
+        const vCode = (v.cardCode || v.parkingCard?.cardCode || v.rfidCard?.cardCode || '').trim().toUpperCase();
+        return vCode === cleanCode || 
+               vCode === `MONTH-${cleanCode}` || 
+               vCode === `VIP-${cleanCode}` ||
+               cleanCode === `MONTH-${vCode}` ||
+               cleanCode === `VIP-${vCode}`;
+      });
+      
+      if (matchVehicle) {
+        let v = matchVehicle;
+        if (v.vehicleId) {
+          try {
+            const fetched = await managerApi.getVehicleById(v.vehicleId);
+            if (fetched) {
+              v = fetched;
+            }
+          } catch (err) {
+            console.warn("Failed to fetch full vehicle by ID (fallback):", err);
+          }
+        }
+
+        const isVip = cleanCode.startsWith('VIP-') || (v.cardCode || '').startsWith('VIP-') || (v.parkingCard?.cardCode || '').startsWith('VIP-') || (v.rfidCard?.cardCode || '').startsWith('VIP-');
+        
+        if (isVip) {
+          const ownerId = v.userId || v.user?.id || v.user?.userId;
+          const ownerName = v.userFullName || v.user?.fullName || 'VIP Member';
+          setVipOwnerName(ownerName);
+
+          const uVehicles = vehiclesList.filter(x => {
+            if (ownerId) {
+              const xOwnerId = x.userId || x.user?.id || x.user?.userId;
+              if (String(xOwnerId) === String(ownerId)) return true;
+            }
+            const xOwnerName = x.userFullName || x.user?.fullName;
+            if (xOwnerName && xOwnerName === ownerName) return true;
+            return false;
+          });
+
+          setVipVehicles(uVehicles.length > 0 ? uVehicles : [v]);
+          setSelectedVipVehicleId(v.vehicleId || v.id || '');
+        } else {
+          setVipVehicles([]);
+          setVipOwnerName('');
+          setSelectedVipVehicleId('');
+        }
+
+        const plate = v.licensePlate || '';
+        setLicensePlate(plate);
+        setVehicleColor(v.vehicleColor || '');
+        setVehicleBrand(v.vehicleBrand || '');
+        setIsAutoPopulated(true);
+        setIsMonthlyOrVipCard(isVip);
+        
+        const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id;
+        if (vTypeId) {
+          setVehicleTypeId(vTypeId);
+        } else {
+          const matchTypeName = (v.vehicleTypeName || v.vehicleType?.typeName || '').toLowerCase();
+          if (matchTypeName) {
+            const matchedType = vehicleTypes.find(vt => (vt.typeName || '').toLowerCase().includes(matchTypeName) || matchTypeName.includes((vt.typeName || '').toLowerCase()));
+            if (matchedType) {
+              setVehicleTypeId(matchedType.vehicleTypeId);
+            }
+          }
+        }
+        toast.success(`Tìm thấy thông tin xe đăng ký: ${plate}`);
+        return true;
+      }
+    } catch (err) {
+      console.error("Lỗi khi tìm kiếm thông tin thẻ:", err);
+    }
+    return false;
+  };
+
+  // Auto-populate when card code matches a registered vehicle
+  useEffect(() => {
+    const cleanCode = cardCode.trim().toUpperCase();
+    if (!cleanCode) {
+      if (isAutoPopulated) {
+        setLicensePlate('');
+        setVehicleColor('');
+        setVehicleBrand('');
+        if (vehicleTypes.length > 0) {
+          setVehicleTypeId(vehicleTypes[0].vehicleTypeId);
+        }
+        setIsAutoPopulated(false);
+        setIsMonthlyOrVipCard(false);
+        setVipVehicles([]);
+        setVipOwnerName('');
+        setSelectedVipVehicleId('');
+      }
+      return;
+    }
+
+    const isSpecial = cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || cleanCode.length >= 4;
+    if (!isSpecial) return;
+
+    const delayDebounce = setTimeout(async () => {
+      const found = await lookupCardCode(cleanCode);
+      if (!found && isAutoPopulated) {
+        setLicensePlate('');
+        setVehicleColor('');
+        setVehicleBrand('');
+        if (vehicleTypes.length > 0) {
+          setVehicleTypeId(vehicleTypes[0].vehicleTypeId);
+        }
+        setIsAutoPopulated(false);
+        setIsMonthlyOrVipCard(false);
+        setVipVehicles([]);
+        setVipOwnerName('');
+        setSelectedVipVehicleId('');
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [cardCode, vehiclesList, vehicleTypes]);
+
+  const handleVipVehicleChange = (e) => {
+    const vId = e.target.value;
+    setSelectedVipVehicleId(vId);
+    const chosen = vipVehicles.find(v => String(v.vehicleId || v.id) === String(vId));
+    if (chosen) {
+      setLicensePlate(chosen.licensePlate || '');
+      setVehicleColor(chosen.vehicleColor || '');
+      setVehicleBrand(chosen.vehicleBrand || '');
+      
+      const vTypeId = chosen.vehicleTypeId || chosen.vehicleType?.vehicleTypeId || chosen.vehicleType?.id;
+      if (vTypeId) {
+        setVehicleTypeId(vTypeId);
+      } else {
+        const matchTypeName = (chosen.vehicleTypeName || chosen.vehicleType?.typeName || '').toLowerCase();
+        if (matchTypeName) {
+          const matchedType = vehicleTypes.find(vt => (vt.typeName || '').toLowerCase().includes(matchTypeName) || matchTypeName.includes((vt.typeName || '').toLowerCase()));
+          if (matchedType) {
+            setVehicleTypeId(matchedType.vehicleTypeId);
+          }
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
     setPreviewUrls(urls);
@@ -142,11 +397,12 @@ export default function GateInPanel() {
   };
 
   const handleConfirm = async () => {
+    const isMOrV = checkIsMonthlyOrVip(cardCode);
     if (isBooking && !bookingCode.trim()) {
       toast.error('Vui lòng nhập mã đặt chỗ!');
       return;
     }
-    if (!licensePlate) {
+    if (!isMOrV && !licensePlate) {
       toast.error('Vui lòng nhập biển số xe!');
       return;
     }
@@ -154,7 +410,7 @@ export default function GateInPanel() {
       toast.error('Vui lòng nhập mã thẻ!');
       return;
     }
-    if (!vehicleTypeId) {
+    if (!isMOrV && !vehicleTypeId) {
       toast.error('Vui lòng chọn loại xe!');
       return;
     }
@@ -264,52 +520,130 @@ export default function GateInPanel() {
             </div>
           )}
 
-          <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
-            <label>LICENSE PLATE (BIỂN SỐ XE)</label>
-            <input
-              value={licensePlate}
-              onChange={(e) => setLicensePlate(e.target.value)}
-              style={{ fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
-            />
-          </div>
-
-          <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
-            <label>CARD CODE (QUẸT THẺ)</label>
-            <input
-              value={cardCode}
-              onChange={(e) => setCardCode(e.target.value)}
-              style={{ fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div className="vin-field">
-              <label>VEHICLE COLOR (MÀU XE)</label>
-              <input value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder="VD: Trắng, Đen..." />
+          {checkIsMonthlyOrVip(cardCode) && (
+            <div style={{ background: 'rgba(59,130,246,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #3b82f6', marginBottom: '0.75rem', color: '#93c5fd', fontSize: '0.8rem' }}>
+              🎟️ <strong>Phát hiện Thẻ Tháng / VIP:</strong> Hệ thống tự động nhận diện thông tin xe. Bạn chỉ cần nhập mã thẻ và bấm xác nhận check-in.
             </div>
-            <div className="vin-field">
-              <label>VEHICLE BRAND (HIỆU XE)</label>
-              <input value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} placeholder="VD: Honda, Toyota..." />
-            </div>
-          </div>
+          )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div className="vin-field">
-              <label>ENTRY TIME (THỜI GIAN VÀO)</label>
-              <input value={currentTime} readOnly style={{ opacity: 0.7, background: 'rgba(255,255,255,0.02)' }} />
-            </div>
-            <div className="vin-field">
-              <label>VEHICLE TYPE (LOẠI XE)</label>
-              <select value={vehicleTypeId} onChange={(e) => setVehicleTypeId(e.target.value)}>
-                <option value="">-- Chọn loại xe --</option>
-                {vehicleTypes.map((type) => (
-                  <option key={type.vehicleTypeId} value={type.vehicleTypeId}>
-                    {type.typeName}
+          {vipVehicles.length > 0 && (
+            <div className="vin-field" style={{ marginBottom: '1rem' }}>
+              <label style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>
+                ⭐ CHỌN PHƯƠNG TIỆN VIP (CHỦ XE: {vipOwnerName.toUpperCase()})
+              </label>
+              <select 
+                value={selectedVipVehicleId} 
+                onChange={handleVipVehicleChange}
+                style={{ 
+                  fontSize: '1.1rem', 
+                  fontWeight: 700, 
+                  background: 'rgba(245,158,11,0.15)', 
+                  color: '#fbbf24',
+                  border: '1px solid rgba(245,158,11,0.5)',
+                  outline: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  width: '100%'
+                }}
+              >
+                {vipVehicles.map(v => (
+                  <option key={v.vehicleId || v.id} value={v.vehicleId || v.id} style={{ background: '#1e293b', color: '#fff' }}>
+                    {v.licensePlate} — {v.vehicleBrand || 'Không rõ'} {v.vehicleColor || ''} ({v.vehicleTypeName || v.vehicleType?.typeName || 'Xe'})
                   </option>
                 ))}
               </select>
             </div>
-          </div>
+          )}
+
+          {(() => {
+            const isMOrV = checkIsMonthlyOrVip(cardCode);
+            return (
+              <>
+                <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ color: isMOrV ? '#60a5fa' : 'inherit', fontWeight: isMOrV ? 'bold' : 'normal' }}>
+                    LICENSE PLATE (BIỂN SỐ XE) {isMOrV && '— THẺ THÁNG/VIP ĐĂNG KÝ'}
+                  </label>
+                  <input
+                    value={licensePlate}
+                    onChange={(e) => setLicensePlate(e.target.value)}
+                    readOnly={isMOrV}
+                    style={{ 
+                      fontSize: '1.2rem', 
+                      fontWeight: 700, 
+                      background: isMOrV ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.05)', 
+                      color: isMOrV ? '#93c5fd' : '#fff',
+                      border: isMOrV ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  />
+                </div>
+
+                <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
+                  <label>CARD CODE (QUẸT THẺ)</label>
+                  <input
+                    value={cardCode}
+                    onChange={(e) => setCardCode(e.target.value)}
+                    style={{ fontSize: '1.1rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div className="vin-field">
+                    <label style={{ color: isMOrV ? '#60a5fa' : 'inherit' }}>VEHICLE COLOR (MÀU XE)</label>
+                    <input 
+                      value={vehicleColor} 
+                      onChange={(e) => setVehicleColor(e.target.value)} 
+                      readOnly={isMOrV} 
+                      style={{ 
+                        background: isMOrV ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.05)', 
+                        color: isMOrV ? '#93c5fd' : '#fff',
+                        border: isMOrV ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)'
+                      }} 
+                    />
+                  </div>
+                  <div className="vin-field">
+                    <label style={{ color: isMOrV ? '#60a5fa' : 'inherit' }}>VEHICLE BRAND (HIỆU XE)</label>
+                    <input 
+                      value={vehicleBrand} 
+                      onChange={(e) => setVehicleBrand(e.target.value)} 
+                      readOnly={isMOrV} 
+                      style={{ 
+                        background: isMOrV ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.05)', 
+                        color: isMOrV ? '#93c5fd' : '#fff',
+                        border: isMOrV ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)'
+                      }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div className="vin-field">
+                    <label>ENTRY TIME (THỜI GIAN VÀO)</label>
+                    <input value={detected.entryTime} readOnly style={{ opacity: 0.7 }} />
+                  </div>
+                  <div className="vin-field">
+                    <label style={{ color: isMOrV ? '#60a5fa' : 'inherit' }}>VEHICLE TYPE (LOẠI XE)</label>
+                    <select 
+                      value={vehicleTypeId} 
+                      onChange={(e) => setVehicleTypeId(e.target.value)} 
+                      disabled={isMOrV} 
+                      style={{ 
+                        background: isMOrV ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.05)', 
+                        color: isMOrV ? '#93c5fd' : '#fff',
+                        border: isMOrV ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                        opacity: 1
+                      }}
+                    >
+                      {vehicleTypes.map((type) => (
+                        <option key={type.vehicleTypeId} value={type.vehicleTypeId}>
+                          {type.typeName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
           <div className="vin-field" style={{ marginBottom: '1rem' }}>
             <label>VEHICLE IMAGES (HÌNH ẢNH PHƯƠNG TIỆN)</label>

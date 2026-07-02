@@ -13,7 +13,9 @@ export function AuthProvider({ children }) {
       fullName: localStorage.getItem('fullName'),
       userId: localStorage.getItem('userId'),
       phone: localStorage.getItem('phone') || localStorage.getItem('userPhone'),
-      address: localStorage.getItem('address') || localStorage.getItem('userAddress')
+      address: localStorage.getItem('address') || localStorage.getItem('userAddress'),
+      parkingBranchId: localStorage.getItem('parkingBranchId'),
+      parkingBranchName: localStorage.getItem('parkingBranchName')
     } : null;
   });
 
@@ -31,7 +33,9 @@ export function AuthProvider({ children }) {
           fullName: localStorage.getItem('fullName'),
           userId: localStorage.getItem('userId'),
           phone: localStorage.getItem('phone') || localStorage.getItem('userPhone'),
-          address: localStorage.getItem('address') || localStorage.getItem('userAddress')
+          address: localStorage.getItem('address') || localStorage.getItem('userAddress'),
+          parkingBranchId: localStorage.getItem('parkingBranchId'),
+          parkingBranchName: localStorage.getItem('parkingBranchName')
         });
       } else {
         setUser(null);
@@ -52,6 +56,12 @@ export function AuthProvider({ children }) {
     localStorage.setItem('userPhone', userData.userPhone || '');
     localStorage.setItem('address', userData.userAddress || '');
     localStorage.setItem('userAddress', userData.userAddress || '');
+    if (userData.parkingBranchId) {
+      localStorage.setItem('parkingBranchId', String(userData.parkingBranchId));
+    }
+    if (userData.parkingBranchName) {
+      localStorage.setItem('parkingBranchName', userData.parkingBranchName);
+    }
     
     setUser({
       token: userData.token,
@@ -60,7 +70,9 @@ export function AuthProvider({ children }) {
       fullName: userData.userFullName,
       userId: userData.userId,
       phone: userData.userPhone || '',
-      address: userData.userAddress || ''
+      address: userData.userAddress || '',
+      parkingBranchId: userData.parkingBranchId,
+      parkingBranchName: userData.parkingBranchName
     });
     
     window.dispatchEvent(new Event('storage'));
@@ -76,6 +88,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('userPhone');
     localStorage.removeItem('address');
     localStorage.removeItem('userAddress');
+    localStorage.removeItem('parkingBranchId');
+    localStorage.removeItem('parkingBranchName');
     setUser(null);
     window.dispatchEvent(new Event('storage'));
     navigate('/');

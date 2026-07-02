@@ -9,6 +9,7 @@ export default function ProfileSection() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
   const [formData, setFormData] = useState({
     fullName: localStorage.getItem('fullName') || '',
     email: localStorage.getItem('email') || '',
@@ -19,6 +20,7 @@ export default function ProfileSection() {
 
   const [vehicles, setVehicles] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [residentCard, setResidentCard] = useState(null); // thẻ VIP hoặc thẻ tháng đang hiệu lực
   
   // Password change states
   const [showPwModal, setShowPwModal] = useState(false);
@@ -71,6 +73,57 @@ export default function ProfileSection() {
         .slice(0, 3);
       setActivities(sortedSessions);
 
+      // 4. Lấy thẻ VIP / thẻ tháng của user từ API monthly-tickets
+      try {
+        const allTickets = await (await import('../../api/manager')).default.getAllMonthlyTickets();
+        const ticketsList = Array.isArray(allTickets) ? allTickets : (allTickets?.content || []);
+
+        // Tập biển số xe của user (để so khớp)
+        const userPlateSet = new Set(userVehicles.map(v => (v.licensePlate || '').toUpperCase()));
+        // Tập vehicleId của user (để so khớp)
+        const userVehicleIds = new Set(userVehicles.map(v => String(v.vehicleId || v.id)));
+
+        // Helper kiểm tra thẻ có thuộc xe của user không
+        const belongsToUser = (t) => {
+          // So khớp vehicleId
+          const vid = String(t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.id || '');
+          if (vid && userVehicleIds.has(vid)) return true;
+          // So khớp licensePlate nếu có
+          const plate = (t.licensePlate || t.vehicle?.licensePlate || '').toUpperCase();
+          if (plate && userPlateSet.has(plate)) return true;
+          return false;
+        };
+
+        // Trạng thái hợp lệ: trống (0 / 'AVAILABLE' / 'EMPTY') hoặc đang dùng (1 / 'IN_USE' / 'ACTIVE' / true)
+        const isValidStatus = (status) => {
+          if (status === 0 || status === 'AVAILABLE' || status === 'EMPTY' || status === 'INACTIVE') return true;
+          if (status === 1 || status === true || status === 'IN_USE' || status === 'ACTIVE') return true;
+          return false;
+        };
+
+        // Lọc tất cả thẻ VIP / thẻ tháng thuộc user có trạng thái hợp lệ
+        const matchedCards = ticketsList.filter(t => {
+          const cardCode = t.cardCode || t.parkingCard?.cardCode || '';
+          const isVipOrMonthly = cardCode.startsWith('VIP-') || cardCode.startsWith('MONTH-');
+          const isNotExpired = !t.expiryDate || new Date(t.expiryDate) >= new Date();
+          return isVipOrMonthly && isValidStatus(t.status) && isNotExpired && belongsToUser(t);
+        });
+
+        // Ưu tiên thẻ đang dùng (status 1/true/IN_USE/ACTIVE) trước, rồi đến thẻ trống
+        const isInUse = (status) =>
+          status === 1 || status === true || status === 'IN_USE' || status === 'ACTIVE';
+
+        const sorted = [...matchedCards].sort((a, b) => {
+          const aInUse = isInUse(a.status) ? 0 : 1;
+          const bInUse = isInUse(b.status) ? 0 : 1;
+          return aInUse - bInUse;
+        });
+
+        setResidentCard(sorted[0] || null);
+      } catch (cardErr) {
+        console.warn('Không thể tải thẻ cư dân:', cardErr);
+        setResidentCard(null);
+      }
     } catch (err) {
       console.error("Failed to load user profile details:", err);
     } finally {
@@ -270,34 +323,102 @@ export default function ProfileSection() {
           {/* Trạng thái thẻ */}
           <div className="card border-0 shadow-sm p-4 rounded-4 mb-4" style={{ background: '#ffffff' }}>
             <h6 className="fw-bold text-dark text-uppercase mb-3 small" style={{ letterSpacing: '1px' }}>Trạng thái thẻ cư dân</h6>
-            
-            <div className="rounded-4 p-4 text-white mb-4 position-relative overflow-hidden" style={{ background: '#164e63', minHeight: '180px' }}>
-              {/* Card visual elements */}
-              <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-              <div className="d-flex justify-content-between align-items-start mb-4">
-                <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
-                <span className="fs-5">📡</span>
-              </div>
-              <div className="mt-4">
-                <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
-                <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'RESIDENT'}</h6>
-                <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD IDENTIFIER</p>
-                <h5 className="fw-bold m-0" style={{ letterSpacing: '2px' }}>
-                  {vehicles.length > 0 ? `VPC-${vehicles[0].licensePlate}` : 'CHƯA LIÊN KẾT PHƯƠNG TIỆN'}
-                </h5>
-              </div>
-            </div>
+            {residentCard ? (() => {
+              const cardCode = residentCard.cardCode || residentCard.parkingCard?.cardCode || '';
+              const isVip = cardCode.startsWith('VIP-');
+              const cardBg = isVip
+                ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
+                : 'linear-gradient(135deg, #164e63 0%, #0e7490 100%)';
+              const cardLabel = isVip ? '👑 Thẻ VIP' : '📅 Thẻ Tháng';
+              const expiryStr = residentCard.expiryDate
+                ? new Date(residentCard.expiryDate).toLocaleDateString('vi-VN')
+                : 'Vô thời hạn';
+              const startStr = residentCard.startDate
+                ? new Date(residentCard.startDate).toLocaleDateString('vi-VN')
+                : '—';
 
-            <div className="d-flex justify-content-between mb-2">
-              <span className="text-muted small">Loại thẻ:</span>
-              <span className="fw-bold" style={{ color: '#164e63' }}>
-                {vehicles.length > 0 ? 'Thẻ Cư dân Liên kết' : 'Chưa kích hoạt'}
-              </span>
-            </div>
-            <div className="d-flex justify-content-between mb-4">
-              <span className="text-muted small">Thời hạn:</span>
-              <span className="fw-bold text-dark">Vô thời hạn</span>
-            </div>
+              // Xác định trạng thái hiển thị từ API
+              const st = residentCard.status;
+              const isInUse = st === 1 || st === true || st === 'IN_USE' || st === 'ACTIVE';
+              const statusBadge = isInUse
+                ? { bg: '#dcfce7', color: '#166534', text: '✓ Đang sử dụng' }
+                : { bg: '#eff6ff', color: '#1d4ed8', text: '○ Trống / Sẵn sàng' };
+
+              return (
+                <>
+                  <div className="rounded-4 p-4 text-white mb-4 position-relative overflow-hidden" style={{ background: cardBg, minHeight: '180px' }}>
+                    <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+                    <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: '100px', height: '100px', background: 'rgba(255,255,255,0.07)', borderRadius: '50%' }}></div>
+                    <div className="d-flex justify-content-between align-items-start mb-4">
+                      <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
+                      <span className="badge rounded-pill" style={{ background: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '1px', padding: '4px 10px' }}>
+                        {isVip ? 'VIP' : 'MONTHLY'}
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
+                      <h6 className="fw-bold mb-3 text-uppercase">{residentCard.guestName || formData.fullName || 'RESIDENT'}</h6>
+                      <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
+                      <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.95rem' }}>{cardCode}</h5>
+                    </div>
+                  </div>
+
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted small">Loại thẻ:</span>
+                    <span className="fw-bold" style={{ color: isVip ? '#7c3aed' : '#164e63' }}>{cardLabel}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted small">Ngày bắt đầu:</span>
+                    <span className="fw-bold text-dark">{startStr}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted small">Hết hạn:</span>
+                    <span className="fw-bold" style={{ color: '#164e63' }}>{expiryStr}</span>
+                  </div>
+                  {residentCard.guestPhone && (
+                    <div className="d-flex justify-content-between mb-2">
+                      <span className="text-muted small">SĐT liên kết:</span>
+                      <span className="fw-bold text-dark">{residentCard.guestPhone}</span>
+                    </div>
+                  )}
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted small">Trạng thái:</span>
+                    <span className="badge rounded-pill fw-semibold"
+                      style={{ background: statusBadge.bg, color: statusBadge.color, fontSize: '0.75rem' }}>
+                      {statusBadge.text}
+                    </span>
+                  </div>
+                </>
+              );
+            })() : (
+              <>
+                <div className="rounded-4 p-4 text-white mb-4 position-relative overflow-hidden" style={{ background: '#94a3b8', minHeight: '180px' }}>
+                   <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+                   <div className="d-flex justify-content-between align-items-start mb-4">
+                     <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
+                     <span className="fs-5">📡</span>
+                   </div>
+                   <div className="mt-4">
+                     <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
+                     <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'RESIDENT'}</h6>
+                     <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
+                     <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>— CHƯA KÍCH HOẠT —</h5>
+                   </div>
+                </div>
+
+                <div className="rounded-3 p-3 mb-2" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                  <div className="d-flex align-items-start gap-2">
+                    <span style={{ fontSize: '1.1rem' }}>ℹ️</span>
+                    <div>
+                      <p className="fw-semibold mb-1" style={{ color: '#c2410c', fontSize: '0.85rem' }}>Bạn chưa có thẻ VIP hoặc thẻ tháng</p>
+                      <p className="text-muted m-0" style={{ fontSize: '0.78rem' }}>
+                        Liên hệ quản lý bãi đỗ xe hoặc đến quầy lễ tân để đăng ký thẻ VIP / thẻ tháng và hưởng ưu đãi đặc biệt.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Hoạt động gần đây */}

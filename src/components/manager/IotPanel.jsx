@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import managerApi from '../../api/manager';
 import { toast } from 'react-toastify';
 
-export default function IotPanel() {
+export default function IotPanel({ branchId }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,12 +14,29 @@ export default function IotPanel() {
 
   const fetchSessions = async () => {
     setLoading(true);
-    const managerBranchId = localStorage.getItem('parkingBranchId');
+    const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null') ? String(branchId) : localStorage.getItem('parkingBranchId');
     try {
-      const data = await managerApi.getAllSessions();
+      const data = await managerApi.getAllSessions(cleanBranchId ? { parkingBranchId: Number(cleanBranchId), branchId: Number(cleanBranchId) } : {});
       const parsed = Array.isArray(data) ? data : data?.content || [];
-      const filtered = managerBranchId
-        ? parsed.filter(s => String(s.parkingBranchId) === String(managerBranchId))
+      
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
+      const filtered = cleanBranchId
+        ? parsed.filter(s => getBranchId(s) === cleanBranchId)
         : parsed;
       // Sắp xếp thời gian check-in mới nhất lên đầu
       const sorted = filtered.sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime));
@@ -39,7 +56,7 @@ export default function IotPanel() {
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [branchId]);
 
   // Gọi API lấy ảnh thật của phiên gửi xe khi thay đổi dòng được chọn
   useEffect(() => {

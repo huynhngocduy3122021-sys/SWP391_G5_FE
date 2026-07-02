@@ -78,24 +78,6 @@ export default function StatusSection() {
             </div>
           </div>
         </div>
-
-        <div className="status-sidebar">
-          <div className="ai-card">
-            <div className="ai-card__title">🧠 Dự báo AI</div>
-            <p className="ai-card__desc">Khu vực Quận 1 sẽ tăng nhu cầu đỗ xe 25% trong 1 giờ tới.</p>
-            <div className="ai-card__row"><span>Tỉ lệ lấp đầy dự kiến</span><span>84%</span></div>
-            <div className="progress-bar-wrap">
-              <div className="progress-bar-fill" style={{ width: '84%' }} />
-            </div>
-          </div>
-          <div className="perf-card">
-            <p>Hiệu suất đỗ hôm nay</p>
-            <div className="perf-card__row">
-              <span className="perf-card__num">2,485</span>
-              <span style={{ fontSize: '1.75rem' }}>📈</span>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
