@@ -223,8 +223,11 @@ export default function GateOutPanel() {
         console.warn("Failed to reset card status to AVAILABLE during checkout:", err);
       }
 
-      if (selectedMethod === 'CASH') {
-        toast.success(`Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`);
+      if (selectedMethod === 'CASH' || isPackageCard) {
+        const msg = isPackageCard
+          ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
+          : `Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`;
+        toast.success(msg);
         setActiveSession(null);
         setCardCode('');
         setExitPlate('');
@@ -289,6 +292,9 @@ export default function GateOutPanel() {
       isBackendAmount: sessionAmount !== null,
     };
   }, [activeSession, pricePolicies]);
+
+  // Kiểm tra thẻ tháng hoặc VIP (miễn phí, không cần thu tiền)
+  const isPackageCard = (cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-');
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem' }}>
@@ -396,7 +402,8 @@ export default function GateOutPanel() {
 
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
 
-          {activeSession && (
+          {/* Ẩn phí khi là thẻ Tháng / VIP */}
+          {activeSession && !isPackageCard && (
             <div style={{ background: 'rgba(14,165,233,0.08)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(14,165,233,0.25)', marginBottom: '1rem' }}>
               <div style={{ color: '#38bdf8', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
                 💵 TẠM TÍNH PHÍ ĐẬU XE
@@ -425,20 +432,25 @@ export default function GateOutPanel() {
             </div>
           )}
 
-          <div style={{ marginBottom: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>
-            PHƯƠNG THỨC THANH TOÁN
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            {PAY_METHODS.map((m) => (
-              <button key={m} 
-                className={`vin-btn vin-btn--sm ${selectedMethod === m ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
-                onClick={() => setSelectedMethod(m)}
-                style={{ py: '0.75rem', fontWeight: 600 }}
-              >
-                {m === 'CASH' ? '💵 TIỀN MẶT' : '📱 VNPAY'}
-              </button>
-            ))}
-          </div>
+          {/* Ẩn phương thức thanh toán khi là thẻ Tháng / VIP */}
+          {!isPackageCard && (
+            <>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>
+                PHƯƠNG THỨC THANH TOÁN
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                {PAY_METHODS.map((m) => (
+                  <button key={m} 
+                    className={`vin-btn vin-btn--sm ${selectedMethod === m ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
+                    onClick={() => setSelectedMethod(m)}
+                    style={{ py: '0.75rem', fontWeight: 600 }}
+                  >
+                    {m === 'CASH' ? '💵 TIỀN MẶT' : '📱 VNPAY'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: '#fff', padding: '0.85rem', fontSize: '1rem' }}
             disabled={confirming} onClick={handleConfirm}>
