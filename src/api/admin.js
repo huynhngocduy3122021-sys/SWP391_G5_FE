@@ -8,6 +8,12 @@ const adminApi = {
 
   // Admin creates a new user account (Staff, Manager, etc.)
   adminCreateUser: async (userData) => {
+    if (userData.userRole === 'STAFF') {
+      return (await API.post('/api/auth/staff', userData)).data;
+    }
+    if (userData.userRole === 'MANAGER') {
+      return (await API.post('/api/auth/manager', userData)).data;
+    }
     return (await API.post('/api/auth/admin-create', userData)).data;
   },
 

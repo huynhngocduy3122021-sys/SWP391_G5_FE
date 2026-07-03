@@ -5,7 +5,7 @@ import managerApi from '../../api/manager';
 import bookingApi from '../../api/bookingApi';
 
 // Topbar "PARK-OPS PRO" — giống header trong cả 2 ảnh thiết kế
-export default function StaffTopbar({ mode, onModeChange, stats }) {
+export default function StaffTopbar({ mode, onModeChange }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   
@@ -21,14 +21,25 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
 
   const fetchStats = async () => {
     try {
-      const [sessions, bookings, zones] = await Promise.all([
+      const [sessionsData, bookingsData, zonesData] = await Promise.all([
         managerApi.getAllSessions(),
         bookingApi.getAllBookings(),
         managerApi.getAllZones()
       ]);
 
+      const branchId = localStorage.getItem('branchId');
+      
+      let sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData?.content || []);
+      let bookings = Array.isArray(bookingsData) ? bookingsData : (bookingsData?.content || []);
+      let zones = Array.isArray(zonesData) ? zonesData : (zonesData?.content || []);
+
+      if (branchId) {
+        sessions = sessions.filter(s => String(s.parkingBranchId) === String(branchId));
+        zones = zones.filter(z => String(z.parkingFloor?.parkingBranch?.parkingBranchId) === String(branchId) || String(z.branchId) === String(branchId));
+      }
+
       // Calculate total capacity
-      const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || 0), 0);
+      const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || z.totalSlots || 0), 0);
       
       // Calculate total active vehicles (status is ACTIVE or check-out is missing)
       const activeSessions = sessions.filter(s => s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime));
@@ -78,6 +89,8 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
       clearInterval(statsId);
     };
   }, []);
+
+
 
   const handleLogout = () => {
     localStorage.clear();
@@ -154,7 +167,6 @@ function StatItem({ label, value, color }) {
     </div>
   );
 }
-
 export const MOCK_STATS = {
   totalVehicles: 1245, maxVehicles: 2000, todayRevenue: 14580,
   bookings: 42, exited: 391, slotsLeft: 755,

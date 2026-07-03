@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import StaffTopbar, { MOCK_STATS } from '../../components/staff/StaffTopbar';
+import StaffTopbar from '../../components/staff/StaffTopbar';
 import GateOutPanel from '../../components/staff/GateOutPanel';
 
 export default function StaffExitGate() {
@@ -10,7 +10,6 @@ export default function StaffExitGate() {
       <StaffTopbar 
         mode="EXIT" 
         onModeChange={(m) => navigate(m === 'ENTRY' ? '/staff/entry' : '/staff/exit')} 
-        stats={MOCK_STATS} 
       />
       <GateOutPanel />
     </div>

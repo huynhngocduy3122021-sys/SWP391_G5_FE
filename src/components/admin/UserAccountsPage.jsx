@@ -3,10 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { Modal, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import adminApi from '../../api/admin';
+import parkingApi from '../../api/parkingApi';
 import { MdAdd, MdPeople, MdPerson } from 'react-icons/md';
 
 const UserAccountsPage = () => {
   const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -18,11 +20,13 @@ const UserAccountsPage = () => {
     userPhone: '',
     userPassword: '',
     userRole: 'STAFF',
-    userAddress: 'System'
+    userAddress: 'System',
+    parkingBranchId: ''
   });
 
   useEffect(() => {
     fetchUsers();
+    fetchBranches();
     
     // Check if redirecting from dashboard to auto-open modal
     const searchParams = new URLSearchParams(location.search);
@@ -42,11 +46,33 @@ const UserAccountsPage = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const data = await parkingApi.getAllBranches();
+      setBranches(data);
+    } catch (err) {
+      console.error('Failed to load branches', err);
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    if ((formData.userRole === 'STAFF' || formData.userRole === 'MANAGER') && !formData.parkingBranchId) {
+      toast.error('Please select a branch for this role');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await adminApi.adminCreateUser(formData);
+      // Create a payload, mapping empty string to null for branches if not applicable
+      const payload = { ...formData };
+      if (payload.userRole !== 'STAFF' && payload.userRole !== 'MANAGER') {
+        delete payload.parkingBranchId;
+      } else {
+        payload.parkingBranchId = parseInt(payload.parkingBranchId, 10);
+      }
+      
+      await adminApi.adminCreateUser(payload);
       toast.success('Account created successfully');
       setShowModal(false);
       setFormData({
@@ -55,7 +81,8 @@ const UserAccountsPage = () => {
         userPhone: '',
         userPassword: '',
         userRole: 'STAFF',
-        userAddress: 'System'
+        userAddress: 'System',
+        parkingBranchId: ''
       });
       fetchUsers(); // Refresh list
     } catch (err) {
@@ -133,6 +160,11 @@ const UserAccountsPage = () => {
                     </td>
                     <td style={{ padding: '16px' }}>
                       {getRoleBadge(u.userRole)}
+                      {u.parkingBranchName && (
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', fontWeight: '500' }}>
+                          <span style={{color: '#94a3b8'}}>Branch:</span> {u.parkingBranchName}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '16px' }}>
                       {u.deleted ? (
@@ -212,6 +244,24 @@ const UserAccountsPage = () => {
                 <option value="USER">User (Customer)</option>
               </Form.Select>
             </Form.Group>
+
+            {(formData.userRole === 'STAFF' || formData.userRole === 'MANAGER') && (
+              <Form.Group className="mb-3">
+                <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Assign Branch</Form.Label>
+                <Form.Select 
+                  value={formData.parkingBranchId} onChange={e => setFormData({...formData, parkingBranchId: e.target.value})}
+                  style={{ fontSize: '14px', padding: '10px 12px' }}
+                  required
+                >
+                  <option value="">-- Select Branch --</option>
+                  {branches.map(branch => (
+                    <option key={branch.parkingBranchId} value={branch.parkingBranchId}>
+                      {branch.branchName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            )}
           </Modal.Body>
           <Modal.Footer style={{ borderTop: '1px solid #eef0f3' }}>
             <Button variant="light" onClick={() => setShowModal(false)} style={{ fontSize: '14px', fontWeight: '500' }}>

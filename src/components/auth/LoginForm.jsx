@@ -54,14 +54,20 @@ export default function LoginForm({ onSuccess, onForgot }) {
           }
 
           localStorage.setItem('parkingBranchId', branchId ? String(branchId) : '');
+          if (branchId) localStorage.setItem('branchId', String(branchId));
+          else localStorage.removeItem('branchId');
           localStorage.setItem('parkingBranchName', finalBranchName);
         } catch (err) {
           console.warn('Không thể lấy thông tin chi nhánh manager:', err);
           localStorage.setItem('parkingBranchId', data.parkingBranchId ? String(data.parkingBranchId) : '');
+          if (data.parkingBranchId) localStorage.setItem('branchId', data.parkingBranchId);
+          else localStorage.removeItem('branchId');
           localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
         }
       } else {
         localStorage.setItem('parkingBranchId', data.parkingBranchId ? String(data.parkingBranchId) : '');
+        if (data.parkingBranchId) localStorage.setItem('branchId', data.parkingBranchId);
+        else localStorage.removeItem('branchId');
         localStorage.setItem('parkingBranchName', data.parkingBranchName || '');
       }
       toast.success('Đăng nhập thành công!');

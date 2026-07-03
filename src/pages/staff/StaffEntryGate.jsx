@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import StaffTopbar, { MOCK_STATS } from '../../components/staff/StaffTopbar';
+import StaffTopbar from '../../components/staff/StaffTopbar';
 import GateInPanel from '../../components/staff/GateInPanel';
 
 export default function StaffEntryGate() {
@@ -10,7 +10,6 @@ export default function StaffEntryGate() {
       <StaffTopbar 
         mode="ENTRY" 
         onModeChange={(m) => navigate(m === 'ENTRY' ? '/staff/entry' : '/staff/exit')} 
-        stats={MOCK_STATS} 
       />
       <GateInPanel />
     </div>

@@ -435,13 +435,6 @@ export default function BookingPage() {
                 ℹ️ Tiền gửi xe sẽ được tính thực tế theo block thời gian khi bạn check-out tại cổng ra.
               </p>
 
-              {/* Promo code notice banner */}
-              <div className="p-2.5 rounded-3 text-dark small d-flex align-items-center gap-2" style={{ backgroundColor: '#ccfbf1', border: '1px solid #99f6e4' }}>
-                <span>🎁</span>
-                <span className="fw-medium text-teal" style={{ color: '#0f766e' }}>
-                  Giảm 20% cho người mới. Áp dụng cho lần đầu đặt chỗ.
-                </span>
-              </div>
             </div>
 
             {/* Sticky Step 1 footer */}
@@ -621,7 +614,9 @@ export default function BookingPage() {
             <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
               <div>
                 <small className="text-muted d-block">Phí giữ chỗ trước</small>
-                <h5 className="fw-bold m-0 text-success">Miễn phí</h5>
+                <h5 className={`fw-bold m-0 ${bookingFee > 0 ? 'text-dark' : 'text-success'}`}>
+                  {bookingFee > 0 ? `${bookingFee.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                </h5>
               </div>
               <button
                 type="button"
