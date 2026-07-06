@@ -460,6 +460,8 @@ export default function BookingPage() {
                 <span>🛡️</span>
                 <span style={{ fontSize: '0.75rem' }}>Bạn có thể hoàn hủy đặt chỗ miễn phí trước giờ đặt 30 phút.</span>
               </div>
+            </div>
+
             {/* Sticky Step 2 footer */}
             <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center position-sticky bottom-0">
               <div>
