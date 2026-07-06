@@ -39,31 +39,46 @@ export default function PricingPage() {
 
   const [activeSubPlan, setActiveSubPlan] = useState(null);
   const [subModalStep, setSubModalStep] = useState(1);
-  const [selectedSubVehicleId, setSelectedSubVehicleId] = useState(1);
+  const [selectedSubVehicleId, setSelectedSubVehicleId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('vnpay');
   const [discount, setDiscount] = useState(0);
+  const [userVehicles, setUserVehicles] = useState([]);
+  const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '', type: 'Car' });
+  const userId = localStorage.getItem('userId');
 
-  const mockVehicles = [
-    { id: 1, type: 'Car', name: 'VinFast VF8', plate: '51H-987.65' },
-    { id: 2, type: 'Car', name: 'Toyota Camry', plate: '30A-555.55' },
-    { id: 3, type: 'Motorcycle', name: 'Honda SH 150i', plate: '29A-123.45' },
-    { id: 4, type: 'Motorcycle', name: 'Yamaha Exciter', plate: '59F-999.99' },
-  ];
+  useEffect(() => {
+    if (userId) {
+      parkingApi.getAllVehicles().then(data => {
+        const list = Array.isArray(data) ? data : (data?.content || data?.data || []);
+        const uVehicles = list.filter(v => String(v.userId) === String(userId) && !v.deleted);
+        setUserVehicles(uVehicles);
+        if (uVehicles.length > 0) {
+          setSelectedSubVehicleId(uVehicles[0].vehicleId || uVehicles[0].id);
+        } else {
+          setSelectedSubVehicleId('new');
+        }
+      }).catch(e => console.error("Error fetching user vehicles:", e));
+    } else {
+      setSelectedSubVehicleId('new');
+    }
+  }, [userId]);
 
-  const currentLot = lots.find(lot => lot.id === Number(selectedLotId)) || lots[0];
+  let currentSelectedVehicle = null;
+  if (selectedSubVehicleId === 'new') {
+    currentSelectedVehicle = { type: newVehicleData.type, plate: newVehicleData.licensePlate || 'Xe mới' };
+  } else {
+    const v = userVehicles.find(v => String(v.vehicleId || v.id) === String(selectedSubVehicleId));
+    if (v) {
+      const isMotor = v.vehicleTypeName?.toLowerCase().includes('máy') || v.vehicleTypeName?.toLowerCase().includes('moto');
+      currentSelectedVehicle = { type: isMotor ? 'Motorcycle' : 'Car', plate: v.licensePlate };
+    }
+  }
+  if (!currentSelectedVehicle) currentSelectedVehicle = { type: 'Car', plate: '' };
 
-  const prices = (() => {
-    const vipCarPrice = parseInt(currentLot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
-    const ecoCarPrice = Math.max(1000000, vipCarPrice - 1000000);
-    const ecoMotorPrice = Math.max(150000, Math.round((ecoCarPrice / 6) / 10000) * 10000);
-    return { ecoCar: ecoCarPrice, ecoMotor: ecoMotorPrice, vipCar: vipCarPrice, vipMotor: ecoMotorPrice * 2 };
-  })();
-
-  const selectedVehicle = mockVehicles.find(v => v.id === selectedSubVehicleId) || mockVehicles[0];
   const activePlanPrice = activeSubPlan ? (
     activeSubPlan.baseType === 'Economic' 
-      ? (selectedVehicle.type === 'Car' ? prices.ecoCar : prices.ecoMotor)
-      : (selectedVehicle.type === 'Car' ? prices.vipCar : prices.vipMotor)
+      ? (currentSelectedVehicle.type === 'Car' ? prices.ecoCar : prices.ecoMotor)
+      : (currentSelectedVehicle.type === 'Car' ? prices.vipCar : prices.vipMotor)
   ) : 0;
 
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState('');
@@ -218,7 +233,11 @@ export default function PricingPage() {
                 <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4 flex-grow-1">
                   {s.perks.map((p, i) => <li key={i}>🟢 {p}</li>)}
                 </ul>
-                <button onClick={() => { setSelectedSubVehicleId(1); setActiveSubPlan({ name: s.name, baseType: s.type }); setSubModalStep(1); }} className="btn text-white fw-bold py-2.5 rounded-3 w-100" style={{ backgroundColor: '#164e63' }}>
+                <button onClick={() => { 
+                    setActiveSubPlan({ name: s.name, baseType: s.type }); 
+                    setSubModalStep(1); 
+                  }} 
+                  className="btn text-white fw-bold py-2.5 rounded-3 w-100" style={{ backgroundColor: '#164e63' }}>
                   {s.type === 'VIP' ? 'Đăng Ký Gói VIP' : 'Đăng Ký Ngay'}
                 </button>
               </div>
@@ -293,15 +312,72 @@ export default function PricingPage() {
                   <div className="border rounded-3 p-4 bg-white">
                     <h6 className="fw-bold mb-3">🚗 Chọn phương tiện</h6>
                     <div className="row g-3">
-                      {mockVehicles.slice(0, 2).map(v => (
-                        <div className="col-md-6" key={v.id}>
-                          <div className={`border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer ${selectedSubVehicleId === v.id ? 'bg-light border-primary' : ''}`} style={{ borderColor: selectedSubVehicleId === v.id ? '#164e63' : '' }} onClick={() => setSelectedSubVehicleId(v.id)}>
-                            <div><strong className="d-block">{v.name}</strong><small className="text-muted">{v.plate}</small></div>
-                            <input type="radio" className="form-check-input mt-0" checked={selectedSubVehicleId === v.id} readOnly />
+                      {userVehicles.length > 0 && userVehicles.map(v => (
+                        <div className="col-md-6" key={v.vehicleId || v.id}>
+                          <div 
+                            className="border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer shadow-sm"
+                            style={{ 
+                              borderColor: String(selectedSubVehicleId) === String(v.vehicleId || v.id) ? '#164e63' : '#e2e8f0', 
+                              borderWidth: '2px',
+                              backgroundColor: String(selectedSubVehicleId) === String(v.vehicleId || v.id) ? '#f0f9ff' : '#fff'
+                            }} 
+                            onClick={() => setSelectedSubVehicleId(v.vehicleId || v.id)}
+                          >
+                            <div>
+                              <strong className="d-block" style={{ color: String(selectedSubVehicleId) === String(v.vehicleId || v.id) ? '#1e3a8a' : '#334155' }}>
+                                {v.vehicleBrand || 'Xe cá nhân'}
+                              </strong>
+                              <small className="text-muted">{v.licensePlate}</small>
+                            </div>
+                            <input type="radio" className="form-check-input mt-0" checked={String(selectedSubVehicleId) === String(v.vehicleId || v.id)} readOnly style={{ cursor: 'pointer' }} />
                           </div>
                         </div>
                       ))}
+                      
+                      <div className="col-md-6">
+                        <div 
+                          className="border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer shadow-sm"
+                          style={{ 
+                            borderColor: selectedSubVehicleId === 'new' ? '#164e63' : '#e2e8f0', 
+                            borderWidth: '2px',
+                            backgroundColor: selectedSubVehicleId === 'new' ? '#f0f9ff' : '#fff'
+                          }} 
+                          onClick={() => setSelectedSubVehicleId('new')}
+                        >
+                          <div>
+                            <strong className="d-block" style={{ color: selectedSubVehicleId === 'new' ? '#1e3a8a' : '#334155' }}>+ Thêm xe mới</strong>
+                            <small className="text-muted">Nhập thông tin biển số</small>
+                          </div>
+                          <input type="radio" className="form-check-input mt-0" checked={selectedSubVehicleId === 'new'} readOnly style={{ cursor: 'pointer' }} />
+                        </div>
+                      </div>
                     </div>
+                    
+                    {selectedSubVehicleId === 'new' && (
+                      <div className="mt-3 p-3 bg-light rounded-3 border">
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold text-dark mb-1">Loại xe</label>
+                            <select className="form-select" value={newVehicleData.type} onChange={e => setNewVehicleData({...newVehicleData, type: e.target.value})}>
+                              <option value="Car">Ô tô</option>
+                              <option value="Motorcycle">Xe máy</option>
+                            </select>
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold text-dark mb-1">Biển số xe *</label>
+                            <input type="text" className="form-control" value={newVehicleData.licensePlate} onChange={e => setNewVehicleData({...newVehicleData, licensePlate: e.target.value})} placeholder="VD: 30A-123.45" />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold text-dark mb-1">Hãng xe</label>
+                            <input type="text" className="form-control" value={newVehicleData.vehicleBrand} onChange={e => setNewVehicleData({...newVehicleData, vehicleBrand: e.target.value})} placeholder="VD: VinFast" />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold text-dark mb-1">Màu xe</label>
+                            <input type="text" className="form-control" value={newVehicleData.vehicleColor} onChange={e => setNewVehicleData({...newVehicleData, vehicleColor: e.target.value})} placeholder="VD: Đen" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 text-end">
@@ -366,7 +442,7 @@ export default function PricingPage() {
                     <div className="border rounded-3 p-4 bg-white">
                       <h6 className="text-muted fw-bold mb-4 small">THÔNG TIN VÉ THÁNG</h6>
                       <div className="d-flex align-items-start gap-3 mb-3"><MapPin size={18} className="text-muted"/><div><small className="text-muted d-block">Bãi đỗ</small><strong>{currentLot.name}</strong></div></div>
-                      <div className="d-flex align-items-start gap-3 mb-3"><Car size={18} className="text-muted"/><div><small className="text-muted d-block">Phương tiện</small><strong>{selectedVehicle.type === 'Car' ? 'Ô tô' : 'Xe máy'} - {selectedVehicle.plate}</strong></div></div>
+                      <div className="d-flex align-items-start gap-3 mb-3"><Car size={18} className="text-muted"/><div><small className="text-muted d-block">Phương tiện</small><strong>{currentSelectedVehicle.type === 'Car' ? 'Ô tô' : 'Xe máy'} - {currentSelectedVehicle.plate}</strong></div></div>
                       <div className="bg-light rounded-3 p-3 mt-3 d-flex justify-content-between align-items-center">
                         <span className="fw-semibold small">Phí thuê tháng</span><strong style={{color: '#164e63'}}>{Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')}đ</strong>
                       </div>
