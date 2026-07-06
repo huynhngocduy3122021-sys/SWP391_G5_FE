@@ -60,7 +60,7 @@ export default function MemberPanel({ branchId }) {
         managerApi.getParkingBranches(),
         managerApi.getAllVehicles().catch(() => []),
         managerApi.getAllMonthlyTickets().catch(() => []),
-        managerApi.getAllMonthlyTicketRequests?.().catch(() => []) || parkingApi.getAllMonthlyTicketRequests?.().catch(() => []) || []
+        managerApi.getAllMonthlyTicketRequests?.().catch(() => []) || []
       ]);
       const parsedCards = Array.isArray(cardsRes) ? cardsRes : [];
       const parsedBranches = Array.isArray(branchesRes) ? branchesRes : [];
@@ -231,24 +231,34 @@ export default function MemberPanel({ branchId }) {
   const handleApproveRequest = (req) => {
     // Navigate to create ticket tab with prefilled data
     setMainTab('monthly');
+    
+    // Ensure the vehicle exists in the local list so the form populates correctly
+    const veh = req.vehicle;
+    if (veh && !vehicles.find(v => String(v.vehicleId || v.id) === String(veh.vehicleId || veh.id))) {
+      setVehicles(prev => [...prev, { ...veh, vehicleSource: 'REGISTER', userFullName: req.user?.fullName || req.user?.username }]);
+    }
+    
     setTicketForm(prev => ({
       ...EMPTY_FORM,
-      vehicleId: String(req.vehicle?.vehicleId || req.vehicle?.id),
-      vehicleSource: 'REGISTER'
+      vehicleId: String(veh?.vehicleId || veh?.id),
+      vehicleSource: 'REGISTER',
+      licensePlateSearch: veh?.licensePlate || ''
     }));
     setShowCreateTicket(true);
     
-    // Also mark request as approved in background
-    if (parkingApi.updateMonthlyTicketRequestStatus) {
-      parkingApi.updateMonthlyTicketRequestStatus(req.id, 1).catch(e => console.error(e));
-    }
+    // Set a small delay to allow the state to update, then update request in background
+    setTimeout(() => {
+      if (managerApi.updateMonthlyTicketRequestStatus) {
+        managerApi.updateMonthlyTicketRequestStatus(req.id, 1).catch(e => console.error(e));
+      }
+    }, 500);
   };
 
   const handleRejectRequest = async (req) => {
     if (!window.confirm('Từ chối yêu cầu đăng ký này?')) return;
     try {
-      if (parkingApi.updateMonthlyTicketRequestStatus) {
-        await parkingApi.updateMonthlyTicketRequestStatus(req.id, 2);
+      if (managerApi.updateMonthlyTicketRequestStatus) {
+        await managerApi.updateMonthlyTicketRequestStatus(req.id, 2);
         toast.success("Đã từ chối yêu cầu!");
         fetchAll();
       }

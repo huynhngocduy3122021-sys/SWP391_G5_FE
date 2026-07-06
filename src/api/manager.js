@@ -58,6 +58,7 @@ const managerApi = {
 
   // ── Monthly Ticket Requests ───────────────────────────────
   getAllMonthlyTicketRequests: async ()         => (await API.get('/api/monthly-ticket-requests')).data,
+  updateMonthlyTicketRequestStatus: async (id, status) => (await API.put(`/api/monthly-ticket-requests/${id}/status`, null, { params: { status } })).data,
 
   // ── Incident Report ───────────────────────────────────────
   getIncidentReports:       async (params = {}) => (await API.get('/api/incidents', { params })).data,
