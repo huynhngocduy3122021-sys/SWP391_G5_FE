@@ -3,20 +3,20 @@ import { MdDashboard, MdPeople, MdLock, MdSettings, MdComputer, MdListAlt } from
 
 export default function AdminSidebar() {
   const menuItems = [
-    { path: '/admin/dashboard', name: 'Dashboard', icon: <MdDashboard size={20} /> },
-    { path: '/admin/users', name: 'User Accounts', icon: <MdPeople size={20} /> },
-    { path: '/admin/permissions', name: 'Permissions', icon: <MdLock size={20} /> },
-    { path: '/admin/settings', name: 'System Settings', icon: <MdSettings size={20} /> },
-    { path: '/admin/ai-config', name: 'AI Configuration', icon: <MdComputer size={20} /> },
-    { path: '/admin/logs', name: 'System Logs', icon: <MdListAlt size={20} /> },
+    { path: '/admin/dashboard', name: 'Bảng điều khiển', icon: <MdDashboard size={20} /> },
+    { path: '/admin/users', name: 'Tài khoản', icon: <MdPeople size={20} /> },
+    { path: '/admin/permissions', name: 'Phân quyền', icon: <MdLock size={20} /> },
+    { path: '/admin/settings', name: 'Cài đặt hệ thống', icon: <MdSettings size={20} /> },
+    { path: '/admin/ai-config', name: 'Cấu hình AI', icon: <MdComputer size={20} /> },
+    { path: '/admin/logs', name: 'Nhật ký hệ thống', icon: <MdListAlt size={20} /> },
   ];
 
   return (
     <div className="d-flex flex-column bg-white border-end p-4 h-100 text-dark" style={{ width: 260 }}>
       {/* Header */}
       <div className="mb-4 ps-2">
-        <h5 className="fw-bold m-0" style={{ letterSpacing: '0.5px' }}>System Admin</h5>
-        <small className="text-muted fw-semibold" style={{ fontSize: 11 }}>ENTERPRISE CONTROL</small>
+        <h5 className="fw-bold m-0" style={{ letterSpacing: '0.5px' }}>Quản trị hệ thống</h5>
+        <small className="text-muted fw-semibold" style={{ fontSize: 11 }}>KIỂM SOÁT TỔNG THỂ</small>
       </div>
 
       {/* Navigation */}
@@ -45,7 +45,7 @@ export default function AdminSidebar() {
           AU
         </div>
         <div>
-          <div className="fw-semibold" style={{ fontSize: 14 }}>Admin User</div>
+          <div className="fw-semibold" style={{ fontSize: 14 }}>Quản trị viên</div>
           <small className="text-muted d-block" style={{ fontSize: 11 }}>SUPER ADMIN</small>
         </div>
       </div>

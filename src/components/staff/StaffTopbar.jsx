@@ -104,11 +104,11 @@ export default function StaffTopbar({ mode, onModeChange, stats }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TOTAL VEHICLES" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
-        <StatItem label="TODAY'S REVENUE" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
-        <StatItem label="BOOKINGS" value={displayStats.bookings} />
-        <StatItem label="EXITED" value={displayStats.exited} />
-        <StatItem label="SLOTS LEFT" value={displayStats.slotsLeft} color="var(--vin-success)" />
+        <StatItem label="TỔNG XE" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
+        <StatItem label="DOANH THU HÔM NAY" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="ĐẶT TRƯỚC" value={displayStats.bookings} />
+        <StatItem label="ĐÃ RA" value={displayStats.exited} />
+        <StatItem label="CHỖ TRỐNG" value={displayStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}

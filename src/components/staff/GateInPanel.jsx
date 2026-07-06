@@ -315,11 +315,11 @@ export default function GateInPanel() {
       <Row className="g-4">
         {/* L/H Column */}
         <Col lg={8} className="d-flex flex-column gap-3">
-          <CameraFeed label={`LIVE ENTRY - ${GATE_ID}`} sub="CAM 01: PLATE RECOGNITION" status="READY" tone="success" imageUrl={previewUrls.length > 0 ? previewUrls[0] : null} />
+          <CameraFeed label={`LÀN VÀO - ${GATE_ID}`} sub="CAM 01: NHẬN DIỆN BIỂN SỐ" status="SẴN SÀNG" tone="success" imageUrl={previewUrls.length > 0 ? previewUrls[0] : null} />
 
           <Card className="bg-secondary bg-opacity-25 border-0 shadow-sm p-3 text-white">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="small text-light fw-bold">⚙️ Vehicle Details</span>
+              <span className="small text-light fw-bold">⚙️ Chi tiết phương tiện</span>
               <ButtonGroup size="sm">
                 <Button variant={!isBooking ? 'info' : 'outline-light'} onClick={() => setIsBooking(false)} className="fw-bold">Khách vãng lai</Button>
                 <Button variant={isBooking ? 'info' : 'outline-light'} onClick={() => setIsBooking(true)} className="fw-bold">Đã đặt trước</Button>
@@ -328,7 +328,7 @@ export default function GateInPanel() {
 
             {isBooking && (
               <Form.Group className="mb-3">
-                <Form.Label className="small fw-bold text-light mb-1">BOOKING CODE (MÃ ĐẶT CHỖ)</Form.Label>
+                <Form.Label className="small fw-bold text-light mb-1">MÃ ĐẶT CHỖ (NẾU CÓ)</Form.Label>
                 <div className="d-flex gap-2">
                   <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" placeholder="Nhập mã đặt chỗ..." value={bookingCode} onChange={e => setBookingCode(e.target.value)} />
                   <Button variant="primary" className="fw-bold px-4" onClick={handleLookupBooking}>Tra cứu</Button>
@@ -356,11 +356,11 @@ export default function GateInPanel() {
               return (
                 <>
                   <Form.Group className="mb-3">
-                    <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>LICENSE PLATE {isMOrV && '— THẺ ĐĂNG KÝ'}</Form.Label>
+                    <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>BIỂN SỐ {isMOrV && '— THẺ ĐĂNG KÝ'}</Form.Label>
                     <Form.Control type="text" className={`fw-bold fs-5 ${isMOrV ? 'bg-info bg-opacity-25 text-info border-info' : 'bg-light text-dark border-0'}`} value={licensePlate} onChange={e => setLicensePlate(e.target.value)} readOnly={isMOrV} />
                   </Form.Group>
                   <Form.Group className="mb-3">
-                    <Form.Label className="small fw-bold text-light mb-1">CARD CODE (QUẸT THẺ)</Form.Label>
+                    <Form.Label className="small fw-bold text-light mb-1">MÃ THẺ (QUẸT THẺ)</Form.Label>
                     <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" value={cardCode} onChange={e => setCardCode(e.target.value)} />
                   </Form.Group>
                   <Row className="g-3 mb-3">
@@ -398,7 +398,7 @@ export default function GateInPanel() {
             })()}
 
             <Form.Group className="mb-4">
-              <Form.Label className="small fw-bold text-light mb-1">VEHICLE IMAGES (ẢNH PHƯƠNG TIỆN)</Form.Label>
+              <Form.Label className="small fw-bold text-light mb-1">ẢNH PHƯƠNG TIỆN</Form.Label>
               <Form.Control type="file" multiple accept="image/*" className="bg-light text-dark border-0 mb-2" onChange={(e) => {
                 if (e.target.files) {
                   const newFiles = Array.from(e.target.files);
@@ -422,7 +422,7 @@ export default function GateInPanel() {
             </Form.Group>
 
             <Button variant="success" size="lg" className="w-100 fw-bold d-flex align-items-center justify-content-center gap-2" disabled={submitting} onClick={handleConfirm}>
-              {submitting ? <Spinner animation="border" size="sm" /> : '⚡'} ISSUE CARD & OPEN BARRIER
+              {submitting ? <Spinner animation="border" size="sm" /> : '⚡'} PHÁT THẺ & MỞ BARIE
             </Button>
           </Card>
           
@@ -462,7 +462,7 @@ export default function GateInPanel() {
   );
 }
 
-export function CameraFeed({ label, sub, status = 'READY', tone = 'success', imageUrl }) {
+export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrl }) {
   return (
     <Card className="bg-secondary bg-opacity-25 border-0 overflow-hidden text-white shadow-sm">
       <div className="d-flex justify-content-between align-items-center p-2 px-3 border-bottom border-secondary small">
@@ -471,7 +471,7 @@ export function CameraFeed({ label, sub, status = 'READY', tone = 'success', ima
       </div>
       <div className="position-relative d-flex align-items-center justify-content-center bg-black" style={{ height: 220, background: imageUrl ? `url(${imageUrl}) center/contain no-repeat #000` : 'linear-gradient(135deg, #0b1120, #111827)' }}>
         {!imageUrl && <span className="text-light small">{sub}</span>}
-        <Badge bg="success" className="bg-opacity-25 text-success border border-success position-absolute bottom-0 start-0 m-2 px-2 py-1">● LIVE RECOGNIZING...</Badge>
+        <Badge bg="success" className="bg-opacity-25 text-success border border-success position-absolute bottom-0 start-0 m-2 px-2 py-1">● ĐANG NHẬN DIỆN...</Badge>
       </div>
     </Card>
   );

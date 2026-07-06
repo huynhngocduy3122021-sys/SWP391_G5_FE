@@ -10,7 +10,7 @@ import { mt } from './managerTheme';
 import authApi from '../../api/authApi';
 
 const NAV_ITEMS = [
-  { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
+  { key: 'overview',  label: 'Bảng điều khiển',        icon: '\u25A6' },
   { key: 'bookings',  label: 'Quản lý Booking',    icon: '\u2637' },
   { key: 'members',   label: 'Thẻ Thành viên',   icon: '\u25EB' },
   { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
@@ -227,7 +227,7 @@ export default function ManagerDashboard() {
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <ManagerTopbar title={NAV_ITEMS.find((n) => n.key === tab)?.label || 'Dashboard'} />
+        <ManagerTopbar title={NAV_ITEMS.find((n) => n.key === tab)?.label || 'Bảng điều khiển'} />
         <main style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
           {renderPanel()}
         </main>
