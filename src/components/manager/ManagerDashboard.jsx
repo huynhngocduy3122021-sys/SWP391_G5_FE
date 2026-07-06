@@ -10,12 +10,12 @@ import { mt } from './managerTheme';
 import authApi from '../../api/authApi';
 
 const NAV_ITEMS = [
-  { key: 'overview',  label: 'Bảng điều khiển',        icon: '\u25A6' },
-  { key: 'bookings',  label: 'Quản lý Booking',    icon: '\u2637' },
-  { key: 'members',   label: 'Thẻ Thành viên',   icon: '\u25EB' },
-  { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
-  { key: 'iot',       label: 'IoT',                icon: '\u25C9' },
-  { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
+  { key: 'overview', label: 'Bảng điều khiển', icon: '\u25A6' },
+  { key: 'bookings', label: 'Quản lý Booking', icon: '\u2637' },
+  { key: 'members', label: 'Thẻ Thành viên', icon: '\u25EB' },
+  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '\u25A3' },
+  { key: 'iot', label: 'Lịch sử giữ xe', icon: '\u25C9' },
+  { key: 'incidents', label: 'Quản lý Sự cố', icon: '\u26A0' },
 ];
 
 export default function ManagerDashboard() {
@@ -26,7 +26,7 @@ export default function ManagerDashboard() {
     const cached = localStorage.getItem('parkingBranchId');
     return (cached && cached !== 'undefined' && cached !== 'null' && cached !== '') ? cached : null;
   });
-  
+
   const userId = localStorage.getItem('userId');
   const managerName = localStorage.getItem('fullName') || 'Manager';
 
@@ -87,7 +87,7 @@ export default function ManagerDashboard() {
           user?.parkingBranch?.parkingBranchName ||
           user?.branch?.branchName ||
           '';
-        
+
         if (user && uBranchId) {
           localStorage.setItem('parkingBranchId', String(uBranchId));
           localStorage.setItem('parkingBranchName', uBranchName);
@@ -115,12 +115,12 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
-      case 'bookings':  return <BookingPanel branchId={branchId} />;
-      case 'members':   return <MemberPanel branchId={branchId} />;
-      case 'zones':     return <ZoneOverviewPanel branchId={branchId} />;
-      case 'iot':       return <IotPanel branchId={branchId} />;
+      case 'bookings': return <BookingPanel branchId={branchId} />;
+      case 'members': return <MemberPanel branchId={branchId} />;
+      case 'zones': return <ZoneOverviewPanel branchId={branchId} />;
+      case 'iot': return <IotPanel branchId={branchId} />;
       case 'incidents': return <IncidentPanel branchId={branchId} />;
-      default:          return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
+      default: return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
     }
   };
 
