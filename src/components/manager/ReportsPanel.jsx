@@ -6,6 +6,8 @@ const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
 
 export default function ReportsPanel({ branchId }) {
   const [sessions, setSessions] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [pricePolicies, setPricePolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trafficTab, setTrafficTab] = useState('7days'); // 'today', '7days', 'month', 'year'
 
@@ -14,8 +16,15 @@ export default function ReportsPanel({ branchId }) {
       setLoading(true);
       const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null') ? String(branchId) : localStorage.getItem('parkingBranchId');
       try {
-        const data = await managerApi.getAllSessions(cleanBranchId ? { parkingBranchId: Number(cleanBranchId), branchId: Number(cleanBranchId) } : {});
+        const [data, ticketsData, policiesData] = await Promise.all([
+          managerApi.getAllSessions(cleanBranchId ? { parkingBranchId: Number(cleanBranchId), branchId: Number(cleanBranchId) } : {}),
+          managerApi.getAllMonthlyTickets().catch(() => []),
+          managerApi.getPricePolicies().catch(() => [])
+        ]);
+
         const parsed = Array.isArray(data) ? data : data?.content || [];
+        const parsedTickets = Array.isArray(ticketsData) ? ticketsData : ticketsData?.content || [];
+        setPricePolicies(Array.isArray(policiesData) ? policiesData : policiesData?.content || []);
         
         const getBranchId = (obj) => {
           if (!obj) return '';
@@ -37,8 +46,16 @@ export default function ReportsPanel({ branchId }) {
           ? parsed.filter(s => getBranchId(s) === cleanBranchId)
           : parsed
         );
+
+        setTickets(cleanBranchId
+          ? parsedTickets.filter(t => {
+              const bId = t.parkingCard?.parkingBranchId || t.parkingCard?.parkingBranch?.parkingBranchId || t.parkingCard?.parkingBranch?.id;
+              return String(bId) === cleanBranchId;
+            })
+          : parsedTickets
+        );
       } catch (err) {
-        console.error('Failed to fetch sessions for report', err);
+        console.error('Failed to fetch data for report', err);
       } finally {
         setLoading(false);
       }
@@ -49,11 +66,23 @@ export default function ReportsPanel({ branchId }) {
   // Filter completed sessions
   const completed = sessions.filter(s => s.checkOutTime);
   
-  const totalRevenue = completed.reduce((sum, s) => {
+  const monthlyPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói Tháng]'));
+  const vipPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói VIP President]'));
+  const MONTHLY_PRICE = monthlyPolicy ? Number(monthlyPolicy.basePrice || 200000) : 200000;
+  const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
+
+  const totalWalkInRevenue = completed.reduce((sum, s) => {
     const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
                    (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
     return sum + (isMOrV ? 0 : Number(s.totalAmount || 0));
   }, 0);
+
+  const totalTicketRevenue = tickets.reduce((sum, t) => {
+    const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+    return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
+  }, 0);
+
+  const totalRevenue = totalWalkInRevenue + totalTicketRevenue;
   
   // Only count transactions that had a payment for average amount calculation
   const payingTransactions = completed.filter(s => {
@@ -61,14 +90,14 @@ export default function ReportsPanel({ branchId }) {
                    (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
     return !isMOrV && s.totalAmount;
   });
-  const transactionCount = payingTransactions.length;
+  const transactionCount = payingTransactions.length + tickets.length;
   const averageAmount = transactionCount > 0 ? Math.round(totalRevenue / transactionCount) : 0;
 
   // Group by date (last 7 days of activity)
   const dailyGroups = completed.reduce((acc, s) => {
     const dateStr = new Date(s.checkOutTime).toLocaleDateString('vi-VN');
     if (!acc[dateStr]) {
-      acc[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, total: 0 };
+      acc[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, total: 0 };
     }
     
     const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
@@ -86,6 +115,20 @@ export default function ReportsPanel({ branchId }) {
     }
     return acc;
   }, {});
+
+  tickets.forEach(t => {
+    const dt = t.createdAt || t.startDate;
+    if (dt) {
+      const dateStr = new Date(dt).toLocaleDateString('vi-VN');
+      if (!dailyGroups[dateStr]) {
+        dailyGroups[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, total: 0 };
+      }
+      const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+      const amt = isVip ? VIP_PRICE : MONTHLY_PRICE;
+      dailyGroups[dateStr].total += amt;
+      dailyGroups[dateStr].thethang += amt;
+    }
+  });
 
   const sortedDays = Object.values(dailyGroups)
     .sort((a, b) => {
@@ -357,6 +400,7 @@ export default function ReportsPanel({ branchId }) {
               <th style={{ padding: '8px' }}>Ô TÔ</th>
               <th style={{ padding: '8px' }}>XE MÁY</th>
               <th style={{ padding: '8px' }}>XE KHÁC</th>
+              <th style={{ padding: '8px' }}>THẺ THÁNG</th>
               <th style={{ padding: '8px', fontWeight: '700' }}>TỔNG DOANH THU</th>
             </tr>
           </thead>
@@ -380,6 +424,7 @@ export default function ReportsPanel({ branchId }) {
                   <td style={{ padding: '8px' }}>{Number(r.oto).toLocaleString()} đ</td>
                   <td style={{ padding: '8px' }}>{Number(r.xemay).toLocaleString()} đ</td>
                   <td style={{ padding: '8px' }}>{Number(r.xedien).toLocaleString()} đ</td>
+                  <td style={{ padding: '8px', color: mt.warning, fontWeight: '600' }}>{Number(r.thethang || 0).toLocaleString()} đ</td>
                   <td style={{ padding: '8px', fontWeight: 700, color: mt.primary }}>{Number(r.total).toLocaleString()} đ</td>
                 </tr>
               ))

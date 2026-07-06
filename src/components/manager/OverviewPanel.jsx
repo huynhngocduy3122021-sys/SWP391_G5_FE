@@ -20,6 +20,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   const [incidents,setIncidents]= useState([]);
   const [cards,    setCards]    = useState([]);
   const [tickets,  setTickets]  = useState([]);
+  const [pricePolicies, setPricePolicies] = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [chartFilter, setChartFilter] = useState('today');
 
@@ -40,9 +41,11 @@ export default function OverviewPanel({ onNavigate, branchId }) {
       }
 
       const se = await managerApi.getAllSessions(cleanBranchId ? { parkingBranchId: Number(cleanBranchId), branchId: Number(cleanBranchId), size: 10000 } : { size: 10000 });
+      const pl = await managerApi.getPricePolicies().catch(() => []);
       
       const parsedZones = Array.isArray(zo) ? zo : (zo?.content || []);
       const parsedSessions = Array.isArray(se) ? se : (se?.content || []);
+      setPricePolicies(Array.isArray(pl) ? pl : (pl?.content || []));
 
       const getBranchId = (obj) => {
         if (!obj) return '';
@@ -136,13 +139,28 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   const checkoutsToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === today).length;
 
   // Doanh thu hôm nay (Tính trên các xe thực hiện thanh toán và đi ra hôm nay - checkOutTime, loại trừ thẻ tháng/VIP)
-  const revenueToday = sessions
+  const walkInRevenueToday = sessions
     .filter(s => {
       const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
                      (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
       return s.checkOutTime && new Date(s.checkOutTime).toDateString() === today && !isMOrV && s.totalAmount;
     })
     .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+
+  // Tính doanh thu thẻ tháng/VIP bán được hôm nay (dựa vào startDate)
+  const monthlyPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói Tháng]'));
+  const vipPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói VIP President]'));
+  const MONTHLY_PRICE = monthlyPolicy ? Number(monthlyPolicy.basePrice || 200000) : 200000;
+  const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
+
+  const ticketRevenueToday = tickets.filter(t => {
+    return t.startDate && new Date(t.startDate).toDateString() === today;
+  }).reduce((sum, t) => {
+    const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+    return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
+  }, 0);
+
+  const revenueToday = walkInRevenueToday + ticketRevenueToday;
 
   // Cảnh báo: incidents chưa resolve
   const openIncidents = incidents.filter(i => i.status === 'PENDING' || i.status === 'IN_PROGRESS').length;
