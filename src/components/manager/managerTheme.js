@@ -13,16 +13,16 @@ const getSafeStorage = (key, fallback) => {
 };
 
 export const mt = {
-  bg: 'var(--vin-bg-deep, #f3f4f6)',
+  bg: 'var(--vin-bg-light, #f8fafc)',
   sidebarBg: 'var(--vin-bg-card, #ffffff)',
   cardBg: 'var(--vin-bg-card, #ffffff)',
-  border: 'var(--vin-border, #e5e7eb)',
-  text: 'var(--vin-text-main, #0f172a)',
+  border: 'var(--vin-border, #e2e8f0)',
+  text: 'var(--vin-text-main, #1e293b)',
   textMuted: 'var(--vin-text-muted, #64748b)',
-  primary: 'var(--vin-primary, #0f172a)',
-  accent: 'var(--vin-accent, #0d9488)',
-  success: '#16a34a',
-  danger: '#dc2626',
+  primary: 'var(--vin-primary, #164e63)',
+  accent: 'var(--vin-primary, #164e63)',
+  success: 'var(--vin-success, #10b981)',
+  danger: 'var(--vin-danger, #ef4444)',
   warning: '#d97706',
 };
 

@@ -98,7 +98,7 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
         <span className="vin-badge vin-badge--danger">HỆ THỐNG HỖ TRỢ</span>
       </div>
-      <h6 style={{ color: '#fff', fontWeight: 700, marginBottom: '1rem' }}>
+      <h6 style={{ color: 'var(--vin-text-main)', fontWeight: 700, marginBottom: '1rem' }}>
         🛎️ XỬ LÝ CÁC NGOẠI LỆ KHÁC
       </h6>
 
@@ -120,7 +120,7 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
           onChange={(e) => setNote(e.target.value)}
           style={{
             width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: 8, padding: '0.5rem 0.75rem', color: '#fff', fontSize: '0.85rem',
+            borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--vin-text-main)', fontSize: '0.85rem',
             outline: 'none', resize: 'vertical',
           }}
         />
@@ -128,7 +128,7 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
 
       <button
         className="vin-btn vin-btn--full"
-        style={{ background: 'var(--vin-success)', color: '#fff' }}
+        style={{ background: 'var(--vin-success)', color: 'var(--vin-text-main)' }}
         disabled={sending}
         onClick={handleSend}
       >

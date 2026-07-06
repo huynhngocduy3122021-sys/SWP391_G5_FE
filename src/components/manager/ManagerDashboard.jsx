@@ -10,12 +10,12 @@ import { mt } from './managerTheme';
 import authApi from '../../api/authApi';
 
 const NAV_ITEMS = [
-  { key: 'overview',  label: 'Dashboard',        icon: '\u25A6' },
-  { key: 'bookings',  label: 'Quản lý Booking',    icon: '\u2637' },
-  { key: 'members',   label: 'Thẻ Thành viên',   icon: '\u25EB' },
-  { key: 'zones',     label: 'Sơ đồ bãi xe',       icon: '\u25A3' },
-  { key: 'iot',       label: 'IoT',                icon: '\u25C9' },
-  { key: 'incidents', label: 'Quản lý Sự cố',    icon: '\u26A0' },
+  { key: 'overview', label: 'Bảng điều khiển', icon: '\u25A6' },
+  { key: 'bookings', label: 'Quản lý Booking', icon: '\u2637' },
+  { key: 'members', label: 'Thẻ Thành viên', icon: '\u25EB' },
+  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '\u25A3' },
+  { key: 'iot', label: 'Lịch sử giữ xe', icon: '\u25C9' },
+  { key: 'incidents', label: 'Quản lý Sự cố', icon: '\u26A0' },
 ];
 
 export default function ManagerDashboard() {
@@ -26,7 +26,7 @@ export default function ManagerDashboard() {
     const cached = localStorage.getItem('parkingBranchId');
     return (cached && cached !== 'undefined' && cached !== 'null' && cached !== '') ? cached : null;
   });
-  
+
   const userId = localStorage.getItem('userId');
   const managerName = localStorage.getItem('fullName') || 'Manager';
 
@@ -87,7 +87,7 @@ export default function ManagerDashboard() {
           user?.parkingBranch?.parkingBranchName ||
           user?.branch?.branchName ||
           '';
-        
+
         if (user && uBranchId) {
           localStorage.setItem('parkingBranchId', String(uBranchId));
           localStorage.setItem('parkingBranchName', uBranchName);
@@ -115,12 +115,12 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
-      case 'bookings':  return <BookingPanel branchId={branchId} />;
-      case 'members':   return <MemberPanel branchId={branchId} />;
-      case 'zones':     return <ZoneOverviewPanel branchId={branchId} />;
-      case 'iot':       return <IotPanel branchId={branchId} />;
+      case 'bookings': return <BookingPanel branchId={branchId} />;
+      case 'members': return <MemberPanel branchId={branchId} />;
+      case 'zones': return <ZoneOverviewPanel branchId={branchId} />;
+      case 'iot': return <IotPanel branchId={branchId} />;
       case 'incidents': return <IncidentPanel branchId={branchId} />;
-      default:          return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
+      default: return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
     }
   };
 
@@ -153,7 +153,7 @@ export default function ManagerDashboard() {
           onClick={handleLogout}
           style={{
             marginTop: '1rem', padding: '10px 24px', background: mt.danger,
-            color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
+            color: 'var(--vin-text-main)', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
           }}
         >
           ← Đăng xuất
@@ -171,7 +171,7 @@ export default function ManagerDashboard() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem', padding: '0 0.25rem' }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 8, background: mt.primary, color: '#fff',
+            width: 36, height: 36, borderRadius: 8, background: mt.primary, color: 'var(--vin-text-main)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
           }}>P</div>
           <div>
@@ -193,7 +193,7 @@ export default function ManagerDashboard() {
                 display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
                 padding: '0.6rem 0.75rem', borderRadius: 8, border: 'none', cursor: 'pointer',
                 fontSize: '0.875rem', fontWeight: tab === item.key ? 600 : 500,
-                background: tab === item.key ? '#0f172a' : 'transparent',
+                background: tab === item.key ? 'var(--vin-primary)' : 'transparent',
                 color: tab === item.key ? '#fff' : '#334155',
               }}
             >
@@ -227,7 +227,7 @@ export default function ManagerDashboard() {
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <ManagerTopbar title={NAV_ITEMS.find((n) => n.key === tab)?.label || 'Dashboard'} />
+        <ManagerTopbar title={NAV_ITEMS.find((n) => n.key === tab)?.label || 'Bảng điều khiển'} />
         <main style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
           {renderPanel()}
         </main>

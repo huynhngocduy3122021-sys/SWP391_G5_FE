@@ -30,8 +30,8 @@ const AdminHeader = () => {
         <MdSearch style={{ color: '#9093a3', marginRight: '8px', fontSize: '20px' }} />
         <input 
           type="text" 
-          placeholder="Search system entities..." 
-          style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '14px', color: '#111322' }}
+          placeholder="Tìm kiếm..." 
+          style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '14px', color: 'var(--vin-text-main)' }}
         />
       </div>
 
@@ -51,7 +51,7 @@ const AdminHeader = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f5f9'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111322', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--vin-primary)', color: 'var(--vin-text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>
               {initials}
             </div>
             <MdKeyboardArrowDown style={{ color: '#5e6278', fontSize: '20px', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
@@ -64,12 +64,12 @@ const AdminHeader = () => {
               boxShadow: '0 10px 25px rgba(0,0,0,0.05)', minWidth: '200px', zIndex: 1000, overflow: 'hidden'
             }}>
               <div style={{ padding: '16px', borderBottom: '1px solid #eef0f3' }}>
-                <div style={{ fontWeight: '600', fontSize: '14px', color: '#111322' }}>{user?.fullName || 'Admin User'}</div>
+                <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--vin-text-main)' }}>{user?.fullName || 'Quản trị viên'}</div>
                 <div style={{ fontSize: '12px', color: '#9093a3', marginTop: '2px' }}>{user?.email || 'admin@system.com'}</div>
               </div>
               <div style={{ padding: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', color: '#5e6278', fontSize: '13px', fontWeight: '500', transition: 'background 0.2s' }} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#f3f5f9'; e.currentTarget.style.color = '#111322'}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#5e6278'}}>
-                  <MdPerson style={{ fontSize: '18px' }} /> My Profile
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', color: '#5e6278', fontSize: '13px', fontWeight: '500', transition: 'background 0.2s' }} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#f3f5f9'; e.currentTarget.style.color = 'var(--vin-text-main)'}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#5e6278'}}>
+                  <MdPerson style={{ fontSize: '18px' }} /> Hồ sơ cá nhân
                 </div>
                 <div 
                   onClick={handleLogout}
@@ -77,7 +77,7 @@ const AdminHeader = () => {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'} 
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <MdLogout style={{ fontSize: '18px' }} /> Logout
+                  <MdLogout style={{ fontSize: '18px' }} /> Đăng xuất
                 </div>
               </div>
             </div>

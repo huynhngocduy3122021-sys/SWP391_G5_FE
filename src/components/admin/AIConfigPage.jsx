@@ -87,7 +87,7 @@ export default function AIConfigPage() {
   }, {});
 
   const typeConfig = [
-    { type: 'LOST_CARD', label: 'Mất thẻ xe', color: '#3b82f6' },
+    { type: 'LOST_CARD', label: 'Mất thẻ xe', color: 'var(--vin-primary)' },
     { type: 'TECHNICAL_ERROR', label: 'Lỗi kỹ thuật', color: '#ef4444' },
     { type: 'BARRIER_ERROR', label: 'Lỗi Barrier', color: '#f59e0b' },
     { type: 'PAYMENT_ERROR', label: 'Lỗi thanh toán', color: '#10b981' },
@@ -163,19 +163,19 @@ export default function AIConfigPage() {
   ).filter(s => (s.licensePlate || '').toLowerCase().includes(sessionSearchQuery.toLowerCase()));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', color: 'var(--vin-primary)', fontFamily: 'Inter, sans-serif' }}>
       
       {/* Page Title & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: '#0f172a' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: 'var(--vin-primary)' }}>
             Phân tích Vận hành & Quản lý Ngoại lệ
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '13px' }}>Giám sát hoạt động xe ra/vào, xử lý các phản hồi khiếu nại và sự cố phát sinh tại các chi nhánh.</p>
         </div>
         <button 
           onClick={fetchAnalyticsData}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'var(--vin-primary)', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'var(--vin-primary)', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: 'var(--vin-text-main)', cursor: 'pointer' }}
         >
           <RefreshCw size={15} /> Đồng bộ dữ liệu
         </button>
@@ -187,7 +187,7 @@ export default function AIConfigPage() {
         {/* Branch Operations Table */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.01)', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111322' }}>Số liệu Vận hành Chi nhánh</h4>
+            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Số liệu Vận hành Chi nhánh</h4>
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '6px' }}>
               <Search size={14} color="#64748b" style={{ marginRight: '6px' }} />
               <input 
@@ -241,7 +241,7 @@ export default function AIConfigPage() {
 
         {/* Incidents Pie Chart */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: '#111322', alignSelf: 'flex-start' }}>Phân loại Ngoại lệ & Sự cố</h4>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: 'var(--vin-bg-card)', alignSelf: 'flex-start' }}>Phân loại Ngoại lệ & Sự cố</h4>
           
           <div style={{
             width: '130px', height: '130px', borderRadius: '50%',
@@ -254,7 +254,7 @@ export default function AIConfigPage() {
               backgroundColor: '#fff',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
             }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>{totalIncidents}</div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--vin-primary)' }}>{totalIncidents}</div>
               <div style={{ fontSize: '9px', fontWeight: '700', color: '#64748b' }}>SỰ CỐ LOGGED</div>
             </div>
           </div>
@@ -282,7 +282,7 @@ export default function AIConfigPage() {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <AlertTriangle size={18} color="#dc2626" />
-          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Bảng xử lý Khiếu nại & Sự cố kỹ thuật</h4>
+          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--vin-primary)' }}>Bảng xử lý Khiếu nại & Sự cố kỹ thuật</h4>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -335,13 +335,13 @@ export default function AIConfigPage() {
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button
                           onClick={() => { setResolvingIncident(inc); setResolutionNotes(''); setLostCardFee('0'); }}
-                          style={{ padding: '4px 8px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                          style={{ padding: '4px 8px', backgroundColor: '#10b981', color: 'var(--vin-text-main)', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
                         >
                           Giải quyết
                         </button>
                         <button
                           onClick={() => { setCancellingIncident(inc); setCancellationReason(''); }}
-                          style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                          style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'var(--vin-text-main)', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
                         >
                           Hủy bỏ
                         </button>
@@ -365,14 +365,14 @@ export default function AIConfigPage() {
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--vin-primary)' }}>
                   Lượt xe gửi tại bãi: {selectedBranchForSessions.name}
                 </h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Danh sách chi tiết các phiên đỗ xe thực tế đang diễn ra hoặc đã hoàn thành.</p>
               </div>
               <button 
                 onClick={() => setSelectedBranchForSessions(null)}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
               >
                 &times;
               </button>
@@ -416,7 +416,7 @@ export default function AIConfigPage() {
                       <td style={{ padding: '10px 8px', color: '#475569' }}>
                         {s.checkOutTime ? new Date(s.checkOutTime).toLocaleString('vi-VN') : '—'}
                       </td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--vin-primary)' }}>
                         {Number(s.totalAmount || 0).toLocaleString('vi-VN')}đ
                       </td>
                       <td style={{ padding: '10px 8px' }}>
@@ -437,7 +437,7 @@ export default function AIConfigPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
               <button 
                 onClick={() => setSelectedBranchForSessions(null)}
-                style={{ padding: '8px 16px', backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                style={{ padding: '8px 16px', backgroundColor: '#64748b', color: 'var(--vin-text-main)', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
               >
                 Đóng lại
               </button>
@@ -450,7 +450,7 @@ export default function AIConfigPage() {
       {resolvingIncident && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '420px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: 'var(--vin-primary)' }}>
               Giải quyết Sự cố: {resolvingIncident.title}
             </h3>
             
@@ -490,7 +490,7 @@ export default function AIConfigPage() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '6px 12px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '6px 12px', backgroundColor: '#10b981', color: 'var(--vin-text-main)', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
                   disabled={actionLoading}
                 >
                   {actionLoading ? 'Đang lưu...' : 'Hoàn thành giải quyết'}
@@ -505,7 +505,7 @@ export default function AIConfigPage() {
       {cancellingIncident && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '420px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: 'var(--vin-primary)' }}>
               Hủy bỏ báo cáo Sự cố: {cancellingIncident.title}
             </h3>
             
@@ -533,7 +533,7 @@ export default function AIConfigPage() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '6px 12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '6px 12px', backgroundColor: '#ef4444', color: 'var(--vin-text-main)', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
                   disabled={actionLoading}
                 >
                   {actionLoading ? 'Đang lưu...' : 'Hủy báo cáo'}

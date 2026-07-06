@@ -145,6 +145,7 @@ const SystemLogsPage = () => {
             </button>
           </div>
         </div>
+
       </div>
 
       {/* Logs Table */}

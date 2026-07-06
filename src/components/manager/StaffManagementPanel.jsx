@@ -131,7 +131,7 @@ export default function StaffManagementPanel({ branchId }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Stats banner */}
-      <div style={{ ...card, background: mt.primary, color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ ...card, background: mt.primary, color: 'var(--vin-text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Quản lý Người dùng &amp; Nhân sự</div>
           <div style={{ fontSize: '0.85rem', opacity: 0.85 }}>Xem, chỉnh sửa và quản lý toàn bộ tài khoản hệ thống.</div>
@@ -259,11 +259,11 @@ export default function StaffManagementPanel({ branchId }) {
           <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 500, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ background: 'linear-gradient(135deg,#0f172a,#1f6a85)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ color: '#fff', fontWeight: 700 }}>✎ Cập nhật thông tin</div>
+                <div style={{ color: 'var(--vin-text-main)', fontWeight: 700 }}>✎ Cập nhật thông tin</div>
                 <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.75rem' }}>ID: {editTarget.userId} — {editTarget.userEmail}</div>
               </div>
               <button onClick={closeEdit} disabled={saving}
-                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'var(--vin-text-main)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
             </div>
 
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -292,7 +292,7 @@ export default function StaffManagementPanel({ branchId }) {
               <button onClick={closeEdit} disabled={saving}
                 style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}>Hủy</button>
               <button onClick={handleSave} disabled={saving}
-                style={{ border: 'none', background: 'linear-gradient(135deg,#0f172a,#1f6a85)', color: '#fff', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
+                style={{ border: 'none', background: 'linear-gradient(135deg,#0f172a,#1f6a85)', color: 'var(--vin-text-main)', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {saving ? 'Đang lưu...' : 'Cập nhật'}
               </button>
             </div>
@@ -304,7 +304,7 @@ export default function StaffManagementPanel({ branchId }) {
       {delTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 420, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ background: 'linear-gradient(135deg,#7f1d1d,#dc2626)', padding: '1rem 1.5rem', color: '#fff', fontWeight: 700 }}>
+            <div style={{ background: 'linear-gradient(135deg,#7f1d1d,#dc2626)', padding: '1rem 1.5rem', color: 'var(--vin-text-main)', fontWeight: 700 }}>
               🗑 Xóa tài khoản
             </div>
             <div style={{ padding: '1.5rem' }}>
@@ -316,7 +316,7 @@ export default function StaffManagementPanel({ branchId }) {
               <button onClick={() => setDelTarget(null)} disabled={deleting}
                 style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}>Hủy</button>
               <button onClick={handleDelete} disabled={deleting}
-                style={{ border: 'none', background: '#dc2626', color: '#fff', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
+                style={{ border: 'none', background: '#dc2626', color: 'var(--vin-text-main)', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {deleting ? 'Đang xóa...' : 'Xóa tài khoản'}
               </button>
             </div>

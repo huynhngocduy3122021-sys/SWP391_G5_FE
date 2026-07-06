@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import managerApi from '../../api/manager';
 import adminApi from '../../api/admin';
 import { toast } from 'react-toastify';
-import { RefreshCw, Activity, CreditCard, DollarSign, Users, Search, BarChart2 } from 'lucide-react';
+import { RefreshCw, Activity, CreditCard, DollarSign, Users } from 'lucide-react';
+import { Row, Col, Card, Badge, Button, ButtonGroup, Table, Modal, Form } from 'react-bootstrap';
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,6 @@ export default function AdminDashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Lấy ngày mốc tham chiếu mới nhất từ dữ liệu thực tế (đề phòng dữ liệu seed năm cũ như 2024/2025)
   const getReferenceDate = () => {
     if (sessions.length === 0) return new Date();
     const dates = sessions
@@ -71,7 +71,6 @@ export default function AdminDashboardPage() {
 
   const refDate = getReferenceDate();
 
-  // Định dạng ngày dạng DD/MM không phụ thuộc Locale hệ thống
   const getFormatKey = (dateVal) => {
     const d = new Date(dateVal);
     const day = String(d.getDate()).padStart(2, '0');
@@ -84,7 +83,6 @@ export default function AdminDashboardPage() {
     return String(d.getHours()).padStart(2, '0') + 'h';
   };
 
-  // Lọc các lượt gửi dựa trên phạm vi thời gian được chọn
   const filteredSessions = sessions.filter(s => {
     if (!s.checkOutTime) return false;
     const outDate = new Date(s.checkOutTime);
@@ -104,18 +102,15 @@ export default function AdminDashboardPage() {
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       return outDate >= monthStart && outDate <= monthEnd;
     }
-    return true; // 'Tất cả'
+    return true;
   });
 
-  // Tính toán KPI Doanh thu theo phương thức nghiệp vụ mới:
-  // Lấy đơn giá thực tế từ Price Policies
   const monthlyPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói Tháng]'));
   const vipPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói VIP President]'));
   
   const MONTHLY_PRICE = monthlyPolicy ? Number(monthlyPolicy.basePrice || 200000) : 200000;
   const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
 
-  // Lọc thẻ tháng & VIP có trạng thái IN_USE hoặc AVAILABLE (đang dùng hoặc còn trống)
   const monthlyCardsCount = cards.filter(c => {
     const code = c.cardCode || '';
     const status = String(c.status || '').toUpperCase();
@@ -132,7 +127,6 @@ export default function AdminDashboardPage() {
   const vipCardRevenue = vipCardsCount * VIP_PRICE;
   const totalCardRevenue = monthlyCardRevenue + vipCardRevenue;
 
-  // Khách vãng lai: lọc các session đỗ xe của thẻ REGULAR (không bắt đầu bằng MONTH- hoặc VIP-)
   const walkInSessions = filteredSessions.filter(s => {
     const code = s.cardCode || s.parkingCard?.cardCode || '';
     return !code.startsWith('MONTH-') && !code.startsWith('VIP-');
@@ -145,11 +139,9 @@ export default function AdminDashboardPage() {
   const cashlessCount = filteredSessions.filter(s => String(s.paymentMethod || '').toUpperCase() === 'VNPAY').length;
   const cashlessRate = totalTransactions > 0 ? Math.round((cashlessCount / totalTransactions) * 100) : 0;
 
-  // Tính toán các KPI Hệ thống khác
   const totalUsersCount = users.length;
   const currentlyParkedCount = sessions.filter(s => s.sessionStatus === 'ACTIVE').length;
 
-  // Doanh thu gom nhóm theo chi nhánh
   const branchRevenueMap = filteredSessions.reduce((acc, s) => {
     const name = s.parkingBranchName || 'Khác';
     acc[name] = (acc[name] || 0) + Number(s.totalAmount || 0);
@@ -161,7 +153,6 @@ export default function AdminDashboardPage() {
     amount: branchRevenueMap[name]
   })).sort((a, b) => b.amount - a.amount);
 
-  // Nhóm doanh thu để vẽ biểu đồ
   const getChartData = () => {
     const dates = {};
     const now = refDate;
@@ -288,11 +279,9 @@ export default function AdminDashboardPage() {
   const chartData = getChartData();
   const maxRevenue = Math.max(...chartData.map(d => d.total), 10000);
 
-  // Branch CRUD Handlers
   const handleSaveBranch = async (e) => {
     e.preventDefault();
     if (!branchForm.branchName.trim()) return toast.warn('Vui lòng nhập tên chi nhánh!');
-    
     setSubmitting(true);
     try {
       if (editingBranch) {
@@ -307,8 +296,7 @@ export default function AdminDashboardPage() {
       setBranchForm({ branchName: '', address: '', phoneNumber: '', description: '' });
       fetchDashboardData();
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Thao tác chi nhánh thất bại!';
-      toast.error(String(msg));
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Thao tác chi nhánh thất bại!'));
     } finally {
       setSubmitting(false);
     }
@@ -320,8 +308,7 @@ export default function AdminDashboardPage() {
       toast.success('Cập nhật trạng thái chi nhánh thành công!');
       fetchDashboardData();
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Không thể đổi trạng thái chi nhánh!';
-      toast.error(String(msg));
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Không thể đổi trạng thái chi nhánh!'));
     }
   };
 
@@ -337,462 +324,187 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#0f172a', fontFamily: 'Inter, sans-serif' }}>
-      
-      {/* Header Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="d-flex flex-column gap-3 text-dark " style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="d-flex justify-content-between align-items-center">
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#0f172a' }}>
-            Hệ thống Quản lý Bãi xe VinParking (Dashboard Overview)
-          </h1>
-          <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: '13px' }}>Báo cáo doanh thu, tình trạng vận hành và quản trị chi nhánh bãi xe.</p>
+          <h1 className="h4 fw-bold m-0 text-dark">Hệ thống Quản lý Bãi xe VinParking</h1>
+          <p className="text-muted m-0 small">Báo cáo doanh thu, tình trạng vận hành và quản trị chi nhánh bãi xe.</p>
         </div>
-        
-        {/* Time filters */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', backgroundColor: '#e2e8f0', borderRadius: '6px', padding: '2px' }}>
+        <div className="d-flex gap-2 align-items-center">
+          <ButtonGroup size="sm" className="bg-light p-1 rounded border">
             {['Hôm nay', '7 ngày qua', 'Tháng này', 'Tất cả'].map(tab => (
-              <button 
-                key={tab}
-                onClick={() => setTimeFilter(tab)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: timeFilter === tab ? '#fff' : 'transparent',
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: timeFilter === tab ? 'var(--vin-primary)' : '#475569',
-                  fontWeight: timeFilter === tab ? '600' : '500',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  boxShadow: timeFilter === tab ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                }}
-              >
-                {tab}
-              </button>
+              <Button key={tab} variant={timeFilter === tab ? 'white' : 'transparent'} className={`border-0 rounded shadow-sm ${timeFilter === tab ? 'text-primary fw-bold' : 'text-muted'}`} onClick={() => setTimeFilter(tab)}>{tab}</Button>
             ))}
-          </div>
-          <button 
-            onClick={fetchDashboardData}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-          >
-            <RefreshCw size={14} /> Làm mới
-          </button>
+          </ButtonGroup>
+          <Button size="sm" variant="primary" className="fw-bold d-flex align-items-center gap-1" onClick={fetchDashboardData}><RefreshCw size={14} /> Làm mới</Button>
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-        <div style={{ backgroundColor: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', fontWeight: '700' }}>
-            TỔNG DOANH THU <DollarSign size={14} color="#3b82f6" />
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
-            {Number(totalRevenue || 0).toLocaleString('vi-VN')} đ
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid #f1f5f9', paddingTop: '4px', marginTop: '2px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>🚶 Vãng lai:</span>
-              <span style={{ fontWeight: 600 }}>{Number(walkInRevenue).toLocaleString('vi-VN')}đ</span>
+      <Row className="g-3">
+        {[
+          { title: 'TỔNG DOANH THU', icon: <DollarSign size={14} color="#3b82f6" />, val: `${Number(totalRevenue || 0).toLocaleString('vi-VN')} đ`, s1: `Vãng lai: ${Number(walkInRevenue).toLocaleString('vi-VN')}đ`, s2: `Thẻ Tháng/VIP: ${Number(totalCardRevenue).toLocaleString('vi-VN')}đ` },
+          { title: 'LƯỢT XE ĐÃ THANH TOÁN', icon: <Activity size={14} color="#10b981" />, val: `${totalTransactions} giao dịch`, s1: 'Hóa đơn checkout thành công' },
+          { title: 'TỶ LỆ ONLINE (VNPAY)', icon: <CreditCard size={14} color="#8b5cf6" />, val: `${cashlessRate}%`, s1: 'Còn lại: Tiền mặt/Thẻ RFID' },
+          { title: 'XE ĐANG GỬI HIỆN TẠI', icon: <Users size={14} color="#ef4444" />, val: `${currentlyParkedCount} xe`, s1: `Tổng số User tài khoản: ${totalUsersCount}` }
+        ].map((k, i) => (
+          <Col md={3} key={i}>
+            <Card className="border-0 shadow-sm h-100 p-3">
+              <div className="d-flex justify-content-between text-muted fw-bold mb-2" style={{ fontSize: '0.7rem' }}><span>{k.title}</span>{k.icon}</div>
+              <div className="fs-4 fw-bolder text-dark mb-2">{k.val}</div>
+              <div className="small text-muted border-top pt-2 mt-auto">
+                <div className="d-flex justify-content-between"><span>{k.s1}</span></div>
+                {k.s2 && <div className="d-flex justify-content-between"><span>{k.s2}</span></div>}
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      <Row className="g-3">
+        <Col md={8}>
+          <Card className="border-0 shadow-sm p-3 h-100">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5 className="fw-bold m-0 fs-6">Biểu đồ Doanh thu phân bổ</h5>
+              <ButtonGroup size="sm" className="bg-light p-1 rounded border">
+                {[{ key: 'ALL', label: 'Tất cả' }, { key: 'WALK_IN', label: 'Vãng lai' }, { key: 'CARD', label: 'Thẻ Tháng/VIP' }].map(opt => (
+                  <Button key={opt.key} variant={revenueChartType === opt.key ? 'white' : 'transparent'} className={`border-0 rounded shadow-sm ${revenueChartType === opt.key ? 'text-dark fw-bold' : 'text-muted'}`} onClick={() => setRevenueChartType(opt.key)}>{opt.label}</Button>
+                ))}
+              </ButtonGroup>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>🎟️ Thẻ Tháng/VIP:</span>
-              <span style={{ fontWeight: 600 }}>{Number(totalCardRevenue).toLocaleString('vi-VN')}đ</span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ backgroundColor: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', fontWeight: '700' }}>
-            LƯỢT XE ĐÃ THANH TOÁN <Activity size={14} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
-            {totalTransactions} giao dịch
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>Hóa đơn checkout thành công</div>
-        </div>
-
-        <div style={{ backgroundColor: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', fontWeight: '700' }}>
-            TỶ LỆ ONLINE (VNPAY) <CreditCard size={14} color="#8b5cf6" />
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
-            {cashlessRate}%
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>Còn lại: Tiền mặt/Thẻ RFID</div>
-        </div>
-
-        <div style={{ backgroundColor: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', fontWeight: '700' }}>
-            XE ĐANG GỬI HIỆN TẠI <Users size={14} color="#ef4444" />
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
-            {currentlyParkedCount} xe
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>Tổng số User tài khoản: {totalUsersCount}</div>
-        </div>
-      </div>
-
-      {/* Charts Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
-        
-        {/* Daily Revenue Chart */}
-        <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Biểu đồ Doanh thu phân bổ</h3>
             
-            {/* Toggles chọn loại doanh thu */}
-            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', gap: '2px' }}>
-              {[
-                { key: 'ALL', label: 'Tất cả' },
-                { key: 'WALK_IN', label: 'Vãng lai' },
-                { key: 'CARD', label: 'Thẻ Tháng/VIP' }
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setRevenueChartType(opt.key)}
-                  style={{
-                    padding: '4px 10px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    backgroundColor: revenueChartType === opt.key ? '#fff' : 'transparent',
-                    color: revenueChartType === opt.key ? '#0f172a' : '#64748b',
-                    boxShadow: revenueChartType === opt.key ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div style={{ overflowX: 'auto', width: '100%' }}>
-            <div style={{ 
-              display: 'flex', alignItems: 'flex-end', height: '140px', 
-              gap: timeFilter === 'Tháng này' ? '6px' : '16px', 
-              padding: '8px 0', borderBottom: '1px solid #cbd5e1',
-              minWidth: timeFilter === 'Tháng này' ? '600px' : 'auto'
-            }}>
-              {chartData.map((d, index) => {
-                let showVal = d.total;
-                if (revenueChartType === 'WALK_IN') showVal = d.walkIn;
-                else if (revenueChartType === 'CARD') showVal = d.monthly + d.vip;
+            <div className="overflow-auto w-100 pb-2">
+              <div className="d-flex align-items-end border-bottom pb-2" style={{ height: 140, gap: timeFilter === 'Tháng này' ? 6 : 16, minWidth: timeFilter === 'Tháng này' ? 600 : 'auto' }}>
+                {chartData.map((d, index) => {
+                  let showVal = d.total;
+                  if (revenueChartType === 'WALK_IN') showVal = d.walkIn;
+                  else if (revenueChartType === 'CARD') showVal = d.monthly + d.vip;
 
-                const walkInHeightPct = showVal > 0 && revenueChartType !== 'CARD' ? (d.walkIn / maxRevenue) * 100 : 0;
-                const monthlyHeightPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.monthly / maxRevenue) * 100 : 0;
-                const vipHeightPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.vip / maxRevenue) * 100 : 0;
-                const totalHeightPct = Math.max(5, walkInHeightPct + monthlyHeightPct + vipHeightPct);
-                
-                const labelAmount = showVal > 0 
-                  ? (showVal >= 1000000 ? `${(showVal / 1000000).toFixed(1)}M` : `${Math.round(showVal / 1000)}k`) 
-                  : '';
-                
-                return (
-                  <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '8px', fontWeight: '700', color: '#475569', whiteSpace: 'nowrap' }}>{labelAmount}</span>
-                    
-                    {/* Cột xếp chồng phân màu */}
-                    <div style={{ width: '100%', height: `${totalHeightPct}%`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', borderRadius: '2px 2px 0 0', overflow: 'hidden' }}>
-                      {revenueChartType !== 'WALK_IN' && d.vip > 0 && (
-                        <div 
-                          style={{ 
-                            height: showVal > 0 ? `${(d.vip / showVal) * 100}%` : '0%', 
-                            backgroundColor: '#f59e0b', 
-                            transition: 'height 0.3s'
-                          }} 
-                          title={`Thẻ VIP: ${Number(d.vip).toLocaleString()}đ`}
-                        />
-                      )}
-                      {revenueChartType !== 'WALK_IN' && d.monthly > 0 && (
-                        <div 
-                          style={{ 
-                            height: showVal > 0 ? `${(d.monthly / showVal) * 100}%` : '0%', 
-                            backgroundColor: '#10b981', 
-                            transition: 'height 0.3s'
-                          }} 
-                          title={`Thẻ Tháng: ${Number(d.monthly).toLocaleString()}đ`}
-                        />
-                      )}
-                      {revenueChartType !== 'CARD' && d.walkIn > 0 && (
-                        <div 
-                          style={{ 
-                            height: showVal > 0 ? `${(d.walkIn / showVal) * 100}%` : '100%', 
-                            backgroundColor: '#3b82f6', 
-                            transition: 'height 0.3s'
-                          }} 
-                          title={`Khách vãng lai: ${Number(d.walkIn).toLocaleString()}đ`}
-                        />
-                      )}
+                  const walkInPct = showVal > 0 && revenueChartType !== 'CARD' ? (d.walkIn / maxRevenue) * 100 : 0;
+                  const monthlyPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.monthly / maxRevenue) * 100 : 0;
+                  const vipPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.vip / maxRevenue) * 100 : 0;
+                  const totalPct = Math.max(5, walkInPct + monthlyPct + vipPct);
+                  const labelAmount = showVal > 0 ? (showVal >= 1000000 ? `${(showVal / 1000000).toFixed(1)}M` : `${Math.round(showVal / 1000)}k`) : '';
+                  
+                  return (
+                    <div key={index} className="flex-grow-1 d-flex flex-column align-items-center h-100 justify-content-end gap-1">
+                      <span className="text-muted fw-bold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{labelAmount}</span>
+                      <div className="w-100 d-flex flex-column justify-content-end rounded-top overflow-hidden" style={{ height: `${totalPct}%` }}>
+                        {revenueChartType !== 'WALK_IN' && d.vip > 0 && <div className="bg-warning w-100" style={{ height: `${(d.vip / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ VIP: ${d.vip.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'WALK_IN' && d.monthly > 0 && <div className="bg-success w-100" style={{ height: `${(d.monthly / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ Tháng: ${d.monthly.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'CARD' && d.walkIn > 0 && <div className="bg-primary w-100" style={{ height: `${(d.walkIn / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Khách vãng lai: ${d.walkIn.toLocaleString()}đ`} />}
+                      </div>
+                      <span className="text-muted fw-bold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{d.label}</span>
                     </div>
-                    
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', whiteSpace: 'nowrap' }}>{d.label}</span>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="d-flex justify-content-center gap-3 mt-3 small">
+              {revenueChartType !== 'CARD' && <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-primary rounded" style={{ width: 12, height: 12 }} /> Khách vãng lai</div>}
+              {revenueChartType !== 'WALK_IN' && (
+                <><div className="d-flex align-items-center gap-1 text-muted"><div className="bg-success rounded" style={{ width: 12, height: 12 }} /> Thẻ Tháng</div>
+                <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-warning rounded" style={{ width: 12, height: 12 }} /> Thẻ VIP</div></>
+              )}
+            </div>
+          </Card>
+        </Col>
+
+        <Col md={4}>
+          <Card className="border-0 shadow-sm p-3 h-100 d-flex flex-column align-items-center justify-content-center">
+            <h5 className="fw-bold m-0 fs-6 align-self-start mb-3">Cổng Thanh toán</h5>
+            <div className="d-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: 120, height: 120, background: `conic-gradient(var(--vin-primary) ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)` }}>
+              <div className="bg-white rounded-circle d-flex flex-column align-items-center justify-content-center" style={{ width: 94, height: 94 }}>
+                <div className="fs-4 fw-bolder text-dark">{cashlessRate}%</div>
+                <div className="fw-bold text-muted" style={{ fontSize: '0.55rem' }}>VNPAY ONLINE</div>
+              </div>
+            </div>
+            <div className="d-flex w-100 justify-content-around small text-muted">
+              <span className="d-flex align-items-center gap-1"><div className="bg-primary rounded" style={{ width: 8, height: 8 }} /> Online: {cashlessRate}%</span>
+              <span className="d-flex align-items-center gap-1"><div className="bg-secondary rounded" style={{ width: 8, height: 8 }} /> Tiền mặt: {100 - cashlessRate}%</span>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="g-3">
+        <Col md={6}>
+          <Card className="border-0 shadow-sm p-3 h-100" style={{ maxHeight: 250, overflowY: 'auto' }}>
+            <h5 className="fw-bold fs-6 mb-3">Doanh thu theo Chi nhánh</h5>
+            <div className="d-flex flex-column gap-3">
+              {branchRevenues.length === 0 ? <span className="small text-muted">Chưa có doanh thu.</span> : branchRevenues.map((br, index) => {
+                const maxAmount = branchRevenues[0]?.amount || 1;
+                const pct = Math.round((br.amount / maxAmount) * 100);
+                return (
+                  <div key={index}>
+                    <div className="d-flex justify-content-between mb-1 small fw-bold"><span>{br.name}</span><span>{Number(br.amount || 0).toLocaleString('vi-VN')} đ</span></div>
+                    <div className="bg-light rounded" style={{ height: 6 }}><div className="bg-primary rounded h-100" style={{ width: `${pct}%` }} /></div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </Card>
+        </Col>
 
-          {/* Chú thích biểu đồ */}
-          <div style={{ display: 'flex', gap: '16px', marginTop: '12px', justifyContent: 'center', fontSize: '11px', flexWrap: 'wrap' }}>
-            {revenueChartType !== 'CARD' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#3b82f6' }} />
-                <span style={{ color: '#64748b', fontWeight: '500' }}>Khách vãng lai</span>
-              </div>
-            )}
-            {revenueChartType !== 'WALK_IN' && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#10b981' }} />
-                  <span style={{ color: '#64748b', fontWeight: '500' }}>Thẻ Tháng</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#f59e0b' }} />
-                  <span style={{ color: '#64748b', fontWeight: '500' }}>Thẻ VIP</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <Col md={6}>
+          <Card className="border-0 shadow-sm p-3 h-100" style={{ maxHeight: 250, overflowY: 'auto' }}>
+            <h5 className="fw-bold fs-6 mb-3">Các Giao dịch Checkout Gần nhất</h5>
+            <Table hover size="sm" className="align-middle text-muted" style={{ fontSize: '0.8rem' }}>
+              <thead className="table-light text-muted"><tr><th>BIỂN SỐ</th><th>CHI NHÁNH</th><th>SỐ TIỀN</th><th className="text-end">THANH TOÁN</th></tr></thead>
+              <tbody>
+                {filteredSessions.length === 0 ? <tr><td colSpan="4" className="text-center py-3">Không có giao dịch nào.</td></tr> : filteredSessions.slice(0, 5).map(s => (
+                  <tr key={s.parkingSessionId}>
+                    <td className="fw-bold text-primary">{s.licensePlate}</td>
+                    <td>{s.parkingBranchName}</td>
+                    <td className="fw-bold text-dark">{Number(s.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
+                    <td className="text-end"><Badge bg={String(s.paymentMethod || '').toUpperCase() === 'VNPAY' ? 'success' : 'danger'}>{s.paymentMethod || 'CASH'}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Doughnut Chart */}
-        <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a', alignSelf: 'flex-start' }}>Cổng Thanh toán</h3>
-          
-          <div style={{
-            width: '120px', height: '120px', borderRadius: '50%',
-            background: `conic-gradient(var(--vin-primary) ${cashlessRate}%, #cbd5e1 ${cashlessRate}% 100%)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: '12px'
-          }}>
-            <div style={{
-              width: '94px', height: '94px', borderRadius: '50%',
-              backgroundColor: '#fff',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{cashlessRate}%</div>
-              <div style={{ fontSize: '9px', fontWeight: '700', color: '#64748b' }}>VNPAY ONLINE</div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', width: '100%', justifyContent: 'space-around' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--vin-primary)' }}></div> Online: {cashlessRate}%
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#cbd5e1' }}></div> Tiền mặt: {100 - cashlessRate}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Branch & Transaction Tables */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        
-        {/* Branch revenues */}
-        <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '200px', overflowY: 'auto' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Doanh thu theo Chi nhánh</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {branchRevenues.length === 0 ? (
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Chưa có doanh thu nào được ghi nhận.</span>
-            ) : branchRevenues.map((br, index) => {
-              const maxAmount = branchRevenues[0]?.amount || 1;
-              const pct = Math.round((br.amount / maxAmount) * 100);
-              return (
-                <div key={index}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px', fontWeight: '600' }}>
-                    <span style={{ color: '#334155' }}>{br.name}</span>
-                    <span style={{ color: '#0f172a' }}>{Number(br.amount || 0).toLocaleString('vi-VN')} đ</span>
-                  </div>
-                  <div style={{ height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--vin-primary)', borderRadius: '3px' }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Recent Transactions */}
-        <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '200px', overflowY: 'auto' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Các Giao dịch Checkout Gần nhất</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600' }}>
-                <th style={{ padding: '6px 0' }}>BIỂN SỐ</th>
-                <th style={{ padding: '6px 0' }}>CHI NHÁNH</th>
-                <th style={{ padding: '6px 0' }}>SỐ TIỀN</th>
-                <th style={{ padding: '6px 0', textAlign: 'right' }}>THANH TOÁN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSessions.length === 0 ? (
-                <tr>
-                  <td colSpan="4" style={{ padding: '1rem 0', textAlign: 'center', color: '#64748b' }}>Không có giao dịch nào phù hợp.</td>
-                </tr>
-              ) : filteredSessions.slice(0, 5).map((s, i) => (
-                <tr key={s.parkingSessionId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '8px 0', color: 'var(--vin-primary)', fontWeight: '700' }}>{s.licensePlate}</td>
-                  <td style={{ padding: '8px 0', color: '#475569' }}>{s.parkingBranchName}</td>
-                  <td style={{ padding: '8px 0', color: '#0f172a', fontWeight: '700' }}>{Number(s.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
-                  <td style={{ padding: '8px 0', textAlign: 'right' }}>
-                    <span style={{
-                      backgroundColor: String(s.paymentMethod || '').toUpperCase() === 'VNPAY' ? '#dcfce7' : '#fee2e2',
-                      color: String(s.paymentMethod || '').toUpperCase() === 'VNPAY' ? '#166534' : '#991b1b',
-                      padding: '2px 8px', borderRadius: '10px', fontSize: '9px', fontWeight: '700'
-                    }}>
-                      {s.paymentMethod || 'CASH'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Branch Management Section */}
-      <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+      <Card className="border-0 shadow-sm p-3">
+        <div className="d-flex justify-content-between align-items-center mb-3">
           <div>
-            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Quản lý Chi nhánh Bãi xe</h4>
-            <p style={{ color: '#64748b', fontSize: '11px', margin: '2px 0 0 0' }}>Xem danh sách và cấu hình vận hành của các chi nhánh đỗ xe.</p>
+            <h5 className="fw-bold m-0 fs-6">Quản lý Chi nhánh Bãi xe</h5>
+            <p className="text-muted m-0 small">Xem danh sách và cấu hình vận hành của các chi nhánh đỗ xe.</p>
           </div>
-          <button
-            onClick={() => { setEditingBranch(null); setBranchForm({ branchName: '', address: '', phoneNumber: '', description: '' }); setShowBranchModal(true); }}
-            style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
-          >
-            ➕ Thêm Chi Nhánh
-          </button>
+          <Button size="sm" variant="primary" className="fw-bold" onClick={() => { setEditingBranch(null); setBranchForm({ branchName: '', address: '', phoneNumber: '', description: '' }); setShowBranchModal(true); }}>➕ Thêm Chi Nhánh</Button>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #eef0f3', textAlign: 'left', color: '#64748b', fontWeight: '600' }}>
-              <th style={{ padding: '8px' }}>CHI NHÁNH</th>
-              <th style={{ padding: '8px' }}>ĐỊA CHỈ</th>
-              <th style={{ padding: '8px' }}>ĐIỆN THOẠI</th>
-              <th style={{ padding: '8px' }}>TRẠNG THÁI</th>
-              <th style={{ padding: '8px', textAlign: 'center' }}>HÀNH ĐỘNG</th>
-            </tr>
-          </thead>
+        <Table hover responsive className="align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+          <thead className="table-light text-muted"><tr><th>CHI NHÁNH</th><th>ĐỊA CHỈ</th><th>ĐIỆN THOẠI</th><th>TRẠNG THÁI</th><th className="text-center">HÀNH ĐỘNG</th></tr></thead>
           <tbody>
-            {branches.length === 0 ? (
-              <tr>
-                <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>Chưa có chi nhánh nào được tạo.</td>
-              </tr>
-            ) : branches.map(b => (
-              <tr key={b.parkingBranchId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '8px', fontWeight: '700', color: '#1e293b' }}>{b.branchName}</td>
-                <td style={{ padding: '8px', color: '#475569' }}>{b.address || '—'}</td>
-                <td style={{ padding: '8px', color: '#475569' }}>{b.phoneNumber || '—'}</td>
-                <td style={{ padding: '8px' }}>
-                  <span style={{
-                    backgroundColor: b.active ? '#dcfce7' : '#fee2e2',
-                    color: b.active ? '#166534' : '#991b1b',
-                    padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600'
-                  }}>
-                    {b.active ? 'Hoạt động' : 'Tắt'}
-                  </span>
-                </td>
-                <td style={{ padding: '8px', textAlign: 'center' }}>
-                  <button
-                    onClick={() => openEditBranchModal(b)}
-                    style={{ background: 'none', border: 'none', color: 'var(--vin-primary)', cursor: 'pointer', fontWeight: '600', marginRight: '10px' }}
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleToggleBranchStatus(b.parkingBranchId, b.active)}
-                    style={{ background: 'none', border: 'none', color: b.active ? '#ef4444' : '#10b981', cursor: 'pointer', fontWeight: '600' }}
-                  >
-                    {b.active ? 'Tắt' : 'Bật'}
-                  </button>
+            {branches.length === 0 ? <tr><td colSpan="5" className="text-center py-3 text-muted">Chưa có chi nhánh nào.</td></tr> : branches.map(b => (
+              <tr key={b.parkingBranchId}>
+                <td className="fw-bold text-dark">{b.branchName}</td>
+                <td className="text-muted">{b.address || '—'}</td>
+                <td className="text-muted">{b.phoneNumber || '—'}</td>
+                <td><Badge bg={b.active ? 'success' : 'danger'}>{b.active ? 'Hoạt động' : 'Tắt'}</Badge></td>
+                <td className="text-center">
+                  <Button variant="link" size="sm" className="text-primary text-decoration-none fw-bold" onClick={() => openEditBranchModal(b)}>Sửa</Button>
+                  <Button variant="link" size="sm" className={`text-decoration-none fw-bold ${b.active ? 'text-danger' : 'text-success'}`} onClick={() => handleToggleBranchStatus(b.parkingBranchId, b.active)}>{b.active ? 'Tắt' : 'Bật'}</Button>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+        </Table>
+      </Card>
 
-      {/* BRANCH CREATE/EDIT MODAL */}
-      {showBranchModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '20px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
-              {editingBranch ? 'Cập nhật chi nhánh' : 'Thêm chi nhánh bãi xe mới'}
-            </h3>
-            <form onSubmit={handleSaveBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>TÊN CHI NHÁNH *</label>
-                <input
-                  type="text"
-                  placeholder="Nhập tên chi nhánh (ví dụ: Landmark 81)"
-                  value={branchForm.branchName}
-                  onChange={e => setBranchForm({ ...branchForm, branchName: e.target.value })}
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>ĐỊA CHỈ</label>
-                <input
-                  type="text"
-                  placeholder="Nhập địa chỉ..."
-                  value={branchForm.address}
-                  onChange={e => setBranchForm({ ...branchForm, address: e.target.value })}
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>ĐIỆN THOẠI</label>
-                <input
-                  type="text"
-                  placeholder="Nhập số điện thoại..."
-                  value={branchForm.phoneNumber}
-                  onChange={e => setBranchForm({ ...branchForm, phoneNumber: e.target.value })}
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>MÔ TẢ CHI NHÁNH</label>
-                <textarea
-                  placeholder="Mô tả bãi..."
-                  value={branchForm.description}
-                  onChange={e => setBranchForm({ ...branchForm, description: e.target.value })}
-                  rows="2"
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', resize: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowBranchModal(false)}
-                  style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
-                  disabled={submitting}
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: '6px 12px', backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Đang lưu...' : 'Lưu lại'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal show={showBranchModal} onHide={() => setShowBranchModal(false)} centered>
+        <Form onSubmit={handleSaveBranch}>
+          <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">{editingBranch ? 'Cập nhật chi nhánh' : 'Thêm chi nhánh bãi xe mới'}</Modal.Title></Modal.Header>
+          <Modal.Body className="d-flex flex-column gap-3">
+            <Form.Group><Form.Label className="small fw-bold text-muted">TÊN CHI NHÁNH *</Form.Label><Form.Control type="text" placeholder="Nhập tên chi nhánh (ví dụ: Landmark 81)" value={branchForm.branchName} onChange={e => setBranchForm({ ...branchForm, branchName: e.target.value })} required /></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">ĐỊA CHỈ</Form.Label><Form.Control type="text" placeholder="Nhập địa chỉ..." value={branchForm.address} onChange={e => setBranchForm({ ...branchForm, address: e.target.value })} /></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">ĐIỆN THOẠI</Form.Label><Form.Control type="text" placeholder="Nhập số điện thoại..." value={branchForm.phoneNumber} onChange={e => setBranchForm({ ...branchForm, phoneNumber: e.target.value })} /></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">MÔ TẢ CHI NHÁNH</Form.Label><Form.Control as="textarea" rows={2} placeholder="Mô tả bãi..." value={branchForm.description} onChange={e => setBranchForm({ ...branchForm, description: e.target.value })} style={{ resize: 'none' }} /></Form.Group>
+          </Modal.Body>
+          <Modal.Footer><Button variant="outline-secondary" onClick={() => setShowBranchModal(false)} disabled={submitting}>Hủy bỏ</Button><Button variant="primary" type="submit" disabled={submitting}>{submitting ? 'Đang lưu...' : 'Lưu lại'}</Button></Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 }

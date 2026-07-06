@@ -111,17 +111,17 @@ export default function StaffTopbar({ mode, onModeChange }) {
     }}>
       {/* Logo */}
       <div>
-        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff', lineHeight: 1.1 }}>PARK-OPS</div>
-        <div style={{ fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.1em' }}>PRO</div>
+        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--vin-text-main)', lineHeight: 1.1 }}>PARK-OPS</div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--vin-primary)', letterSpacing: '0.1em' }}>PRO</div>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TOTAL VEHICLES" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
-        <StatItem label="TODAY'S REVENUE" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
-        <StatItem label="BOOKINGS" value={displayStats.bookings} />
-        <StatItem label="EXITED" value={displayStats.exited} />
-        <StatItem label="SLOTS LEFT" value={displayStats.slotsLeft} color="var(--vin-success)" />
+        <StatItem label="TỔNG XE" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
+        <StatItem label="DOANH THU HÔM NAY" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="ĐẶT TRƯỚC" value={displayStats.bookings} />
+        <StatItem label="ĐÃ RA" value={displayStats.exited} />
+        <StatItem label="CHỖ TRỐNG" value={displayStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}
@@ -133,7 +133,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
               onClick={() => onModeChange(m)}
               className="vin-btn vin-btn--sm"
               style={{
-                background: mode === m ? '#3b82f6' : 'transparent',
+                background: mode === m ? 'var(--vin-primary)' : 'transparent',
                 color: mode === m ? '#fff' : 'rgba(255,255,255,0.6)',
               }}
             >

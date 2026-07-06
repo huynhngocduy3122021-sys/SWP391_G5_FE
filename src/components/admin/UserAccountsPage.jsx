@@ -106,21 +106,21 @@ const UserAccountsPage = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>User Accounts</h2>
-          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Manage all user roles and permissions in the system.</p>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Tài khoản người dùng</h2>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Quản lý tất cả vai trò và quyền hạn người dùng trong hệ thống.</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
           style={{ 
             display: 'flex', alignItems: 'center', gap: '8px',
-            backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', 
+            backgroundColor: 'var(--vin-primary)', color: 'var(--vin-text-main)', border: 'none', 
             padding: '10px 16px', borderRadius: '8px', fontWeight: '600',
             cursor: 'pointer', transition: 'background 0.2s'
           }}
           onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--vin-teal-hover)'}
           onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--vin-primary)'}
         >
-          <MdAdd size={20} /> Create Account
+          <MdAdd size={20} /> Tạo tài khoản
         </button>
       </div>
 
@@ -134,10 +134,10 @@ const UserAccountsPage = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #eef0f3' }}>
-                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>User</th>
-                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Contact Info</th>
-                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Role</th>
-                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Người dùng</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Thông tin liên hệ</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Vai trò</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Trạng thái</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,9 +168,9 @@ const UserAccountsPage = () => {
                     </td>
                     <td style={{ padding: '16px' }}>
                       {u.deleted ? (
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#ef4444', backgroundColor: '#fee2e2', padding: '4px 8px', borderRadius: '4px' }}>DISABLED</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#ef4444', backgroundColor: '#fee2e2', padding: '4px 8px', borderRadius: '4px' }}>ĐÃ VÔ HIỆU</span>
                       ) : (
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 8px', borderRadius: '4px' }}>ACTIVE</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 8px', borderRadius: '4px' }}>HOẠT ĐỘNG</span>
                       )}
                     </td>
                   </tr>
@@ -178,7 +178,7 @@ const UserAccountsPage = () => {
                 {users.length === 0 && (
                   <tr>
                     <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                      No users found.
+                      Không tìm thấy người dùng nào.
                     </td>
                   </tr>
                 )}
@@ -191,7 +191,7 @@ const UserAccountsPage = () => {
       <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static">
         <Modal.Header closeButton style={{ borderBottom: '1px solid #eef0f3' }}>
           <Modal.Title style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
-            Create Staff/Manager Account
+            Tạo tài khoản Nhân viên/Quản lý
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleCreateUser}>
@@ -265,11 +265,11 @@ const UserAccountsPage = () => {
           </Modal.Body>
           <Modal.Footer style={{ borderTop: '1px solid #eef0f3' }}>
             <Button variant="light" onClick={() => setShowModal(false)} style={{ fontSize: '14px', fontWeight: '500' }}>
-              Cancel
+              Hủy
             </Button>
             <Button variant="primary" type="submit" disabled={submitting} style={{ backgroundColor: 'var(--vin-primary)', border: 'none', fontSize: '14px', fontWeight: '500', padding: '8px 16px' }}>
               {submitting ? <Spinner size="sm" animation="border" className="me-2"/> : null}
-              {submitting ? 'Creating...' : 'Create Account'}
+              {submitting ? 'Đang tạo...' : 'Tạo tài khoản'}
             </Button>
           </Modal.Footer>
         </Form>

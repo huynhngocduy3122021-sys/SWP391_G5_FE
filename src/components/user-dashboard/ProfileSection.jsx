@@ -5,11 +5,11 @@ import parkingApi from '../../api/parkingApi';
 
 export default function ProfileSection() {
   const userId = localStorage.getItem('userId');
-  
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     fullName: localStorage.getItem('fullName') || '',
     email: localStorage.getItem('email') || '',
@@ -22,7 +22,7 @@ export default function ProfileSection() {
   const [activities, setActivities] = useState([]);
   const [residentCard, setResidentCard] = useState(null); // thẻ VIP hoặc thẻ tháng đang hiệu lực
   const [rawTickets, setRawTickets] = useState([]);
-  
+
   // Password change states
   const [showPwModal, setShowPwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -35,7 +35,7 @@ export default function ProfileSection() {
       // 1. Get user profile details
       const profile = await authApi.getUserById(userId);
       const email = localStorage.getItem('email');
-      
+
       const nextProfile = {
         fullName: profile.userFullName || localStorage.getItem('fullName') || '',
         email: profile.userEmail || email || '',
@@ -43,14 +43,14 @@ export default function ProfileSection() {
         apartment: localStorage.getItem('apartment') || '',
         address: profile.userAddress || localStorage.getItem('address') || localStorage.getItem('userAddress') || ''
       };
-      
+
       localStorage.setItem('fullName', nextProfile.fullName);
       localStorage.setItem('email', nextProfile.email);
       localStorage.setItem('phone', nextProfile.phone);
       localStorage.setItem('userPhone', nextProfile.phone);
       localStorage.setItem('address', nextProfile.address);
       localStorage.setItem('userAddress', nextProfile.address);
-      
+
       setFormData(nextProfile);
 
       // 2. Load user's vehicles
@@ -64,9 +64,9 @@ export default function ProfileSection() {
       try {
         const allSessions = await parkingApi.getAllSessions();
         const sessionsList = Array.isArray(allSessions) ? allSessions : (allSessions?.content || []);
-        
+
         const userPlates = userVehicles.map(v => v.licensePlate.toUpperCase());
-        const filteredSessions = sessionsList.filter(s => 
+        const filteredSessions = sessionsList.filter(s =>
           userPlates.includes(s.licensePlate?.toUpperCase())
         );
 
@@ -123,7 +123,7 @@ export default function ProfileSection() {
 
         setResidentCard(sorted[0] || null);
       } catch (cardErr) {
-        console.warn('Không thể tải thẻ giữ xe siêu thị:', cardErr);
+        console.warn('Không thể tải thẻ giữ xe :', cardErr);
         setResidentCard(null);
       }
     } catch (err) {
@@ -161,7 +161,7 @@ export default function ProfileSection() {
       localStorage.setItem('apartment', formData.apartment);
       localStorage.setItem('address', formData.address);
       localStorage.setItem('userAddress', formData.address);
-      
+
       setIsEditing(false);
       toast.success('Cập nhật thông tin thành công!');
       window.dispatchEvent(new Event('storage'));
@@ -229,7 +229,7 @@ export default function ProfileSection() {
             </div>
             <div>
               <h4 className="fw-bold text-dark mb-1">{formData.fullName} <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>(ID: {userId})</span></h4>
-              <p className="text-muted mb-2">{formData.email} • {formData.apartment ? `Thành viên căn hộ ${formData.apartment}` : 'Khách hàng siêu thị Vinparking'} - {formData.address || 'Hệ thống'}</p>
+              <p className="text-muted mb-2">{formData.email} • {formData.apartment ? `Thành viên căn hộ ${formData.apartment}` : 'Khách hàng Vinparking'} - {formData.address || 'Hệ thống'}</p>
               <div className="d-flex gap-2">
                 <span className="badge rounded-pill bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2 fw-medium">
                   ⭐ Tài khoản Khách hàng / Cư dân
@@ -293,7 +293,7 @@ export default function ProfileSection() {
             <h6 className="fw-bold text-dark mb-4 d-flex align-items-center gap-2">
               <span className="text-info fs-5">🛡️</span> Bảo mật & Tài khoản
             </h6>
-            
+
             <div className="d-flex justify-content-between align-items-center py-3 border-bottom">
               <div className="d-flex align-items-start gap-3">
                 <span className="fs-5 text-muted mt-1">🔒</span>
@@ -324,14 +324,14 @@ export default function ProfileSection() {
         <div className="col-lg-5">
           {/* Trạng thái thẻ */}
           <div className="card border-0 shadow-sm p-4 rounded-4 mb-4" style={{ background: '#ffffff' }}>
-            <h6 className="fw-bold text-dark text-uppercase mb-3 small" style={{ letterSpacing: '1px' }}>Trạng thái thẻ giữ xe siêu thị</h6>
+            <h6 className="fw-bold text-dark text-uppercase mb-3 small" style={{ letterSpacing: '1px' }}>Thông tin thẻ giữ xe</h6>
             {residentCard ? (() => {
               const cardCode = residentCard.cardCode || residentCard.parkingCard?.cardCode || '';
               const isVip = cardCode.startsWith('VIP-');
               const cardBg = isVip
                 ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
                 : 'linear-gradient(135deg, #164e63 0%, #0e7490 100%)';
-              const cardLabel = isVip ? '👑 Thẻ VIP siêu thị' : '📅 Thẻ Tháng siêu thị';
+              const cardLabel = isVip ? '👑 Thẻ VIP ' : '📅 Thẻ Tháng';
               const expiryStr = residentCard.endDate
                 ? new Date(residentCard.endDate).toLocaleDateString('vi-VN')
                 : 'Vô thời hạn';
@@ -395,26 +395,26 @@ export default function ProfileSection() {
             })() : (
               <>
                 <div className="rounded-4 p-4 text-white mb-4 position-relative overflow-hidden" style={{ background: '#94a3b8', minHeight: '180px' }}>
-                   <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-                   <div className="d-flex justify-content-between align-items-start mb-4">
-                     <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
-                     <span className="fs-5">📡</span>
-                   </div>
-                   <div className="mt-4">
-                     <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
-                     <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'CUSTOMER'}</h6>
-                     <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
-                     <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>— CHƯA KÍCH HOẠT —</h5>
-                   </div>
+                  <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+                  <div className="d-flex justify-content-between align-items-start mb-4">
+                    <h5 className="fw-bold m-0" style={{ letterSpacing: '1px' }}>Vinparking</h5>
+                    <span className="fs-5">📡</span>
+                  </div>
+                  <div className="mt-4">
+                    <p className="small mb-1 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD HOLDER</p>
+                    <h6 className="fw-bold mb-3 text-uppercase">{formData.fullName || 'CUSTOMER'}</h6>
+                    <p className="small mb-0 opacity-75" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>CARD CODE</p>
+                    <h5 className="fw-bold m-0" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>— CHƯA KÍCH HOẠT —</h5>
+                  </div>
                 </div>
 
                 <div className="rounded-3 p-3 mb-2" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
                   <div className="d-flex align-items-start gap-2">
                     <span style={{ fontSize: '1.1rem' }}>ℹ️</span>
                     <div>
-                      <p className="fw-semibold mb-1" style={{ color: '#c2410c', fontSize: '0.85rem' }}>Bạn chưa có thẻ giữ xe siêu thị</p>
+                      <p className="fw-semibold mb-1" style={{ color: '#c2410c', fontSize: '0.85rem' }}>Bạn chưa có thẻ giữ xe</p>
                       <p className="text-muted m-0" style={{ fontSize: '0.78rem' }}>
-                        Vui lòng liên hệ quản lý bãi đỗ xe hoặc đến quầy dịch vụ khách hàng tại siêu thị để đăng ký thẻ đỗ xe siêu thị (Tháng/VIP) và nhận ưu đãi.
+                        Vui lòng liên hệ quản lý bãi đỗ xe hoặc đến quầy dịch vụ khách hàng tại ban quản lý để đăng ký thẻ đỗ xe và nhận ưu đãi.
                       </p>
                     </div>
                   </div>
@@ -426,7 +426,7 @@ export default function ProfileSection() {
           {/* Hoạt động gần đây */}
           <div className="card border-0 shadow-sm p-4 rounded-4" style={{ background: '#ffffff' }}>
             <h6 className="fw-bold text-dark text-uppercase mb-4 small" style={{ letterSpacing: '1px' }}>Lịch sử đỗ xe gần đây</h6>
-            
+
             <div className="d-flex flex-column gap-3">
               {activities.length === 0 ? (
                 <p className="text-muted small text-center my-4">Chưa có hoạt động gửi xe nào gần đây.</p>
@@ -438,14 +438,14 @@ export default function ProfileSection() {
                   });
                   return (
                     <div className="d-flex align-items-start gap-3" key={act.parkingSessionId}>
-                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
-                           style={{ 
-                             width: '40px', 
-                             height: '40px',
-                             backgroundColor: isCheckIn ? 'rgba(34,197,94,0.1)' : 'rgba(100,116,139,0.1)',
-                             color: isCheckIn ? '#22c55e' : '#64748b',
-                             fontSize: '1.2rem'
-                           }}>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          backgroundColor: isCheckIn ? 'rgba(34,197,94,0.1)' : 'rgba(100,116,139,0.1)',
+                          color: isCheckIn ? '#22c55e' : '#64748b',
+                          fontSize: '1.2rem'
+                        }}>
                         {isCheckIn ? '↓' : '↑'}
                       </div>
                       <div>
@@ -461,7 +461,7 @@ export default function ProfileSection() {
                 })
               )}
             </div>
-           </div>
+          </div>
         </div>
       </div>
 
@@ -479,25 +479,25 @@ export default function ProfileSection() {
             <form onSubmit={handleChangePassword}>
               <div className="mb-3">
                 <label className="form-label small text-muted fw-semibold">Mật khẩu hiện tại</label>
-                <input 
+                <input
                   type="password" required className="form-control"
-                  value={pwForm.oldPassword} onChange={e => setPwForm({...pwForm, oldPassword: e.target.value})}
+                  value={pwForm.oldPassword} onChange={e => setPwForm({ ...pwForm, oldPassword: e.target.value })}
                   placeholder="Nhập mật khẩu cũ"
                 />
               </div>
               <div className="mb-3">
                 <label className="form-label small text-muted fw-semibold">Mật khẩu mới</label>
-                <input 
+                <input
                   type="password" required className="form-control" minLength={6}
-                  value={pwForm.newPassword} onChange={e => setPwForm({...pwForm, newPassword: e.target.value})}
+                  value={pwForm.newPassword} onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })}
                   placeholder="Mật khẩu tối thiểu 6 ký tự"
                 />
               </div>
               <div className="mb-3">
                 <label className="form-label small text-muted fw-semibold">Xác nhận mật khẩu mới</label>
-                <input 
+                <input
                   type="password" required className="form-control"
-                  value={pwForm.confirmPassword} onChange={e => setPwForm({...pwForm, confirmPassword: e.target.value})}
+                  value={pwForm.confirmPassword} onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
                   placeholder="Xác nhận lại mật khẩu mới"
                 />
               </div>
@@ -518,7 +518,7 @@ export default function ProfileSection() {
           <div><strong>Tài khoản ID:</strong> {userId}</div>
           <div><strong>Số lượng phương tiện của bạn:</strong> {vehicles.length} (Biển số: {vehicles.map(v => v.licensePlate).join(', ')})</div>
           <div><strong>Số vé tháng nhận được:</strong> {rawTickets.length}</div>
-          <div><strong>Có thẻ đỗ xe siêu thị hợp lệ:</strong> {residentCard ? "CÓ" : "KHÔNG"}</div>
+          <div><strong>Có thẻ đỗ xe hợp lệ:</strong> {residentCard ? "CÓ" : "KHÔNG"}</div>
         </div>
         <div style={{ marginTop: 12 }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: 4 }}>Dữ liệu vé đỗ xe thô từ API:</div>

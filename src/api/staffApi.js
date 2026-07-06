@@ -7,6 +7,17 @@ const staffApi = {
   getVehicleTypes: async () => {
     return (await API.get('/api/vehicle-types')).data;
   },
+  verifyLicensePlate: async (plateNumber, imageFile) => {
+    const formData = new FormData();
+    formData.append('licensePlate', plateNumber);
+    formData.append('image', imageFile);
+    formData.append('regions', 'vn');
+    return (await API.post('/api/license-plate/verify', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })).data;
+  },
   confirmEntry: async (payload) => {
     return (await API.post('/api/parking-sessions/guest/check-in', payload)).data;
   },

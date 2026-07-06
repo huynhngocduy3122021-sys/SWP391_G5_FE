@@ -16,7 +16,7 @@ const TYPE_LABELS = {
 
 const STATUS_CFG = {
   PENDING:     { label: 'Chờ xử lý',   bg: '#fef3c7', color: '#92400e' },
-  IN_PROGRESS: { label: 'Đang xử lý',  bg: '#dbeafe', color: '#1e40af' },
+  IN_PROGRESS: { label: 'Đang xử lý',  bg: '#dbeafe', color: 'var(--vin-primary)' },
   RESOLVED:    { label: 'Đã xử lý',    bg: '#dcfce7', color: '#166534' },
   CANCELLED:   { label: 'Đã hủy',      bg: '#f1f5f9', color: '#64748b' },
 };
@@ -148,7 +148,7 @@ export default function IncidentPanel({ branchId }) {
         {[
           { label: 'TỔNG SỰ CỐ',    value: incidents.length, color: mt.text },
           { label: 'CHỜ XỬ LÝ',     value: countByStatus('PENDING'),     color: '#92400e' },
-          { label: 'ĐANG XỬ LÝ',    value: countByStatus('IN_PROGRESS'), color: '#1e40af' },
+          { label: 'ĐANG XỬ LÝ',    value: countByStatus('IN_PROGRESS'), color: 'var(--vin-primary)' },
           { label: 'ĐÃ GIẢI QUYẾT', value: countByStatus('RESOLVED'),    color: mt.success },
         ].map(s => (
           <div key={s.label} style={card}>
@@ -287,9 +287,9 @@ export default function IncidentPanel({ branchId }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e40af)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0 }}>
-              <div style={{ color: '#fff', fontWeight: 700 }}>👁 Chi tiết sự cố #{detailTarget.incidentId}</div>
+              <div style={{ color: 'var(--vin-text-main)', fontWeight: 700 }}>👁 Chi tiết sự cố #{detailTarget.incidentId}</div>
               <button onClick={() => setDetailTarget(null)}
-                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'var(--vin-text-main)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem' }}>
               {[
@@ -335,9 +335,9 @@ export default function IncidentPanel({ branchId }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ background: 'linear-gradient(135deg,#166534,#16a34a)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#fff', fontWeight: 700 }}>✓ Giải quyết sự cố #{resolveTarget.incidentId}</div>
+              <div style={{ color: 'var(--vin-text-main)', fontWeight: 700 }}>✓ Giải quyết sự cố #{resolveTarget.incidentId}</div>
               <button onClick={() => setResolveTarget(null)} disabled={resolving}
-                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'var(--vin-text-main)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ padding: '1.5rem' }}>
               {resolveErr && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.5rem 0.75rem', color: mt.danger, fontSize: '0.8rem', marginBottom: '1rem' }}>⚠ {resolveErr}</div>}
@@ -356,7 +356,7 @@ export default function IncidentPanel({ branchId }) {
               <button onClick={() => setResolveTarget(null)} disabled={resolving}
                 style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}>Hủy</button>
               <button onClick={handleResolve} disabled={resolving}
-                style={{ border: 'none', background: 'linear-gradient(135deg,#166534,#16a34a)', color: '#fff', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
+                style={{ border: 'none', background: 'linear-gradient(135deg,#166534,#16a34a)', color: 'var(--vin-text-main)', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {resolving ? 'Đang xử lý...' : '✓ Xác nhận giải quyết'}
               </button>
             </div>
@@ -369,9 +369,9 @@ export default function IncidentPanel({ branchId }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ background: 'linear-gradient(135deg,#7f1d1d,#dc2626)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#fff', fontWeight: 700 }}>✕ Hủy sự cố #{cancelTarget.incidentId}</div>
+              <div style={{ color: 'var(--vin-text-main)', fontWeight: 700 }}>✕ Hủy sự cố #{cancelTarget.incidentId}</div>
               <button onClick={() => setCancelTarget(null)} disabled={cancelling}
-                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'var(--vin-text-main)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ padding: '1.5rem' }}>
               {cancelErr && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.5rem 0.75rem', color: mt.danger, fontSize: '0.8rem', marginBottom: '1rem' }}>⚠ {cancelErr}</div>}
@@ -390,7 +390,7 @@ export default function IncidentPanel({ branchId }) {
               <button onClick={() => setCancelTarget(null)} disabled={cancelling}
                 style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}>Đóng</button>
               <button onClick={handleCancel} disabled={cancelling}
-                style={{ border: 'none', background: '#dc2626', color: '#fff', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
+                style={{ border: 'none', background: '#dc2626', color: 'var(--vin-text-main)', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>
             </div>

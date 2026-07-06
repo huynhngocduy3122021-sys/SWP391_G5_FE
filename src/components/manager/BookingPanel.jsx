@@ -118,7 +118,7 @@ export default function BookingPanel({ branchId }) {
   const getStatusColor = (status) => {
     const s = String(status || '').toUpperCase();
     switch(s) {
-      case 'PENDING': return { bg: '#eff6ff', color: '#1d4ed8', label: 'Chờ đến' };
+      case 'PENDING': return { bg: '#eff6ff', color: 'var(--vin-primary)', label: 'Chờ đến' };
       case 'CHECKED_IN': return { bg: '#dcfce7', color: '#166534', label: 'Đã vào bãi' };
       case 'EXPIRED': return { bg: '#fee2e2', color: '#991b1b', label: 'Hết hạn' };
       case 'CANCELLED': return { bg: '#ffedd5', color: '#9a3412', label: 'Đã hủy' };
@@ -251,7 +251,7 @@ export default function BookingPanel({ branchId }) {
           <button 
             onClick={fetchBookings}
             style={{ 
-              background: mt.primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, 
+              background: mt.primary, color: 'var(--vin-text-main)', border: 'none', padding: '8px 16px', borderRadius: 8, 
               fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
             }}
           >
@@ -334,7 +334,7 @@ export default function BookingPanel({ branchId }) {
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
                 style={{ 
-                  background: 'none', border: 'none', padding: '0 0 8px 0', 
+                  background: 'transparent', border: 'none', padding: '0 0 8px 0', 
                   fontSize: '0.875rem', fontWeight: activeTab === t.key ? 700 : 500,
                   color: activeTab === t.key ? mt.primary : mt.textMuted,
                   borderBottom: activeTab === t.key ? `2px solid ${mt.primary}` : '2px solid transparent',
