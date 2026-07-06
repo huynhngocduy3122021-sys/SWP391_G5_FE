@@ -34,6 +34,7 @@ export default function MemberPanel({ branchId }) {
   const [allCards, setAllCards] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [rfidTab, setRfidTab] = useState('all');
   const [rfidSearch, setRfidSearch] = useState('');
   const [cardTypeFilter, setCardTypeFilter] = useState('ALL');
@@ -54,24 +55,29 @@ export default function MemberPanel({ branchId }) {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [cardsRes, branchesRes, vehiclesRes, ticketsRes] = await Promise.all([
+      const [cardsRes, branchesRes, vehiclesRes, ticketsRes, reqRes] = await Promise.all([
         managerApi.getParkingCards(),
         managerApi.getParkingBranches(),
         managerApi.getAllVehicles().catch(() => []),
         managerApi.getAllMonthlyTickets().catch(() => []),
+        managerApi.getAllMonthlyTicketRequests?.().catch(() => []) || parkingApi.getAllMonthlyTicketRequests?.().catch(() => []) || []
       ]);
       const parsedCards = Array.isArray(cardsRes) ? cardsRes : [];
       const parsedBranches = Array.isArray(branchesRes) ? branchesRes : [];
       const parsedVehicles = Array.isArray(vehiclesRes) ? vehiclesRes : (vehiclesRes?.content || []);
       const parsedTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || []);
+      const parsedReqs = Array.isArray(reqRes) ? reqRes : (reqRes?.content || []);
       const filteredCards = cleanBranchId ? parsedCards.filter(c => getBranchId(c) === cleanBranchId) : parsedCards;
       const filteredBranches = cleanBranchId ? parsedBranches.filter(b => getBranchId(b) === cleanBranchId) : parsedBranches;
       const branchCardIds = new Set(filteredCards.map(c => String(c.parkingCardId)));
       const filteredTickets = cleanBranchId ? parsedTickets.filter(t => branchCardIds.has(String(t.parkingCardId))) : parsedTickets;
+      const filteredReqs = cleanBranchId ? parsedReqs.filter(r => String(r.parkingBranch?.parkingBranchId || r.parkingBranch?.id) === cleanBranchId) : parsedReqs;
+      
       setAllCards(filteredCards);
       setBranches(filteredBranches);
       setVehicles(parsedVehicles);
       setTickets(filteredTickets);
+      setRequests(filteredReqs);
       if (cleanBranchId) setCreateCardForm(prev => ({ ...prev, parkingBranchId: cleanBranchId }));
     } catch (err) { console.error(err); toast.error('Không tải được dữ liệu!'); }
     finally { setLoading(false); }
@@ -222,6 +228,35 @@ export default function MemberPanel({ branchId }) {
     } catch (err) { toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi!')); }
   };
 
+  const handleApproveRequest = (req) => {
+    // Navigate to create ticket tab with prefilled data
+    setMainTab('monthly');
+    setTicketForm(prev => ({
+      ...EMPTY_FORM,
+      vehicleId: String(req.vehicle?.vehicleId || req.vehicle?.id),
+      vehicleSource: 'REGISTER'
+    }));
+    setShowCreateTicket(true);
+    
+    // Also mark request as approved in background
+    if (parkingApi.updateMonthlyTicketRequestStatus) {
+      parkingApi.updateMonthlyTicketRequestStatus(req.id, 1).catch(e => console.error(e));
+    }
+  };
+
+  const handleRejectRequest = async (req) => {
+    if (!window.confirm('Từ chối yêu cầu đăng ký này?')) return;
+    try {
+      if (parkingApi.updateMonthlyTicketRequestStatus) {
+        await parkingApi.updateMonthlyTicketRequestStatus(req.id, 2);
+        toast.success("Đã từ chối yêu cầu!");
+        fetchAll();
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra!');
+    }
+  };
+
   const stColor = (s) => {
     switch (String(s || '').toUpperCase()) {
       case 'AVAILABLE': return { c: 'text-success', l: 'Còn trống' };
@@ -263,12 +298,15 @@ export default function MemberPanel({ branchId }) {
     return (s === 'AVAILABLE' || s === '0' || s === '') && (code.startsWith('MONTH-') || code.startsWith('VIP-') || type === 'MONTHLY' || type === 'VIP');
   });
 
+  const pendingRequests = requests.filter(r => r.status === 0);
+
   const stats = {
     total: allCards.length,
     inUse: allCards.filter(c => String(c.status || '').toUpperCase() === 'IN_USE').length,
     avail: allCards.filter(c => String(c.status || '').toUpperCase() === 'AVAILABLE').length,
     totalT: tickets.length,
     activeT: tickets.filter(t => t.status === 1 || t.status === true).length,
+    pendingReq: pendingRequests.length
   };
 
   return (
@@ -282,7 +320,7 @@ export default function MemberPanel({ branchId }) {
       </div>
 
       <Row className="g-3">
-        {[{ l: 'TỔNG THẺ RFID', v: stats.total, c: 'text-primary' }, { l: 'ĐANG SỬ DỤNG', v: stats.inUse, c: 'text-primary' }, { l: 'THẺ TRỐNG', v: stats.avail, c: 'text-success' }, { l: 'VÉ THÁNG', v: stats.totalT, c: 'text-info' }, { l: 'VÉ HIỆU LỰC', v: stats.activeT, c: 'text-success' }].map((s, i) => (
+        {[{ l: 'TỔNG THẺ RFID', v: stats.total, c: 'text-primary' }, { l: 'ĐANG SỬ DỤNG', v: stats.inUse, c: 'text-primary' }, { l: 'THẺ TRỐNG', v: stats.avail, c: 'text-success' }, { l: 'VÉ THÁNG', v: stats.totalT, c: 'text-info' }, { l: 'YÊU CẦU ĐĂNG KÝ', v: stats.pendingReq, c: 'text-warning' }].map((s, i) => (
           <Col key={i}>
             <Card className="border-0 shadow-sm h-100 p-3">
               <div className="text-muted fw-bold small text-uppercase mb-1" style={{fontSize: '0.7rem'}}>{s.l}</div>
@@ -294,8 +332,10 @@ export default function MemberPanel({ branchId }) {
 
       <Card className="border-0 shadow-sm">
         <div className="d-flex border-bottom">
-          {[{ k: 'rfid', l: 'Thẻ RFID' }, { k: 'monthly', l: 'Vé Tháng' }].map(t => (
-            <button key={t.k} onClick={() => setMainTab(t.k)} className={`btn px-4 py-3 fw-semibold rounded-0 ${mainTab === t.k ? 'text-primary border-bottom border-dark border-2' : 'text-muted'}`}>{t.l}</button>
+          {[{ k: 'rfid', l: 'Thẻ RFID' }, { k: 'monthly', l: 'Vé Tháng' }, { k: 'requests', l: 'Yêu cầu đăng ký' }].map(t => (
+            <button key={t.k} onClick={() => setMainTab(t.k)} className={`btn px-4 py-3 fw-semibold rounded-0 ${mainTab === t.k ? 'text-primary border-bottom border-dark border-2' : 'text-muted'}`}>
+              {t.l} {t.k === 'requests' && stats.pendingReq > 0 && <Badge bg="danger" className="ms-2">{stats.pendingReq}</Badge>}
+            </button>
           ))}
         </div>
 
@@ -374,6 +414,46 @@ export default function MemberPanel({ branchId }) {
                         <td>
                           <Button variant="link" size="sm" className={`text-decoration-none px-1 fw-bold ${isActive ? 'text-warning' : 'text-success'}`} onClick={() => handleToggleTicket(t)}>{isActive ? 'Dừng' : 'Kích hoạt'}</Button>
                           <Button variant="link" size="sm" className="text-danger text-decoration-none px-1" onClick={() => handleDeleteTicket(t)}>Xóa</Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {mainTab === 'requests' && (
+          <div className="p-3">
+            <h5 className="fw-bold text-primary mb-3">Yêu cầu đăng ký thẻ tháng trực tuyến</h5>
+            <div className="table-responsive">
+              <Table hover className="align-middle border-top mb-0" style={{ fontSize: '0.85rem' }}>
+                <thead className="table-light text-muted small"><tr>{['THỜI GIAN', 'BIỂN SỐ', 'CHỦ XE', 'GÓI ĐĂNG KÝ', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
+                <tbody>
+                  {loading ? <tr><td colSpan={6} className="text-center py-4 text-muted">Đang tải yêu cầu...</td></tr> : requests.length === 0 ? <tr><td colSpan={6} className="text-center py-4 text-muted">Chưa có yêu cầu nào.</td></tr> : requests.map((r, i) => {
+                    const plate = r.vehicle?.licensePlate || '—';
+                    const owner = r.user?.fullName || r.user?.username || '—';
+                    const policy = r.pricePolicy?.policyName || '—';
+                    const isPending = r.status === 0;
+                    return (
+                      <tr key={r.id || i}>
+                        <td className="text-muted small">{new Date(r.createdAt).toLocaleString('vi-VN')}</td>
+                        <td className="fw-bold text-primary">{plate}</td>
+                        <td className="fw-semibold">{owner}</td>
+                        <td className="text-primary">{policy}</td>
+                        <td>
+                          <Badge bg={r.status === 0 ? 'warning' : r.status === 1 ? 'success' : 'danger'} text={r.status === 0 ? 'dark' : 'white'}>
+                            {r.status === 0 ? 'Chờ duyệt' : r.status === 1 ? 'Đã duyệt' : 'Từ chối'}
+                          </Badge>
+                        </td>
+                        <td>
+                          {isPending && (
+                            <>
+                              <Button variant="success" size="sm" className="fw-bold me-2 px-3" onClick={() => handleApproveRequest(r)}>Duyệt / Cấp Thẻ</Button>
+                              <Button variant="danger" size="sm" className="fw-bold px-3" onClick={() => handleRejectRequest(r)}>Từ chối</Button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     );

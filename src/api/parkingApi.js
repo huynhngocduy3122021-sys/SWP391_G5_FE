@@ -25,6 +25,12 @@ const parkingApi = {
   updateVehicle: async (id, data) => (await API.put(`/api/vehicles/${id}`, data)).data,
   deleteVehicle: async (id) => (await API.delete(`/api/vehicles/${id}`)).data,
   getMyMonthlyTickets: async () => (await API.get('/api/monthly-tickets/my-tickets')).data,
+  
+  // Monthly Ticket Requests
+  submitMonthlyTicketRequest: async (data) => (await API.post('/api/monthly-ticket-requests', data)).data,
+  getAllMonthlyTicketRequests: async () => (await API.get('/api/monthly-ticket-requests')).data,
+  getMyMonthlyTicketRequests: async () => (await API.get('/api/monthly-ticket-requests/my-requests')).data,
+  updateMonthlyTicketRequestStatus: async (id, status) => (await API.put(`/api/monthly-ticket-requests/${id}/status`, null, { params: { status } })).data,
 };
 
 export default parkingApi;

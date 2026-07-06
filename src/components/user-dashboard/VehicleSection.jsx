@@ -8,6 +8,7 @@ export default function VehicleSection() {
   const [vehicles, setVehicles] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   
   // Modal states
@@ -26,37 +27,46 @@ export default function VehicleSection() {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [subscribeVehicleId, setSubscribeVehicleId] = useState('');
-  const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [newVehicleData, setNewVehicleData] = useState({
+    licensePlate: '',
+    vehicleColor: '',
+    vehicleBrand: ''
+  });
 
   const loadData = async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      // 1. Fetch user's vehicles
-      const allVehicles = await parkingApi.getAllVehicles();
-      const allVehiclesList = Array.isArray(allVehicles) ? allVehicles : (allVehicles?.content || allVehicles?.data || []);
+      const [vehRes, typeRes, pkgRes, brRes] = await Promise.all([
+        parkingApi.getAllVehicles().catch(() => []),
+        parkingApi.getAllVehicleTypes().catch(() => []),
+        parkingApi.getAllPricePolicies().catch(() => []),
+        parkingApi.getAllBranches().catch(() => [])
+      ]);
+
+      const allVehiclesList = Array.isArray(vehRes) ? vehRes : (vehRes?.content || vehRes?.data || []);
       const userVehicles = allVehiclesList.filter(v => String(v.userId) === String(userId) && !v.deleted);
       setVehicles(userVehicles);
 
-      // 2. Fetch vehicle types
-      const types = await parkingApi.getAllVehicleTypes();
-      setVehicleTypes(types || []);
-      if (types && types.length > 0) {
-        setFormData(prev => ({ ...prev, vehicleTypeId: types[0].vehicleTypeId }));
+      if (typeRes) {
+        const typeList = Array.isArray(typeRes) ? typeRes : (typeRes?.content || typeRes?.data || []);
+        setVehicleTypes(typeList);
+        if (typeList.length > 0) {
+          setFormData(prev => ({ ...prev, vehicleTypeId: typeList[0].vehicleTypeId }));
+        }
+      }
+      
+      if (pkgRes) {
+        const pkgList = Array.isArray(pkgRes) ? pkgRes : (pkgRes?.content || pkgRes?.data || []);
+        setPackages(pkgList.filter(p => p.active));
       }
 
-      // 3. Fetch price policies (service packages)
-      const allPolicies = await parkingApi.getAllPricePolicies();
-      // Filter for packages that contain "tháng", "vip", "president" (case insensitive)
-      const servicePackages = Array.isArray(allPolicies)
-        ? allPolicies.filter(p => 
-            p.active && 
-            (p.policyName.toLowerCase().includes('tháng') || 
-             p.policyName.toLowerCase().includes('vip') || 
-             p.policyName.toLowerCase().includes('president'))
-          )
-        : [];
-      setPackages(servicePackages);
+      if (brRes) {
+        const brList = Array.isArray(brRes) ? brRes : (brRes?.content || brRes?.data || []);
+        setBranches(brList);
+        if (brList.length > 0) setSelectedBranchId(brList[0].parkingBranchId || brList[0].id);
+      }
     } catch (err) {
       console.error("Failed to load vehicle data:", err);
     } finally {
@@ -153,6 +163,7 @@ export default function VehicleSection() {
 
   const handleConfirmSubscribe = async (e) => {
     e.preventDefault();
+    if (!selectedBranchId) return toast.warning("Vui lòng chọn chi nhánh đăng ký!");
     let finalLicensePlate = '';
 
     if (subscribeVehicleId === 'new') {
@@ -170,20 +181,42 @@ export default function VehicleSection() {
         };
         const created = await parkingApi.createVehicle(payload);
         finalLicensePlate = created.licensePlate;
-        await loadData(); // refresh vehicle list
+        
+        await parkingApi.submitMonthlyTicketRequest({
+          vehicleId: created.vehicleId || created.id,
+          policyId: selectedPackage.pricePolicyId || selectedPackage.id,
+          branchId: Number(selectedBranchId)
+        });
+        
+        await loadData();
+        toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${finalLicensePlate}! Ban quản lý sẽ duyệt yêu cầu của bạn.`);
+        setShowSubscribeModal(false);
       } catch (err) {
         setSubmitting(false);
-        const msg = err.response?.data?.message || err.response?.data || 'Lỗi lưu thông tin phương tiện mới!';
+        const msg = err.response?.data?.message || err.response?.data || 'Lỗi gửi yêu cầu đăng ký!';
         return toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
       }
       setSubmitting(false);
     } else {
       const vehicle = vehicles.find(v => String(v.vehicleId || v.id) === String(subscribeVehicleId));
       finalLicensePlate = vehicle?.licensePlate;
+      
+      setSubmitting(true);
+      try {
+        await parkingApi.submitMonthlyTicketRequest({
+          vehicleId: vehicle.vehicleId || vehicle.id,
+          policyId: selectedPackage.pricePolicyId || selectedPackage.id,
+          branchId: Number(selectedBranchId)
+        });
+        toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${finalLicensePlate}! Ban quản lý sẽ duyệt yêu cầu của bạn.`);
+        setShowSubscribeModal(false);
+      } catch (err) {
+        setSubmitting(false);
+        const msg = err.response?.data?.message || err.response?.data || 'Lỗi gửi yêu cầu đăng ký!';
+        return toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+      }
+      setSubmitting(false);
     }
-
-    toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${finalLicensePlate}! Vui lòng đến quầy kỹ thuật bãi đỗ để nhận thẻ.`);
-    setShowSubscribeModal(false);
   };
 
   if (loading) {
@@ -398,6 +431,12 @@ export default function VehicleSection() {
 
             <form onSubmit={handleConfirmSubscribe}>
               <div className="mb-3">
+                <label className="form-label small text-muted fw-semibold mb-2">📍 Chọn chi nhánh</label>
+                <select className="form-select mb-3" value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)} required>
+                  <option value="">-- Chọn chi nhánh --</option>
+                  {branches.map(b => <option key={b.parkingBranchId || b.id} value={b.parkingBranchId || b.id}>{b.branchName || b.parkingBranchName || b.name}</option>)}
+                </select>
+
                 <label className="form-label small text-muted fw-semibold mb-2">
                   {vehicles.filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id)).length > 0 
                     ? '🚗 Chọn phương tiện' 

@@ -456,7 +456,39 @@ export default function PricingPage() {
                         <span className="fw-semibold small">Phí thuê tháng</span><strong style={{color: '#164e63'}}>{Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')}đ</strong>
                       </div>
                     </div>
-                    <button onClick={() => { setActiveSubPlan(null); navigate('/'); }} className="btn text-white w-100 fw-bold py-2.5 rounded-3" style={{ backgroundColor: '#164e63' }}>Về trang chủ</button>
+                    <button onClick={async () => { 
+                      try {
+                        const payload = {
+                          vehicleId: selectedSubVehicleId === 'new' ? undefined : Number(selectedSubVehicleId),
+                          policyId: activeSubPlan.baseType === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4) // Temporary fallback mapping based on type
+                        };
+                        
+                        let finalLicensePlate = currentSelectedVehicle.plate;
+                        if (selectedSubVehicleId === 'new') {
+                          const created = await parkingApi.createVehicle({
+                            licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
+                            vehicleColor: newVehicleData.vehicleColor.trim(),
+                            vehicleBrand: newVehicleData.vehicleBrand.trim(),
+                            vehicleTypeId: currentSelectedVehicle.type === 'Car' ? 1 : 2,
+                            userId: Number(userId)
+                          });
+                          payload.vehicleId = created.vehicleId || created.id;
+                          finalLicensePlate = created.licensePlate;
+                        }
+
+                        await parkingApi.submitMonthlyTicketRequest({
+                          vehicleId: payload.vehicleId,
+                          policyId: payload.policyId
+                        });
+                        
+                        toast.success(`Đã gửi yêu cầu đăng ký gói "${activeSubPlan.name}" cho xe ${finalLicensePlate}! Ban quản lý sẽ sớm duyệt yêu cầu của bạn.`);
+                        setActiveSubPlan(null);
+                        setSubModalStep(1);
+                      } catch (err) {
+                        console.error(err);
+                        toast.error('Có lỗi xảy ra khi gửi yêu cầu đăng ký. Vui lòng thử lại!');
+                      }
+                    }} className="btn text-white w-100 fw-bold py-2.5 rounded-3" style={{ backgroundColor: '#164e63' }}>Hoàn tất đăng ký</button>
                     <button onClick={() => { toast.info('Đã hủy đặt chỗ!'); setActiveSubPlan(null); }} className="btn btn-link text-danger w-100 small text-decoration-none">Hủy đặt chỗ</button>
                   </div>
                 </div>

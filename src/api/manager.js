@@ -56,6 +56,9 @@ const managerApi = {
   updateMonthlyTicket:      async (id, data)   => (await API.put(`/api/monthly-tickets/${id}`, data)).data,
   deleteMonthlyTicket:      async (id)         => (await API.delete(`/api/monthly-tickets/${id}`)).data,
 
+  // ── Monthly Ticket Requests ───────────────────────────────
+  getAllMonthlyTicketRequests: async ()         => (await API.get('/api/monthly-ticket-requests')).data,
+
   // ── Incident Report ───────────────────────────────────────
   getIncidentReports:       async (params = {}) => (await API.get('/api/incidents', { params })).data,
   createIncidentReport:     async (data)        => (await API.post('/api/incidents', data)).data,
