@@ -63,6 +63,15 @@ export default function PricingPage() {
     }
   }, [userId]);
 
+  const currentLot = lots.find(lot => lot.id === Number(selectedLotId)) || lots[0];
+
+  const prices = (() => {
+    const vipCarPrice = parseInt(currentLot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
+    const ecoCarPrice = Math.max(1000000, vipCarPrice - 1000000);
+    const ecoMotorPrice = Math.max(150000, Math.round((ecoCarPrice / 6) / 10000) * 10000);
+    return { ecoCar: ecoCarPrice, ecoMotor: ecoMotorPrice, vipCar: vipCarPrice, vipMotor: ecoMotorPrice * 2 };
+  })();
+
   let currentSelectedVehicle = null;
   if (selectedSubVehicleId === 'new') {
     currentSelectedVehicle = { type: newVehicleData.type, plate: newVehicleData.licensePlate || 'Xe mới' };
