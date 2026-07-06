@@ -22,6 +22,11 @@ export default function VehicleSection() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Subscribe Modal states
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [subscribeVehicleId, setSubscribeVehicleId] = useState('');
+
   const loadData = async () => {
     if (!userId) return;
     setLoading(true);
@@ -131,8 +136,27 @@ export default function VehicleSection() {
     }
   };
 
-  const handleSubscribePackage = (policyName, price) => {
-    toast.success(`Đăng ký gói "${policyName}" (${price.toLocaleString('vi-VN')}đ) thành công! Hệ thống sẽ liên hệ cư dân để kích hoạt thẻ.`);
+  const handleSubscribeClick = (pkg) => {
+    setSelectedPackage(pkg);
+    const matchingVehicles = vehicles.filter(v => 
+      String(v.vehicleTypeId) === String(pkg.vehicleType?.vehicleTypeId || pkg.vehicleType?.id)
+    );
+    if (matchingVehicles.length > 0) {
+      setSubscribeVehicleId(matchingVehicles[0].vehicleId || matchingVehicles[0].id);
+    } else {
+      setSubscribeVehicleId('');
+    }
+    setShowSubscribeModal(true);
+  };
+
+  const handleConfirmSubscribe = (e) => {
+    e.preventDefault();
+    if (!subscribeVehicleId) {
+      return toast.warning("Vui lòng chọn một phương tiện phù hợp với gói cước này!");
+    }
+    const vehicle = vehicles.find(v => String(v.vehicleId || v.id) === String(subscribeVehicleId));
+    toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${vehicle?.licensePlate}! Vui lòng đến quầy kỹ thuật bãi đỗ để nhận thẻ.`);
+    setShowSubscribeModal(false);
   };
 
   if (loading) {
@@ -229,7 +253,7 @@ export default function VehicleSection() {
                       <button 
                         className="btn fw-bold text-white px-4 rounded-pill" 
                         style={{ backgroundColor: '#164e63' }}
-                        onClick={() => handleSubscribePackage(pkg.policyName, pkg.basePrice)}
+                        onClick={() => handleSubscribeClick(pkg)}
                       >
                         Đăng ký gói
                       </button>
@@ -318,6 +342,63 @@ export default function VehicleSection() {
                 <button type="button" className="btn btn-light fw-bold" onClick={() => setShowModal(false)}>Hủy</button>
                 <button type="submit" className="btn text-white fw-bold" style={{ backgroundColor: '#164e63' }} disabled={submitting}>
                   {submitting ? 'Đang lưu...' : 'Lưu thông tin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Subscribe Package Modal */}
+      {showSubscribeModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card border-0 shadow-lg p-4 rounded-4" style={{ width: '100%', maxWidth: '450px', background: '#fff' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold text-dark m-0">
+                🎫 Đăng ký Gói tháng
+              </h5>
+              <button type="button" className="btn-close" onClick={() => setShowSubscribeModal(false)}></button>
+            </div>
+            
+            <div className="mb-4 bg-light p-3 rounded-3 border">
+              <h6 className="fw-bold text-primary mb-1">{selectedPackage?.policyName}</h6>
+              <div className="text-muted small mb-2">Phương tiện áp dụng: {selectedPackage?.vehicleType?.typeName}</div>
+              <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
+            </div>
+
+            <form onSubmit={handleConfirmSubscribe}>
+              <div className="mb-3">
+                <label className="form-label small text-muted fw-semibold">Chọn phương tiện của bạn</label>
+                <select 
+                  className="form-select fw-bold"
+                  value={subscribeVehicleId} 
+                  onChange={e => setSubscribeVehicleId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>-- Chọn một phương tiện --</option>
+                  {vehicles
+                    .filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id))
+                    .map(v => (
+                      <option key={v.vehicleId || v.id} value={v.vehicleId || v.id}>
+                        {v.licensePlate} {v.vehicleBrand ? `(${v.vehicleBrand})` : ''}
+                      </option>
+                    ))
+                  }
+                </select>
+                {vehicles.filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id)).length === 0 && (
+                  <div className="text-danger small mt-2">
+                    Bạn chưa có phương tiện nào thuộc loại <strong>{selectedPackage?.vehicleType?.typeName}</strong>. Vui lòng thêm xe ở mục "Phương tiện của tôi" trước khi đăng ký!
+                  </div>
+                )}
+              </div>
+              
+              <div className="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" className="btn btn-light fw-bold" onClick={() => setShowSubscribeModal(false)}>Hủy</button>
+                <button type="submit" className="btn text-white fw-bold" style={{ backgroundColor: '#164e63' }} disabled={!subscribeVehicleId}>
+                  Xác nhận đăng ký
                 </button>
               </div>
             </form>
