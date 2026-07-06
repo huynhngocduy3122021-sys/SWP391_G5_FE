@@ -154,7 +154,8 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
 
   const ticketRevenueToday = tickets.filter(t => {
-    return t.startDate && new Date(t.startDate).toDateString() === today;
+    const dt = t.createdAt || t.startDate;
+    return dt && new Date(dt).toDateString() === today;
   }).reduce((sum, t) => {
     const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
     return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
