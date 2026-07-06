@@ -478,7 +478,8 @@ export default function PricingPage() {
 
                         await parkingApi.submitMonthlyTicketRequest({
                           vehicleId: payload.vehicleId,
-                          policyId: payload.policyId
+                          policyId: payload.policyId,
+                          branchId: Number(selectedLotId)
                         });
                         
                         toast.success(`Đã gửi yêu cầu đăng ký gói "${activeSubPlan.name}" cho xe ${finalLicensePlate}! Ban quản lý sẽ sớm duyệt yêu cầu của bạn.`);
