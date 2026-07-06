@@ -439,9 +439,9 @@ export default function MemberPanel({ branchId }) {
             <h5 className="fw-bold text-primary mb-3">Yêu cầu đăng ký thẻ tháng trực tuyến</h5>
             <div className="table-responsive">
               <Table hover className="align-middle border-top mb-0" style={{ fontSize: '0.85rem' }}>
-                <thead className="table-light text-muted small"><tr>{['THỜI GIAN', 'BIỂN SỐ', 'CHỦ XE', 'GÓI ĐĂNG KÝ', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
+                <thead className="table-light text-muted small"><tr>{['THỜI GIAN', 'BIỂN SỐ', 'CHỦ XE', 'GÓI ĐĂNG KÝ', 'SỐ TIỀN', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
                 <tbody>
-                  {loading ? <tr><td colSpan={6} className="text-center py-4 text-muted">Đang tải yêu cầu...</td></tr> : requests.length === 0 ? <tr><td colSpan={6} className="text-center py-4 text-muted">Chưa có yêu cầu nào.</td></tr> : requests.map((r, i) => {
+                  {loading ? <tr><td colSpan={7} className="text-center py-4 text-muted">Đang tải yêu cầu...</td></tr> : requests.length === 0 ? <tr><td colSpan={7} className="text-center py-4 text-muted">Chưa có yêu cầu nào.</td></tr> : requests.map((r, i) => {
                     const plate = r.vehicle?.licensePlate || '—';
                     const owner = r.user?.fullName || r.user?.username || '—';
                     const policy = r.pricePolicy?.policyName || '—';
@@ -452,6 +452,9 @@ export default function MemberPanel({ branchId }) {
                         <td className="fw-bold text-primary">{plate}</td>
                         <td className="fw-semibold">{owner}</td>
                         <td className="text-primary">{policy}</td>
+                        <td className="fw-bold" style={{ color: '#059669' }}>
+                          {r.pricePolicy?.basePrice ? `${Number(r.pricePolicy.basePrice).toLocaleString('vi-VN')} đ` : '—'}
+                        </td>
                         <td>
                           <Badge bg={r.status === 0 ? 'warning' : r.status === 1 ? 'success' : 'danger'} text={r.status === 0 ? 'dark' : 'white'}>
                             {r.status === 0 ? 'Chờ duyệt' : r.status === 1 ? 'Đã duyệt' : 'Từ chối'}
