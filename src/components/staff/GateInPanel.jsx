@@ -414,8 +414,22 @@ export default function GateInPanel() {
       toast.error('Vui lòng chọn loại xe!');
       return;
     }
+    if (selectedFiles.length === 0) {
+      toast.error('Vui lòng chụp/tải lên ít nhất 1 ảnh phương tiện để AI kiểm tra!');
+      return;
+    }
+
     setSubmitting(true);
     try {
+      const verifyRes = await staffApi.verifyLicensePlate(licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''), selectedFiles[0]);
+      if (verifyRes.matched) {
+        toast.success(`AI: ${verifyRes.message}`);
+      } else {
+        toast.error(`AI Cảnh báo: ${verifyRes.message}`);
+        setSubmitting(false);
+        return;
+      }
+
       let parkingSessionId;
       
       if (isBooking) {
@@ -771,7 +785,7 @@ export function CameraFeed({ label, sub, status = 'READY', tone = 'success', ima
         <span className={`vin-badge ${tone === 'success' ? 'vin-badge--success' : 'vin-badge--info'}`}>{status}</span>
       </div>
       <div style={{
-        height: 220, background: imageUrl ? `url(${imageUrl}) center/cover no-repeat` : 'linear-gradient(135deg, #0b1120, #111827)',
+        height: 220, background: imageUrl ? `url(${imageUrl}) center/contain no-repeat #000` : 'linear-gradient(135deg, #0b1120, #111827)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', borderTop: '1px solid var(--vin-border)',
       }}>

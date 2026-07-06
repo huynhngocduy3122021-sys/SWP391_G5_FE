@@ -57,6 +57,18 @@ export default function GateOutPanel() {
   const [confirming, setConfirming] = useState(false);
   const [pricePolicies, setPricePolicies] = useState([]);
   const [zones, setZones] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
+
+  useEffect(() => {
+    const urls = selectedFiles.map(file => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    // Đồng thời hiển thị ảnh preview bên CapturedShot
+    setExitImages(urls);
+    return () => {
+      urls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [selectedFiles]);
 
   useEffect(() => {
     const fetchZones = async () => {
@@ -134,10 +146,6 @@ export default function GateOutPanel() {
       setActiveSession(session);
       setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
       
-      // Call mock API to simulate capturing camera images at the exit
-      // Fake exit images by using the session's images from the database
-      setExitImages(session.imageUrls || []);
-
       toast.success('Tìm thấy phiên gửi xe hoạt động!');
     } catch (err) {
       console.error(err);
@@ -161,10 +169,6 @@ export default function GateOutPanel() {
       setActiveSession(session);
       setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
       
-      // Call mock API to simulate capturing camera images at the exit
-      // Fake exit images by using the session's images from the database
-      setExitImages(session.imageUrls || []);
-
       toast.success('Tìm thấy phiên gửi xe bằng biển số!');
     } catch (err) {
       console.error(err);
@@ -186,6 +190,11 @@ export default function GateOutPanel() {
       toast.error('Vui lòng nhập biển số xe thực tế lúc ra!');
       return;
     }
+    
+    if (selectedFiles.length === 0) {
+      toast.error('Vui lòng chụp/tải lên ít nhất 1 ảnh phương tiện lúc ra để AI kiểm tra!');
+      return;
+    }
 
     // Cảnh báo nếu biển số lúc ra khác biển số lúc vào
     if (activeSession && activeSession.licensePlate !== exitPlate.trim().toUpperCase()) {
@@ -197,6 +206,15 @@ export default function GateOutPanel() {
 
     setConfirming(true);
     try {
+      const verifyRes = await staffApi.verifyLicensePlate(exitPlate.trim().toUpperCase(), selectedFiles[0]);
+      if (verifyRes.matched) {
+        toast.success(`AI: ${verifyRes.message}`);
+      } else {
+        toast.error(`AI Cảnh báo: ${verifyRes.message}`);
+        setConfirming(false);
+        return;
+      }
+
       const res = await staffApi.confirmExit({
         cardCode: cardCode.trim(),
         plateNumber: exitPlate.trim().toUpperCase(),
@@ -223,6 +241,14 @@ export default function GateOutPanel() {
         console.warn("Failed to reset card status to AVAILABLE during checkout:", err);
       }
 
+      if (selectedFiles.length > 0 && activeSession?.parkingSessionId) {
+        try {
+          await staffApi.uploadVehicleImages(activeSession.parkingSessionId, 'CHECK_OUT', selectedFiles);
+        } catch (uploadErr) {
+          console.warn("Upload exit image failed:", uploadErr);
+        }
+      }
+
       if (selectedMethod === 'CASH' || isPackageCard) {
         const msg = isPackageCard
           ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
@@ -232,6 +258,7 @@ export default function GateOutPanel() {
         setCardCode('');
         setExitPlate('');
         setExitImages([]);
+        setSelectedFiles([]);
       } else if (selectedMethod === 'VNPAY') {
         if (res.paymentUrl) {
           toast.info('Đang mở trang thanh toán VNPay...');
@@ -300,10 +327,6 @@ export default function GateOutPanel() {
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem' }}>
       {/* ── Cột trái: camera + ảnh chụp đối chiếu ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <CameraFeed label={`LIVE EXIT - ${GATE_ID}`} sub="CAM 01: PLATE RECOGNITION" status="READY" tone="success" />
-          <CameraFeed label="CAM 04: WIDE OVERVIEW" sub="CAM 02: OVERVIEW" status="ACTIVE" tone="info" />
-        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <CapturedShot 
@@ -315,7 +338,7 @@ export default function GateOutPanel() {
           <CapturedShot 
             title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)" 
             plate={exitPlate || 'CHƯA NHẬP'} 
-            vehicleType="Ảnh camera thực tế tại cổng ra"
+            vehicleType={selectedFiles.length > 0 ? "Hình ảnh đã upload" : "Hình ảnh upload lên"}
             imageUrls={exitImages} 
           />
         </div>
@@ -400,6 +423,51 @@ export default function GateOutPanel() {
             </div>
           </div>
 
+          <div className="vin-field" style={{ marginBottom: '1rem' }}>
+            <label>VEHICLE IMAGES (HÌNH ẢNH LÚC RA)</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files) {
+                  const newFiles = Array.from(e.target.files);
+                  setSelectedFiles((prev) => {
+                    const filtered = newFiles.filter(
+                      nf => !prev.some(pf => pf.name === nf.name && pf.size === nf.size)
+                    );
+                    return [...prev, ...filtered];
+                  });
+                  e.target.value = '';
+                }
+              }}
+              style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', width: '100%', marginBottom: '0.5rem' }}
+            />
+            {selectedFiles.length > 0 && (
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                  Danh sách ảnh đã chọn ({selectedFiles.length}):
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '120px', overflowY: 'auto' }}>
+                  {selectedFiles.map((file, idx) => (
+                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', padding: '2px 0' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
+                        📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 4px', fontSize: '0.85rem', fontWeight: 'bold' }}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
 
           {/* Ẩn phí khi là thẻ Tháng / VIP */}
@@ -475,7 +543,7 @@ function CapturedShot({ title, plate, vehicleType, matchAccuracy, imageUrls }) {
               key={i} 
               src={url} 
               alt={`captured-${i}`} 
-              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} 
+              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'contain', backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} 
             />
           ))}
         </div>
