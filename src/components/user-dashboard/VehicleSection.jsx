@@ -26,6 +26,7 @@ export default function VehicleSection() {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [subscribeVehicleId, setSubscribeVehicleId] = useState('');
+  const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
 
   const loadData = async () => {
     if (!userId) return;
@@ -144,18 +145,44 @@ export default function VehicleSection() {
     if (matchingVehicles.length > 0) {
       setSubscribeVehicleId(matchingVehicles[0].vehicleId || matchingVehicles[0].id);
     } else {
-      setSubscribeVehicleId('');
+      setSubscribeVehicleId('new');
     }
+    setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
     setShowSubscribeModal(true);
   };
 
-  const handleConfirmSubscribe = (e) => {
+  const handleConfirmSubscribe = async (e) => {
     e.preventDefault();
-    if (!subscribeVehicleId) {
-      return toast.warning("Vui lòng chọn một phương tiện phù hợp với gói cước này!");
+    let finalLicensePlate = '';
+
+    if (subscribeVehicleId === 'new') {
+      if (!newVehicleData.licensePlate.trim()) {
+        return toast.warning("Vui lòng nhập biển số xe!");
+      }
+      setSubmitting(true);
+      try {
+        const payload = {
+          licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
+          vehicleColor: newVehicleData.vehicleColor.trim(),
+          vehicleBrand: newVehicleData.vehicleBrand.trim(),
+          vehicleTypeId: Number(selectedPackage.vehicleType?.vehicleTypeId || selectedPackage.vehicleType?.id),
+          userId: Number(userId)
+        };
+        const created = await parkingApi.createVehicle(payload);
+        finalLicensePlate = created.licensePlate;
+        await loadData(); // refresh vehicle list
+      } catch (err) {
+        setSubmitting(false);
+        const msg = err.response?.data?.message || err.response?.data || 'Lỗi lưu thông tin phương tiện mới!';
+        return toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+      }
+      setSubmitting(false);
+    } else {
+      const vehicle = vehicles.find(v => String(v.vehicleId || v.id) === String(subscribeVehicleId));
+      finalLicensePlate = vehicle?.licensePlate;
     }
-    const vehicle = vehicles.find(v => String(v.vehicleId || v.id) === String(subscribeVehicleId));
-    toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${vehicle?.licensePlate}! Vui lòng đến quầy kỹ thuật bãi đỗ để nhận thẻ.`);
+
+    toast.success(`Đã gửi yêu cầu đăng ký gói "${selectedPackage?.policyName}" cho xe ${finalLicensePlate}! Vui lòng đến quầy kỹ thuật bãi đỗ để nhận thẻ.`);
     setShowSubscribeModal(false);
   };
 
@@ -371,34 +398,114 @@ export default function VehicleSection() {
 
             <form onSubmit={handleConfirmSubscribe}>
               <div className="mb-3">
-                <label className="form-label small text-muted fw-semibold">Chọn phương tiện của bạn</label>
-                <select 
-                  className="form-select fw-bold"
-                  value={subscribeVehicleId} 
-                  onChange={e => setSubscribeVehicleId(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>-- Chọn một phương tiện --</option>
-                  {vehicles
-                    .filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id))
-                    .map(v => (
-                      <option key={v.vehicleId || v.id} value={v.vehicleId || v.id}>
-                        {v.licensePlate} {v.vehicleBrand ? `(${v.vehicleBrand})` : ''}
-                      </option>
-                    ))
-                  }
-                </select>
-                {vehicles.filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id)).length === 0 && (
-                  <div className="text-danger small mt-2">
-                    Bạn chưa có phương tiện nào thuộc loại <strong>{selectedPackage?.vehicleType?.typeName}</strong>. Vui lòng thêm xe ở mục "Phương tiện của tôi" trước khi đăng ký!
+                <label className="form-label small text-muted fw-semibold mb-2">
+                  {vehicles.filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id)).length > 0 
+                    ? '🚗 Chọn phương tiện' 
+                    : '🚗 Thông tin phương tiện đăng ký'}
+                </label>
+                
+                {vehicles.filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id)).length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mb-3">
+                    {vehicles
+                      .filter(v => String(v.vehicleTypeId) === String(selectedPackage?.vehicleType?.vehicleTypeId || selectedPackage?.vehicleType?.id))
+                      .map(v => (
+                        <div 
+                          key={v.vehicleId || v.id} 
+                          className="card p-3 flex-grow-1 shadow-sm"
+                          style={{
+                            cursor: 'pointer',
+                            borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : '#e2e8f0',
+                            backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#eff6ff' : '#fff',
+                            borderWidth: '2px',
+                            minWidth: '150px'
+                          }}
+                          onClick={() => setSubscribeVehicleId(v.vehicleId || v.id)}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="fw-bold" style={{ color: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#1e3a8a' : '#334155' }}>
+                              {v.vehicleBrand || 'Xe cá nhân'}
+                            </span>
+                            <div style={{
+                              width: '16px', height: '16px', borderRadius: '50%', border: '2px solid',
+                              borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : '#cbd5e1',
+                              backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              {String(subscribeVehicleId) === String(v.vehicleId || v.id) && <div style={{width: 6, height: 6, borderRadius: '50%', backgroundColor: '#fff'}} />}
+                            </div>
+                          </div>
+                          <span className="text-muted small">{v.licensePlate}</span>
+                        </div>
+                      ))
+                    }
+                    <div 
+                      className="card p-3 flex-grow-1 shadow-sm"
+                      style={{
+                        cursor: 'pointer',
+                        borderColor: subscribeVehicleId === 'new' ? '#2563eb' : '#e2e8f0',
+                        backgroundColor: subscribeVehicleId === 'new' ? '#eff6ff' : '#fff',
+                        borderWidth: '2px',
+                        minWidth: '150px'
+                      }}
+                      onClick={() => setSubscribeVehicleId('new')}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="fw-bold" style={{ color: subscribeVehicleId === 'new' ? '#1e3a8a' : '#334155' }}>
+                          + Thêm xe mới
+                        </span>
+                        <div style={{
+                          width: '16px', height: '16px', borderRadius: '50%', border: '2px solid',
+                          borderColor: subscribeVehicleId === 'new' ? '#2563eb' : '#cbd5e1',
+                          backgroundColor: subscribeVehicleId === 'new' ? '#2563eb' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {subscribeVehicleId === 'new' && <div style={{width: 6, height: 6, borderRadius: '50%', backgroundColor: '#fff'}} />}
+                        </div>
+                      </div>
+                      <span className="text-muted small">Nhập thông tin mới</span>
+                    </div>
+                  </div>
+                )}
+
+                {subscribeVehicleId === 'new' && (
+                  <div className="p-3 bg-light rounded border shadow-sm mt-2">
+                    <div className="mb-2">
+                      <label className="form-label small fw-bold text-dark">Biển số xe *</label>
+                      <input 
+                        type="text" required className="form-control"
+                        value={newVehicleData.licensePlate} 
+                        onChange={e => setNewVehicleData({...newVehicleData, licensePlate: e.target.value})}
+                        placeholder="Ví dụ: 30A-123.45"
+                      />
+                    </div>
+                    <div className="row g-2 mt-1">
+                      <div className="col-6">
+                        <label className="form-label small fw-bold text-dark">Hãng xe</label>
+                        <input 
+                          type="text" className="form-control"
+                          value={newVehicleData.vehicleBrand} 
+                          onChange={e => setNewVehicleData({...newVehicleData, vehicleBrand: e.target.value})}
+                          placeholder="Ví dụ: VinFast"
+                        />
+                      </div>
+                      <div className="col-6">
+                        <label className="form-label small fw-bold text-dark">Màu xe</label>
+                        <input 
+                          type="text" className="form-control"
+                          value={newVehicleData.vehicleColor} 
+                          onChange={e => setNewVehicleData({...newVehicleData, vehicleColor: e.target.value})}
+                          placeholder="Ví dụ: Đen"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
               
               <div className="d-flex gap-2 justify-content-end mt-4">
                 <button type="button" className="btn btn-light fw-bold" onClick={() => setShowSubscribeModal(false)}>Hủy</button>
-                <button type="submit" className="btn text-white fw-bold" style={{ backgroundColor: '#164e63' }} disabled={!subscribeVehicleId}>
-                  Xác nhận đăng ký
+                <button type="submit" className="btn text-white fw-bold px-4" style={{ backgroundColor: '#164e63' }} disabled={submitting || (!subscribeVehicleId)}>
+                  {submitting ? 'Đang xử lý...' : 'Xác nhận đăng ký'}
                 </button>
               </div>
             </form>
