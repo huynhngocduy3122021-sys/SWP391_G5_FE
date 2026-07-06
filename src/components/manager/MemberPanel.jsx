@@ -144,7 +144,7 @@ export default function MemberPanel({ branchId }) {
     setShowEditCard(true);
   };
 
-  const matchedVehicle = ticketForm.vehicleId ? vehicles.find(v => String(v.vehicleId) === String(ticketForm.vehicleId)) : null;
+  const matchedVehicle = ticketForm.vehicleId ? vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(ticketForm.vehicleId)) : null;
 
   const handleSearchVehicle = () => {
     const q = ticketForm.licensePlateSearch.trim().toUpperCase().replace(/\s/g, '');
@@ -152,7 +152,7 @@ export default function MemberPanel({ branchId }) {
     const found = vehicles.find(v => (v.licensePlate || '').toUpperCase().replace(/\s/g, '') === q);
     if (!found) return toast.warn('Không tìm thấy xe!');
     const resolvedSource = found.userId || found.userFullName ? 'REGISTER' : (found.vehicleSource || 'GUEST');
-    setTicketForm(prev => ({ ...prev, vehicleId: String(found.vehicleId), vehicleSource: resolvedSource, guestName: '', guestPhone: '' }));
+    setTicketForm(prev => ({ ...prev, vehicleId: String(found.vehicleId || found.vehiclesId || found.id), vehicleSource: resolvedSource, guestName: '', guestPhone: '' }));
     toast.success('Tìm thấy: ' + found.licensePlate);
   };
 
@@ -234,13 +234,13 @@ export default function MemberPanel({ branchId }) {
     
     // Ensure the vehicle exists in the local list so the form populates correctly
     const veh = req.vehicle;
-    if (veh && !vehicles.find(v => String(v.vehicleId || v.id) === String(veh.vehicleId || veh.id))) {
+    if (veh && !vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(veh.vehicleId || veh.vehiclesId || veh.id))) {
       setVehicles(prev => [...prev, { ...veh, vehicleSource: 'REGISTER', userFullName: req.user?.fullName || req.user?.username }]);
     }
     
     setTicketForm(prev => ({
       ...EMPTY_FORM,
-      vehicleId: String(veh?.vehicleId || veh?.id),
+      vehicleId: String(veh?.vehicleId || veh?.vehiclesId || veh?.id),
       vehicleSource: 'REGISTER',
       licensePlateSearch: veh?.licensePlate || ''
     }));
