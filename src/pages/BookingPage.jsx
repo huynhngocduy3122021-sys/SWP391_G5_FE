@@ -342,16 +342,14 @@ export default function BookingPage() {
 
             </Card>
 
-            </div>
-
             {/* Sticky Step 1 footer */}
-            <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
+            <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center position-sticky bottom-0">
               <div>
                 <small className="text-muted d-block fw-bold">Tổng cộng</small>
                 <h5 className="fw-bold text-primary m-0">{bookingFee.toLocaleString('vi-VN')}đ</h5>
               </div>
               <Button variant="primary" onClick={handleNextStep} className="fw-bold px-4 py-2 rounded-3 shadow-sm">Tiếp tục</Button>
-            </Card>
+            </div>
           </div>
         )}
 
@@ -462,10 +460,8 @@ export default function BookingPage() {
                 <span>🛡️</span>
                 <span style={{ fontSize: '0.75rem' }}>Bạn có thể hoàn hủy đặt chỗ miễn phí trước giờ đặt 30 phút.</span>
               </div>
-            </div>
-
             {/* Sticky Step 2 footer */}
-            <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center">
+            <div className="card border-0 shadow-lg p-3 rounded-4 bg-white d-flex flex-row justify-content-between align-items-center position-sticky bottom-0">
               <div>
                 <small className="text-muted d-block">Phí giữ chỗ trước</small>
                 <h5 className={`fw-bold m-0 ${bookingFee > 0 ? 'text-dark' : 'text-success'}`}>
@@ -481,11 +477,6 @@ export default function BookingPage() {
                 Xác nhận đặt chỗ
               </button>
             </div>
-
-            <Card className="border-0 shadow-lg p-3 rounded-4 d-flex flex-row justify-content-between align-items-center position-sticky bottom-0">
-              <div><small className="text-muted d-block fw-bold">Phí giữ chỗ trước</small><h5 className="fw-bold text-success m-0">Miễn phí</h5></div>
-              <Button variant="primary" onClick={handleNextStep} className="fw-bold px-4 py-2 rounded-3 shadow-sm">Xác nhận đặt chỗ</Button>
-            </Card>
           </div>
         )}
 
