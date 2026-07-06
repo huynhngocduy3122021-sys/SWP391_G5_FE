@@ -148,7 +148,7 @@ const PermissionsPage = () => {
             <button 
               onClick={handleSaveChanges}
               disabled={saving}
-              style={{ padding: '8px 14px', backgroundColor: '#111322', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center' }}
+              style={{ padding: '8px 14px', backgroundColor: 'var(--vin-bg-card)', color: 'var(--vin-text-main)', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center' }}
             >
               {saving && <Spinner size="sm" className="me-2" />}
               {saving ? 'Saving...' : 'Save Changes'}

@@ -5,8 +5,8 @@ const SystemLogsPage = () => {
   const logs = [
     { time: '2026-06-21 17:22:01.442', level: 'ERROR', source: 'AuthModule', msg: 'Invalid JWT signature from IP 192.168.1.104. Potential unauthorized access.', color: '#ef4444', bg: '#fee2e2' },
     { time: '2026-06-21 17:15:55.109', level: 'WARNING', source: 'DatabasePool', msg: 'Connection pool exhaustion approaching 85% capacity. Autoscale triggered.', color: '#f59e0b', bg: '#fef3c7' },
-    { time: '2026-06-21 17:10:44.012', level: 'INFO', source: 'SystemMonitor', msg: 'Scheduled system health check completed. All nodes reporting operational status.', color: '#3b82f6', bg: '#dbeafe' },
-    { time: '2026-06-21 17:05:12.871', level: 'INFO', source: 'AIModelSvc', msg: 'Inference engine reloaded for model "smart-parking-val". Weights verified.', color: '#3b82f6', bg: '#dbeafe' },
+    { time: '2026-06-21 17:10:44.012', level: 'INFO', source: 'SystemMonitor', msg: 'Scheduled system health check completed. All nodes reporting operational status.', color: 'var(--vin-primary)', bg: '#dbeafe' },
+    { time: '2026-06-21 17:05:12.871', level: 'INFO', source: 'AIModelSvc', msg: 'Inference engine reloaded for model "smart-parking-val". Weights verified.', color: 'var(--vin-primary)', bg: '#dbeafe' },
   ];
 
   return (
@@ -34,7 +34,7 @@ const SystemLogsPage = () => {
           <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>FULL-TEXT SEARCH</label>
           <input type="text" placeholder="Filter by message or source..." style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none' }} />
         </div>
-        <button style={{ padding: '10px 24px', backgroundColor: '#111322', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer' }}>Apply Filters</button>
+        <button style={{ padding: '10px 24px', backgroundColor: 'var(--vin-bg-card)', color: 'var(--vin-text-main)', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer' }}>Apply Filters</button>
       </div>
 
       {/* Logs Table */}

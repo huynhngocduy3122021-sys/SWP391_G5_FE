@@ -153,7 +153,7 @@ export default function ManagerDashboard() {
           onClick={handleLogout}
           style={{
             marginTop: '1rem', padding: '10px 24px', background: mt.danger,
-            color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
+            color: 'var(--vin-text-main)', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
           }}
         >
           ← Đăng xuất
@@ -171,7 +171,7 @@ export default function ManagerDashboard() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem', padding: '0 0.25rem' }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 8, background: mt.primary, color: '#fff',
+            width: 36, height: 36, borderRadius: 8, background: mt.primary, color: 'var(--vin-text-main)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
           }}>P</div>
           <div>
@@ -193,7 +193,7 @@ export default function ManagerDashboard() {
                 display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
                 padding: '0.6rem 0.75rem', borderRadius: 8, border: 'none', cursor: 'pointer',
                 fontSize: '0.875rem', fontWeight: tab === item.key ? 600 : 500,
-                background: tab === item.key ? '#0f172a' : 'transparent',
+                background: tab === item.key ? 'var(--vin-primary)' : 'transparent',
                 color: tab === item.key ? '#fff' : '#334155',
               }}
             >

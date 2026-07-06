@@ -55,12 +55,12 @@ export default function ZoneOccupancyTable() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--vin-border)',
       }}>
-        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.85rem', letterSpacing: '0.05em' }}>
+        <span style={{ fontWeight: 700, color: 'var(--vin-text-main)', fontSize: '0.85rem', letterSpacing: '0.05em' }}>
           🕒 HOẠT ĐỘNG VÀO / RA GẦN ĐÂY
         </span>
         <button 
           onClick={fetchRecentSessions} 
-          style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--vin-primary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600, padding: 0 }}
         >
           🔄 Cập nhật
         </button>
@@ -94,7 +94,7 @@ export default function ZoneOccupancyTable() {
               const time = isExit ? s.checkOutTime : s.checkInTime;
               return (
                 <tr key={s.parkingSessionId} style={{ borderTop: '1px solid var(--vin-border)' }}>
-                  <td style={{ fontWeight: 700, color: '#fff' }}>{s.licensePlate || '—'}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--vin-text-main)' }}>{s.licensePlate || '—'}</td>
                   <td style={{ color: 'rgba(255,255,255,0.7)' }}>{s.vehicleTypeName || '—'}</td>
                   <td style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>{formatTime(time)}</td>
                   <td>

@@ -349,7 +349,7 @@ export default function GateOutPanel() {
       {/* ── Cột phải: payment summary + support ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="vin-card">
-          <div style={{ fontWeight: 700, color: '#fff', marginBottom: '1.25rem', fontSize: '1.1rem' }}>
+          <div style={{ fontWeight: 700, color: 'var(--vin-text-main)', marginBottom: '1.25rem', fontSize: '1.1rem' }}>
             📋 THÔNG TIN CHECK-OUT
           </div>
 
@@ -360,7 +360,7 @@ export default function GateOutPanel() {
                 value={cardCode}
                 onChange={(e) => setCardCode(e.target.value)}
                 placeholder="Nhập mã thẻ..."
-                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'var(--vin-bg-light)', color: 'var(--vin-text-main)', border: '1px solid rgba(255,255,255,0.1)' }}
               />
               <button 
                 type="button"
@@ -390,9 +390,9 @@ export default function GateOutPanel() {
               </div>
 
               {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-')) && (
-                <div style={{ background: 'rgba(59,130,246,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #3b82f6', marginBottom: '1rem', color: '#60a5fa' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: '#93c5fd' }}>🎟️ THẺ THÁNG / VIP HỢP LỆ</div>
-                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Hệ thống ghi nhận thẻ tháng hoặc VIP còn hiệu lực. <strong style={{ color: '#fff' }}>Khách được miễn phí (Thanh toán = 0đ)</strong>. Không cần thu tiền!</div>
+                <div style={{ background: 'rgba(59,130,246,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #3b82f6', marginBottom: '1rem', color: 'var(--vin-primary)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: 'var(--vin-primary)' }}>🎟️ THẺ THÁNG / VIP HỢP LỆ</div>
+                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Hệ thống ghi nhận thẻ tháng hoặc VIP còn hiệu lực. <strong style={{ color: 'var(--vin-text-main)' }}>Khách được miễn phí (Thanh toán = 0đ)</strong>. Không cần thu tiền!</div>
                 </div>
               )}
             </>
@@ -409,14 +409,14 @@ export default function GateOutPanel() {
                 value={exitPlate}
                 onChange={(e) => setExitPlate(e.target.value.toUpperCase())}
                 placeholder="Nhập biển số xe thực tế..."
-                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'var(--vin-bg-light)', color: 'var(--vin-text-main)', border: '1px solid rgba(255,255,255,0.1)' }}
               />
               <button 
                 type="button"
                 className="vin-btn vin-btn--primary"
                 onClick={handleSearchByPlate}
                 disabled={searching}
-                style={{ padding: '0 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', background: '#3b82f6' }}
+                style={{ padding: '0 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', background: 'var(--vin-primary)' }}
               >
                 {searching ? <span className="vin-spinner" /> : '🔍 Tìm Biển Số'}
               </button>
@@ -441,7 +441,7 @@ export default function GateOutPanel() {
                   e.target.value = '';
                 }
               }}
-              style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', width: '100%', marginBottom: '0.5rem' }}
+              style={{ padding: '0.5rem', background: 'var(--vin-bg-light)', width: '100%', marginBottom: '0.5rem' }}
             />
             {selectedFiles.length > 0 && (
               <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -457,7 +457,7 @@ export default function GateOutPanel() {
                       <button 
                         type="button" 
                         onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 4px', fontSize: '0.85rem', fontWeight: 'bold' }}
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 4px', fontSize: '0.85rem', fontWeight: 'bold' }}
                       >
                         ✕
                       </button>
@@ -473,20 +473,20 @@ export default function GateOutPanel() {
           {/* Ẩn phí khi là thẻ Tháng / VIP */}
           {activeSession && !isPackageCard && (
             <div style={{ background: 'rgba(14,165,233,0.08)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(14,165,233,0.25)', marginBottom: '1rem' }}>
-              <div style={{ color: '#38bdf8', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+              <div style={{ color: 'var(--vin-primary)', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
                 💵 TẠM TÍNH PHÍ ĐẬU XE
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.75rem' }}>
                 <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', lineHeight: 1.6 }}>
-                  <div>Thời gian gửi: <strong style={{ color: '#fff' }}>{parkingCharge?.durationMinutes || 0} phút</strong></div>
-                  <div>Chính sách: <strong style={{ color: '#fff' }}>{parkingCharge?.policy?.policyName || 'Chưa có bảng giá'}</strong></div>
+                  <div>Thời gian gửi: <strong style={{ color: 'var(--vin-text-main)' }}>{parkingCharge?.durationMinutes || 0} phút</strong></div>
+                  <div>Chính sách: <strong style={{ color: 'var(--vin-text-main)' }}>{parkingCharge?.policy?.policyName || 'Chưa có bảng giá'}</strong></div>
                   {!parkingCharge?.isBackendAmount && parkingCharge?.policy && (
                     <div>
                       Giá cơ bản: {fmtMoney(parkingCharge.policy.basePrice)}đ / {parkingCharge.policy.baseDurationMinutes || 60} phút
                     </div>
                   )}
                 </div>
-                <div style={{ color: '#fff', fontWeight: 900, fontSize: '1.5rem', whiteSpace: 'nowrap' }}>
+                <div style={{ color: 'var(--vin-text-main)', fontWeight: 900, fontSize: '1.5rem', whiteSpace: 'nowrap' }}>
                   {parkingCharge?.amount !== null && parkingCharge?.amount !== undefined
                     ? `${fmtMoney(parkingCharge.amount)}đ`
                     : 'Chưa có giá'}
@@ -520,7 +520,7 @@ export default function GateOutPanel() {
             </>
           )}
 
-          <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: '#fff', padding: '0.85rem', fontSize: '1rem' }}
+          <button className="vin-btn vin-btn--full" style={{ background: 'var(--vin-success)', color: 'var(--vin-text-main)', padding: '0.85rem', fontSize: '1rem' }}
             disabled={confirming} onClick={handleConfirm}>
             {confirming ? <span className="vin-spinner" /> : '✅'} {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-')) ? 'XÁC NHẬN CHO XE RA (MIỄN PHÍ - 0đ)' : 'XÁC NHẬN & MỞ CỔNG RA'}
           </button>
@@ -549,14 +549,14 @@ function CapturedShot({ title, plate, vehicleType, matchAccuracy, imageUrls }) {
         </div>
       ) : (
         <div style={{
-          height: 240, borderRadius: 8, background: 'linear-gradient(135deg, #111827, #1f2937)',
+          height: 240, borderRadius: 8, background: 'var(--vin-bg-card)',
           marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem'
         }}>
           Không có ảnh
         </div>
       )}
-      <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{plate}</div>
+      <div style={{ fontWeight: 700, color: 'var(--vin-text-main)', fontSize: '0.95rem' }}>{plate}</div>
       {vehicleType && <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{vehicleType}</div>}
       {matchAccuracy != null && (
         <div style={{ fontSize: '0.75rem', color: 'var(--vin-success)' }}>● {matchAccuracy}% Match</div>

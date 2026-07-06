@@ -86,7 +86,7 @@ const UserAccountsPage = () => {
           onClick={() => setShowModal(true)}
           style={{ 
             display: 'flex', alignItems: 'center', gap: '8px',
-            backgroundColor: 'var(--vin-primary)', color: '#fff', border: 'none', 
+            backgroundColor: 'var(--vin-primary)', color: 'var(--vin-text-main)', border: 'none', 
             padding: '10px 16px', borderRadius: '8px', fontWeight: '600',
             cursor: 'pointer', transition: 'background 0.2s'
           }}

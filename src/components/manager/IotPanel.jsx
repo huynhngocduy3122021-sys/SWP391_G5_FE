@@ -116,7 +116,7 @@ export default function IotPanel({ branchId }) {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Danh sách Lượt xe Gần đây</h2>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-primary)' }}>Danh sách Lượt xe Gần đây</h2>
             <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '12px' }}>Chọn một hàng để xem ảnh chụp camera tương ứng ở cột bên phải.</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -127,12 +127,12 @@ export default function IotPanel({ branchId }) {
                 placeholder="Tìm biển số, mã thẻ..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '13px', color: '#0f172a' }} 
+                style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '13px', color: 'var(--vin-primary)' }} 
               />
             </div>
             <button 
               onClick={fetchSessions}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#1b6eff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#1b6eff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: 'var(--vin-text-main)', cursor: 'pointer' }}
             >
               🔄 Tải lại
             </button>
@@ -186,7 +186,7 @@ export default function IotPanel({ branchId }) {
                     <td style={{ padding: '16px 8px', color: isActive ? '#16a34a' : '#475569', fontWeight: isActive ? '600' : 'normal' }}>
                       {formatTime(row.checkOutTime)}
                     </td>
-                    <td style={{ padding: '16px 8px', color: '#0f172a', fontWeight: '600' }}>
+                    <td style={{ padding: '16px 8px', color: 'var(--vin-primary)', fontWeight: '600' }}>
                       {displayCard}
                       {(isMonthly || isVip) && (
                         <span style={{
@@ -223,7 +223,7 @@ export default function IotPanel({ branchId }) {
         {/* Camera Views Card */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Ảnh Chụp Thực Tế (IoT)</h2>
+            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--vin-primary)' }}>Ảnh Chụp Thực Tế (IoT)</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#16a34a', fontSize: '12px', fontWeight: '600' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16a34a' }}></div> Camera ANPR
             </div>

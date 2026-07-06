@@ -169,7 +169,7 @@ export default function SystemSettingsPage() {
       {/* Top Title & Search bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#111322' }}>System Settings</h2>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>System Settings</h2>
           <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Cấu hình nhận diện thương hiệu, bảo mật, thông báo và bảo trì hệ thống.</p>
         </div>
 
@@ -181,7 +181,7 @@ export default function SystemSettingsPage() {
               placeholder="Tìm kiếm cài đặt nhanh..." 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', color: '#111322' }} 
+              style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', color: 'var(--vin-bg-card)' }} 
             />
           </div>
           <button 
@@ -226,7 +226,7 @@ export default function SystemSettingsPage() {
             {/* TAB: GENERAL */}
             {activeTab === 'general' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Tùy biến thương hiệu (Branding)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Tùy biến thương hiệu (Branding)</h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>TÊN HỆ THỐNG</label>
@@ -278,7 +278,7 @@ export default function SystemSettingsPage() {
 
                 <hr style={{ border: 'none', borderTop: '1px solid #eef0f3', margin: '12px 0' }} />
 
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Logo Hệ thống (System Logos)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Logo Hệ thống (System Logos)</h3>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -321,7 +321,7 @@ export default function SystemSettingsPage() {
             {/* TAB: SECURITY */}
             {activeTab === 'security' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Bảo mật hệ thống (Security)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Bảo mật hệ thống (Security)</h3>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
                   <div>
@@ -364,7 +364,7 @@ export default function SystemSettingsPage() {
             {/* TAB: NOTIFICATIONS */}
             {activeTab === 'notifications' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Cấu hình Thông báo (Notifications)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Cấu hình Thông báo (Notifications)</h3>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
                   <div>
@@ -397,7 +397,7 @@ export default function SystemSettingsPage() {
             {/* TAB: MAINTENANCE */}
             {activeTab === 'maintenance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111322' }}>Bảo trì & Sao lưu (Maintenance)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Bảo trì & Sao lưu (Maintenance)</h3>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button
@@ -468,7 +468,7 @@ export default function SystemSettingsPage() {
                   <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ height: '10px', width: '80px', backgroundColor: '#1e293b', borderRadius: '4px', fontWeight: '700' }} />
-                      <button style={{ border: 'none', backgroundColor: primaryColor, color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '600' }}>
+                      <button style={{ border: 'none', backgroundColor: primaryColor, color: 'var(--vin-text-main)', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '600' }}>
                         + Action
                       </button>
                     </div>
@@ -517,7 +517,7 @@ export default function SystemSettingsPage() {
           </button>
           <button 
             onClick={handleSave}
-            style={{ padding: '8px 16px', backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+            style={{ padding: '8px 16px', backgroundColor: primaryColor, color: 'var(--vin-text-main)', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
           >
             Lưu cấu hình
           </button>
