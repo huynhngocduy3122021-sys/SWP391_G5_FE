@@ -46,6 +46,28 @@ export default function PricingPage() {
   const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '', type: 'Car' });
   const userId = localStorage.getItem('userId');
 
+  const [pricePolicies, setPricePolicies] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [loadingPricing, setLoadingPricing] = useState(true);
+
+  useEffect(() => {
+    const fetchPricingData = async () => {
+      try {
+        const [polData, vtData] = await Promise.all([
+          parkingApi.getAllPricePolicies(),
+          parkingApi.getAllVehicleTypes()
+        ]);
+        setPricePolicies(Array.isArray(polData) ? polData : []);
+        setVehicleTypes(Array.isArray(vtData) ? vtData : []);
+      } catch (err) {
+        console.error("Failed to load pricing data:", err);
+      } finally {
+        setLoadingPricing(false);
+      }
+    };
+    fetchPricingData();
+  }, []);
+
   useEffect(() => {
     if (userId) {
       parkingApi.getAllVehicles().then(data => {
@@ -64,6 +86,35 @@ export default function PricingPage() {
   }, [userId]);
 
   const currentLot = lots.find(lot => lot.id === Number(selectedLotId)) || lots[0];
+
+  const isPackage = (p) => {
+    const name = p.policyName || '';
+    return name.startsWith('[Gói Tháng]') || name.startsWith('[Gói VIP President]');
+  };
+
+  const getPackageDetails = (p) => {
+    const name = p.policyName || '';
+    const isVip = name.startsWith('[Gói VIP President]');
+    const prefix = isVip ? '[Gói VIP President] ' : '[Gói Tháng] ';
+    const cleanName = name.replace(prefix, '').trim();
+    const days = Math.round((p.baseDurationMinutes || 0) / (24 * 60));
+    return {
+      policyId: p.pricePolicyId || p.id,
+      title: cleanName,
+      type: isVip ? 'VIP' : 'Economic',
+      price: p.basePrice || 0,
+      days: days,
+      desc: isVip ? 'Đặc quyền đỗ xe cao cấp và dịch vụ chăm sóc trọn gói.' : 'Tiết kiệm chi phí gửi xe định kỳ hàng tháng.',
+      vehicleTypeName: p.vehicleType?.typeName || 'Mọi xe',
+      vehicleTypeId: p.vehicleType?.vehicleTypeId || p.vehicleTypeId,
+      perks: isVip 
+        ? ['Vị trí đỗ ưu tiên gần thang máy', 'Hỗ trợ rửa xe 2 lần/tháng', 'Miễn phí sạc EV (áp dụng cho 50kWh đầu)', 'Ưu tiên hỗ trợ từ Vinparking']
+        : ['Đỗ xe không giới hạn lượt ra vào', 'Áp dụng cho mọi vị trí đỗ phổ thông', 'Thanh toán tự động qua App']
+    };
+  };
+
+  const activeHourlyPolicies = pricePolicies.filter(p => p.active && !isPackage(p));
+  const activePackages = pricePolicies.filter(p => p.active && isPackage(p)).map(getPackageDetails);
 
   const prices = (() => {
     const vipCarPrice = parseInt(currentLot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
@@ -85,9 +136,11 @@ export default function PricingPage() {
   if (!currentSelectedVehicle) currentSelectedVehicle = { type: 'Car', plate: '' };
 
   const activePlanPrice = activeSubPlan ? (
-    activeSubPlan.baseType === 'Economic' 
-      ? (currentSelectedVehicle.type === 'Car' ? prices.ecoCar : prices.ecoMotor)
-      : (currentSelectedVehicle.type === 'Car' ? prices.vipCar : prices.vipMotor)
+    activeSubPlan.price 
+      ? activeSubPlan.price 
+      : (activeSubPlan.type === 'Economic' 
+          ? (currentSelectedVehicle.type === 'Car' ? prices.ecoCar : prices.ecoMotor)
+          : (currentSelectedVehicle.type === 'Car' ? prices.vipCar : prices.vipMotor))
   ) : 0;
 
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState('');
@@ -196,62 +249,124 @@ export default function PricingPage() {
         {/* Detailed Rates Table */}
         <h4 className="fw-bold mt-5 mb-4">🕒 Chi tiết Bảng giá dịch vụ (Rates Table)</h4>
         <div className="row g-4 mb-4">
-          {[
-            { type: 'Ô tô', icon: '🚗', badge: 'bg-info text-info border-info', desc: 'Áp dụng cho xe từ 4 - 7 chỗ tại mọi điểm đỗ chính.', rows: [['2 giờ đầu', currentLot.price], ['Mỗi giờ tiếp theo', `${Math.floor(basePrice * 0.5).toLocaleString('vi-VN')} VNĐ`], ['Gửi qua đêm (sau 0h)', `${Math.floor(basePrice * 5).toLocaleString('vi-VN')} VNĐ`]], canBook: true },
-            { type: 'Xe máy', icon: '🛵', badge: 'bg-secondary text-secondary border-secondary', desc: 'Áp dụng cho mọi loại xe máy và xe đạp điện.', rows: [['Sáng (06h - 18h)', '5.000 VNĐ'], ['Tối (18h - 06h)', '8.000 VNĐ'], ['Cả ngày (24h)', '12.000 VNĐ']], canBook: false }
-          ].map((r, i) => (
-            <div className="col-md-6" key={i}>
-              <div className="card border-0 shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column">
-                <div className="d-flex align-items-center gap-2 mb-3">
-                  <span className="fs-4">{r.icon}</span><h5 className="fw-bold m-0">Dành cho {r.type}</h5>
-                  <span className={`badge bg-opacity-10 border border-opacity-25 ms-auto ${r.badge}`}>{r.type}</span>
+          {(() => {
+            const hourlySections = vehicleTypes.map(vt => {
+              const vtPolicies = activeHourlyPolicies.filter(p => 
+                String(p.vehicleType?.vehicleTypeId || p.vehicleTypeId || p.vehicleType?.id) === String(vt.vehicleTypeId)
+              );
+              if (vtPolicies.length === 0) return null;
+              
+              const isMotor = vt.typeName?.toLowerCase().includes('máy') || vt.typeName?.toLowerCase().includes('moto') || vt.typeName?.toLowerCase().includes('đạp');
+              
+              return {
+                type: vt.typeName || 'Loại xe',
+                icon: isMotor ? '🛵' : '🚗',
+                badge: isMotor ? 'bg-secondary text-secondary border-secondary' : 'bg-info text-info border-info',
+                desc: isMotor ? 'Áp dụng cho mọi loại xe máy và xe đạp điện.' : 'Áp dụng cho xe ô tô tại mọi điểm đỗ chính.',
+                rows: vtPolicies.map(p => {
+                  const baseMin = p.baseDurationMinutes || 0;
+                  const baseH = baseMin >= 60 ? `${Math.round(baseMin / 60)} giờ` : `${baseMin} phút`;
+                  return [
+                    p.policyName, 
+                    `${(p.basePrice || 0).toLocaleString('vi-VN')} đ / ${baseH}`,
+                    p.extraHourPrice > 0 
+                      ? `Cộng thêm: ${(p.extraHourPrice || 0).toLocaleString('vi-VN')} đ / ${p.extraDurationMinutes || 60} phút`
+                      : 'Không phụ trội'
+                  ];
+                }),
+                canBook: !isMotor
+              };
+            }).filter(Boolean);
+
+            const displayList = hourlySections.length > 0 ? hourlySections : [
+              { type: 'Ô tô', icon: '🚗', badge: 'bg-info text-info border-info', desc: 'Áp dụng cho xe từ 4 - 7 chỗ tại mọi điểm đỗ chính.', rows: [['Vé lượt ô tô tiêu chuẩn', `${basePrice.toLocaleString('vi-VN')} VNĐ / 2 giờ`, `Mỗi giờ tiếp theo: ${Math.floor(basePrice * 0.5).toLocaleString('vi-VN')} VNĐ`], ['Gửi qua đêm (sau 0h)', `${Math.floor(basePrice * 5).toLocaleString('vi-VN')} VNĐ`, 'Giá cố định']], canBook: true },
+              { type: 'Xe máy', icon: '🛵', badge: 'bg-secondary text-secondary border-secondary', desc: 'Áp dụng cho mọi loại xe máy và xe đạp điện.', rows: [['Sáng (06h - 18h)', '5.000 VNĐ', 'Giá cố định'], ['Tối (18h - 06h)', '8.000 VNĐ', 'Giá cố định'], ['Cả ngày (24h)', '12.000 VNĐ', 'Giá cố định']], canBook: false }
+            ];
+
+            return displayList.map((r, i) => (
+              <div className="col-md-6" key={i}>
+                <div className="card border-0 shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column">
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <span className="fs-4">{r.icon}</span><h5 className="fw-bold m-0">Dành cho {r.type}</h5>
+                    <span className={`badge bg-opacity-10 border border-opacity-25 ms-auto ${r.badge}`}>{r.type}</span>
+                  </div>
+                  <p className="text-muted small mb-4">{r.desc}</p>
+                  <div className="d-flex flex-column gap-3 mb-4 flex-grow-1">
+                    {r.rows.map((row, idx) => (
+                      <div className={`d-flex justify-content-between pb-2 ${idx < r.rows.length - 1 ? 'border-bottom' : ''}`} key={idx}>
+                        <div>
+                          <span className="text-muted small d-block fw-bold">{row[0]}</span>
+                          <small className="text-muted">{row[2]}</small>
+                        </div>
+                        <strong className="text-dark align-self-center">{row[1]}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <button disabled={!r.canBook} onClick={() => r.canBook && handleBookNow('Standard')} className={`btn fw-bold py-2.5 rounded-3 w-100 ${r.canBook ? 'text-white' : 'btn-secondary'}`} style={{ backgroundColor: r.canBook ? '#164e63' : '', cursor: r.canBook ? 'pointer' : 'not-allowed' }}>
+                    {r.canBook ? 'Đặt chỗ ngay' : 'Không hỗ trợ đặt trước xe máy'}
+                  </button>
                 </div>
-                <p className="text-muted small mb-4">{r.desc}</p>
-                <div className="d-flex flex-column gap-3 mb-4 flex-grow-1">
-                  {r.rows.map((row, idx) => (
-                    <div className={`d-flex justify-content-between pb-2 ${idx < r.rows.length - 1 ? 'border-bottom' : ''}`} key={idx}>
-                      <span className="text-muted small">{row[0]}</span><strong className="text-dark">{row[1]}</strong>
-                    </div>
-                  ))}
-                </div>
-                <button disabled={!r.canBook} onClick={() => r.canBook && handleBookNow('Standard')} className={`btn fw-bold py-2.5 rounded-3 w-100 ${r.canBook ? 'text-white' : 'btn-secondary'}`} style={{ backgroundColor: r.canBook ? '#164e63' : '', cursor: r.canBook ? 'pointer' : 'not-allowed' }}>
-                  {r.canBook ? 'Đặt chỗ ngay' : 'Không hỗ trợ đặt trước xe máy'}
-                </button>
               </div>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
 
         {/* Subscriptions */}
         <h5 className="fw-bold mt-5 mb-3">Gói Đăng Ký Dài Hạn (Subscriptions)</h5>
         <p className="text-muted small mb-4">Tiết kiệm hơn với các lựa chọn đăng ký theo tháng dành riêng cho phương tiện của bạn.</p>
         <div className="row g-4 mb-5">
-          {[
-            { id: 'eco', title: 'Gói Tháng Tiết Kiệm', name: 'Economic Monthly', type: 'Economic', desc: 'Tiết kiệm chi phí gửi xe định kỳ hàng tháng.', cP: prices.ecoCar, mP: prices.ecoMotor, perks: ['Đỗ xe không giới hạn lượt ra vào', 'Áp dụng cho mọi vị trí đỗ phổ thông', 'Thanh toán tự động qua App'] },
-            { id: 'vip', title: 'Gói VIP Cư Dân', name: 'VIP Monthly', type: 'VIP', desc: 'Đặc quyền đỗ xe cao cấp và dịch vụ chăm sóc trọn gói.', cP: prices.vipCar, mP: prices.vipMotor, perks: ['Vị trí đỗ ưu tiên gần thang máy', 'Hỗ trợ rửa xe 2 lần/tháng', 'Miễn phí sạc EV (áp dụng cho 50kWh đầu)', 'Ưu tiên hỗ trợ từ Vinparking'] }
-          ].map(s => (
-            <div className="col-md-6" key={s.id}>
-              <div className="card shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column position-relative" style={{ border: s.type === 'VIP' ? '2px solid #164e63' : '1px solid #dee2e6' }}>
-                {s.type === 'VIP' && <div className="position-absolute px-3 py-1 bg-primary text-white fw-bold text-uppercase" style={{ top: 0, right: 24, fontSize: '0.68rem', borderRadius: '0 0 8px 8px' }}>PHỔ BIẾN NHẤT</div>}
-                <h5 className="fw-bold mb-1">{s.title}</h5>
-                <p className="text-muted small">{s.desc}</p>
-                <div className="bg-light rounded-3 p-3 mb-4">
-                  <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.mP.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
-                  <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.cP.toLocaleString('vi-VN')}đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+          {(() => {
+            const displayList = activePackages.length > 0 ? activePackages : [
+              { policyId: 1, title: 'Gói Tháng Tiết Kiệm', name: 'Economic Monthly', type: 'Economic', price: prices.ecoCar, mP: prices.ecoMotor, desc: 'Tiết kiệm chi phí gửi xe định kỳ hàng tháng.', perks: ['Đỗ xe không giới hạn lượt ra vào', 'Áp dụng cho mọi vị trí đỗ phổ thông', 'Thanh toán tự động qua App'] },
+              { policyId: 3, title: 'Gói VIP Cư Dân', name: 'VIP Monthly', type: 'VIP', price: prices.vipCar, mP: prices.vipMotor, desc: 'Đặc quyền đỗ xe cao cấp và dịch vụ chăm sóc trọn gói.', perks: ['Vị trí đỗ ưu tiên gần thang máy', 'Hỗ trợ rửa xe 2 lần/tháng', 'Miễn phí sạc EV (áp dụng cho 50kWh đầu)', 'Ưu tiên hỗ trợ từ Vinparking'] }
+            ];
+
+            return displayList.map((s, idx) => {
+              const isVip = s.type === 'VIP';
+              const priceLabel = s.price ? `${s.price.toLocaleString('vi-VN')} đ` : '';
+              const durationLabel = s.days ? `/ ${s.days} ngày` : '/ tháng';
+
+              return (
+                <div className="col-md-6" key={s.policyId || idx}>
+                  <div className="card shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column position-relative" style={{ border: isVip ? '2px solid #164e63' : '1px solid #dee2e6' }}>
+                    {isVip && <div className="position-absolute px-3 py-1 bg-primary text-white fw-bold text-uppercase" style={{ top: 0, right: 24, fontSize: '0.68rem', borderRadius: '0 0 8px 8px' }}>PHỔ BIẾN NHẤT</div>}
+                    <h5 className="fw-bold mb-1">{s.title}</h5>
+                    <p className="text-muted small mb-2">{s.desc}</p>
+                    
+                    <div className="bg-light rounded-3 p-3 mb-4">
+                      {s.mP ? (
+                        <>
+                          <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.mP.toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                          <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.cP.toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                        </>
+                      ) : (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="text-muted small">🚙 Loại xe: {s.vehicleTypeName}</span>
+                          <strong className="fs-5" style={{color: '#164e63'}}>{priceLabel}<span className="fs-6 text-muted fw-normal"> {durationLabel}</span></strong>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4 flex-grow-1">
+                      {s.perks.map((p, i) => <li key={i}>🟢 {p}</li>)}
+                    </ul>
+                    
+                    <button onClick={() => { 
+                        if (!userId) {
+                          toast.info("Vui lòng đăng nhập để đăng ký gói cước!");
+                          navigate('/auth');
+                          return;
+                        }
+                        navigate('/user-dashboard', { state: { tab: 'vehicles', autoSubscribePackage: s } });
+                      }} 
+                      className="btn text-white fw-bold py-2.5 rounded-3 w-100" style={{ backgroundColor: '#164e63' }}>
+                      {isVip ? 'Đăng Ký Gói VIP' : 'Đăng Ký Ngay'}
+                    </button>
+                  </div>
                 </div>
-                <ul className="list-unstyled d-flex flex-column gap-2 small text-muted mb-4 flex-grow-1">
-                  {s.perks.map((p, i) => <li key={i}>🟢 {p}</li>)}
-                </ul>
-                <button onClick={() => { 
-                    setActiveSubPlan({ name: s.name, baseType: s.type }); 
-                    setSubModalStep(1); 
-                  }} 
-                  className="btn text-white fw-bold py-2.5 rounded-3 w-100" style={{ backgroundColor: '#164e63' }}>
-                  {s.type === 'VIP' ? 'Đăng Ký Gói VIP' : 'Đăng Ký Ngay'}
-                </button>
-              </div>
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
 
         {/* Good to Know Section */}
@@ -460,8 +575,12 @@ export default function PricingPage() {
                       try {
                         const payload = {
                           vehicleId: selectedSubVehicleId === 'new' ? undefined : Number(selectedSubVehicleId),
-                          policyId: activeSubPlan.baseType === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4) // Temporary fallback mapping based on type
+                          policyId: activeSubPlan.policyId
                         };
+                        
+                        if (!payload.policyId) {
+                          payload.policyId = activeSubPlan.type === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4);
+                        }
                         
                         let finalLicensePlate = currentSelectedVehicle.plate;
                         if (selectedSubVehicleId === 'new') {
@@ -482,7 +601,7 @@ export default function PricingPage() {
                           branchId: Number(selectedLotId)
                         });
                         
-                        toast.success(`Đã gửi yêu cầu đăng ký gói "${activeSubPlan.name}" cho xe ${finalLicensePlate}! Ban quản lý sẽ sớm duyệt yêu cầu của bạn.`);
+                        toast.success(`Đã gửi yêu cầu đăng ký gói "${activeSubPlan.title || activeSubPlan.name}" cho xe ${finalLicensePlate}! Ban quản lý sẽ sớm duyệt yêu cầu của bạn.`);
                         setActiveSubPlan(null);
                         setSubModalStep(1);
                       } catch (err) {

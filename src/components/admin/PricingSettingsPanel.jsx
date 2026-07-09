@@ -9,7 +9,7 @@ const vtName = (v) => v?.typeName || v?.vehicleTypeName || v?.name || `Loại ${
 const fmt    = (n) => Number(n || 0).toLocaleString('vi-VN');
 
 const EMPTY_FORM = {
-  policyName: '', basePrice: '', baseDurationMinutes: '', extraHourPrice: '', vehicleTypeId: '',
+  policyName: '', basePrice: '', baseDurationMinutes: '', extraHourPrice: '', extraDurationMinutes: '60', vehicleTypeId: '',
 };
 
 const EMPTY_PACKAGE_FORM = {
@@ -97,6 +97,7 @@ export default function PricingSettingsPanel() {
       basePrice:           String(p.basePrice || ''),
       baseDurationMinutes: String(p.baseDurationMinutes || ''),
       extraHourPrice:      String(p.extraHourPrice || ''),
+      extraDurationMinutes: String(p.extraDurationMinutes || '60'),
       vehicleTypeId:       String(p?.vehicleType?.vehicleTypeId || p?.vehicleType?.id || p?.vehicleTypeId || ''),
     });
     setFormErr('');
@@ -135,13 +136,15 @@ export default function PricingSettingsPanel() {
     if (!form.vehicleTypeId)              return setFormErr('Vui lòng chọn loại xe.');
     if (Number(form.basePrice) <= 0)      return setFormErr('Giá cơ bản phải lớn hơn 0.');
     if (Number(form.baseDurationMinutes) <= 0) return setFormErr('Thời gian cơ bản phải lớn hơn 0.');
-    if (Number(form.extraHourPrice) < 0)  return setFormErr('Giá thêm giờ không được âm.');
+    if (Number(form.extraHourPrice) < 0)  return setFormErr('Giá tính thêm không được âm.');
+    if (Number(form.extraDurationMinutes) <= 0) return setFormErr('Thời gian tính thêm tiền (phút) phải lớn hơn 0.');
 
     const payload = {
       policyName:          form.policyName.trim(),
       basePrice:           Number(form.basePrice),
       baseDurationMinutes: Number(form.baseDurationMinutes),
       extraHourPrice:      Number(form.extraHourPrice),
+      extraDurationMinutes: Number(form.extraDurationMinutes),
       vehicleTypeId:       Number(form.vehicleTypeId),
     };
 
@@ -287,7 +290,7 @@ export default function PricingSettingsPanel() {
                 ) : (
                   <Table hover responsive className="align-middle border-top mb-0 small">
                     <thead className="table-light text-muted">
-                      <tr><th>TÊN CHÍNH SÁCH</th><th>GIÁ CƠ BẢN</th><th>THỜI GIAN CƠ BẢN</th><th>GIÁ THÊM GIỜ</th><th className="text-end">THAO TÁC</th></tr>
+                      <tr><th>TÊN CHÍNH SÁCH</th><th>GIÁ CƠ BẢN</th><th>THỜI GIAN CƠ BẢN</th><th>GIÁ TÍNH THÊM</th><th className="text-end">THAO TÁC</th></tr>
                     </thead>
                     <tbody>
                       {filteredHourlyPolicies.map((p) => (
@@ -295,7 +298,7 @@ export default function PricingSettingsPanel() {
                           <td className="fw-bold">{p.policyName}</td>
                           <td className="fw-bold text-primary">{fmt(p.basePrice)} đ</td>
                           <td className="text-muted">{p.baseDurationMinutes} phút</td>
-                          <td>{fmt(p.extraHourPrice)} đ/giờ</td>
+                          <td>{fmt(p.extraHourPrice)} đ / {p.extraDurationMinutes || 60} phút</td>
                           <td className="text-end">
                             <Button variant="outline-primary" size="sm" className="me-2 fw-bold" onClick={() => openEdit(p)}>Sửa</Button>
                             <Button variant="outline-danger" size="sm" className="fw-bold" onClick={() => setDelTarget({ id: p.pricePolicyId || p.id, name: p.policyName })}>Xóa</Button>
@@ -398,7 +401,20 @@ export default function PricingSettingsPanel() {
               <Col><Form.Group><Form.Label className="small fw-bold text-muted mb-1">GIÁ CƠ BẢN (ĐỒNG) *</Form.Label><Form.Control type="number" min="0" placeholder="Ví dụ: 5000" value={form.basePrice} onChange={e => setForm({ ...form, basePrice: e.target.value })} /></Form.Group></Col>
               <Col><Form.Group><Form.Label className="small fw-bold text-muted mb-1">HẠN MỨC (PHÚT) *</Form.Label><Form.Control type="number" min="1" placeholder="Ví dụ: 240 (4 tiếng)" value={form.baseDurationMinutes} onChange={e => setForm({ ...form, baseDurationMinutes: e.target.value })} /></Form.Group></Col>
             </Row>
-            <Form.Group><Form.Label className="small fw-bold text-muted mb-1">GIÁ CỘNG THÊM MỖI GIỜ (ĐỒNG) *</Form.Label><Form.Control type="number" min="0" placeholder="Ví dụ: 2000" value={form.extraHourPrice} onChange={e => setForm({ ...form, extraHourPrice: e.target.value })} /></Form.Group>
+            <Row className="g-2">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold text-muted mb-1">GIÁ TÍNH THÊM (ĐỒNG) *</Form.Label>
+                  <Form.Control type="number" min="0" placeholder="Ví dụ: 2000" value={form.extraHourPrice} onChange={e => setForm({ ...form, extraHourPrice: e.target.value })} />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold text-muted mb-1">CHO MỖI KHOẢNG (PHÚT) *</Form.Label>
+                  <Form.Control type="number" min="1" placeholder="Ví dụ: 60" value={form.extraDurationMinutes} onChange={e => setForm({ ...form, extraDurationMinutes: e.target.value })} />
+                </Form.Group>
+              </Col>
+            </Row>
           </Modal.Body>
           <Modal.Footer><Button variant="outline-secondary" onClick={closeModal} disabled={saving}>Hủy bỏ</Button><Button variant="primary" className="fw-bold" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu lại'}</Button></Modal.Footer>
         </Form>

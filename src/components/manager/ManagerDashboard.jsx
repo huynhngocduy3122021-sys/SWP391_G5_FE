@@ -6,6 +6,7 @@ import IncidentPanel from './IncidentPanel';
 import BookingPanel from './BookingPanel';
 import MemberPanel from './MemberPanel';
 import IotPanel from './IotPanel';
+import ManagerProfilePanel from './ManagerProfilePanel';
 import { mt } from './managerTheme';
 import authApi from '../../api/authApi';
 
@@ -120,6 +121,7 @@ export default function ManagerDashboard() {
       case 'zones': return <ZoneOverviewPanel branchId={branchId} />;
       case 'iot': return <IotPanel branchId={branchId} />;
       case 'incidents': return <IncidentPanel branchId={branchId} />;
+      case 'profile': return <ManagerProfilePanel branchId={branchId} />;
       default: return <OverviewPanel onNavigate={setTab} branchId={branchId} />;
     }
   };
@@ -227,7 +229,10 @@ export default function ManagerDashboard() {
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <ManagerTopbar title={NAV_ITEMS.find((n) => n.key === tab)?.label || 'Bảng điều khiển'} />
+        <ManagerTopbar 
+          title={tab === 'profile' ? 'Hồ sơ cá nhân' : (NAV_ITEMS.find((n) => n.key === tab)?.label || 'Bảng điều khiển')} 
+          onProfileClick={() => setTab('profile')} 
+        />
         <main style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
           {renderPanel()}
         </main>
