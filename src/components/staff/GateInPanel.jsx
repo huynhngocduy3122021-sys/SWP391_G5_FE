@@ -84,7 +84,7 @@ export default function GateInPanel() {
   const checkIsMonthlyOrVip = (code) => {
     const cleanCode = (code || '').trim().toUpperCase();
     if (!cleanCode) return false;
-    return cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || isMonthlyOrVipCard;
+    return cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || cleanCode.startsWith('EMP-') || isMonthlyOrVipCard;
   };
 
   const lookupCardCode = async (cleanCode) => {
@@ -94,7 +94,7 @@ export default function GateInPanel() {
       
       const matchTicket = tickets.find(t => {
         const tCode = (t.cardCode || t.parkingCard?.cardCode || '').trim().toUpperCase();
-        return tCode === cleanCode || tCode === `MONTH-${cleanCode}` || tCode === `VIP-${cleanCode}` || cleanCode === `MONTH-${tCode}` || cleanCode === `VIP-${tCode}`;
+        return tCode === cleanCode || tCode === `MONTH-${cleanCode}` || tCode === `VIP-${cleanCode}` || tCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${tCode}` || cleanCode === `VIP-${tCode}` || cleanCode === `EMP-${tCode}`;
       });
       
       if (matchTicket) {
@@ -153,7 +153,7 @@ export default function GateInPanel() {
 
       const matchVehicle = vehiclesList.find(v => {
         const vCode = (v.cardCode || v.parkingCard?.cardCode || v.rfidCard?.cardCode || '').trim().toUpperCase();
-        return vCode === cleanCode || vCode === `MONTH-${cleanCode}` || vCode === `VIP-${cleanCode}` || cleanCode === `MONTH-${vCode}` || cleanCode === `VIP-${vCode}`;
+        return vCode === cleanCode || vCode === `MONTH-${cleanCode}` || vCode === `VIP-${cleanCode}` || vCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${vCode}` || cleanCode === `VIP-${vCode}` || cleanCode === `EMP-${vCode}`;
       });
       
       if (matchVehicle) {
@@ -215,7 +215,7 @@ export default function GateInPanel() {
       }
       return;
     }
-    const isSpecial = cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || cleanCode.length >= 4;
+    const isSpecial = cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || cleanCode.startsWith('EMP-') || cleanCode.length >= 4;
     if (!isSpecial) return;
 
     const delayDebounce = setTimeout(async () => {

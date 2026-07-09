@@ -132,8 +132,9 @@ export default function AdminDashboardPage() {
     return !code.startsWith('MONTH-') && !code.startsWith('VIP-');
   });
 
-  const walkInRevenue = walkInSessions.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
-  const totalRevenue = walkInRevenue + totalCardRevenue;
+  const walkInRevenue = walkInSessions.reduce((sum, s) => sum + Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0), 0);
+  const lostCardRevenue = filteredSessions.reduce((sum, s) => sum + Number(s.penaltyFee || 0), 0);
+  const totalRevenue = walkInRevenue + totalCardRevenue + lostCardRevenue;
   
   const totalTransactions = filteredSessions.length;
   const cashlessCount = filteredSessions.filter(s => String(s.paymentMethod || '').toUpperCase() === 'VNPAY').length;
@@ -162,13 +163,20 @@ export default function AdminDashboardPage() {
         const d = new Date(now);
         d.setHours(now.getHours() - i);
         const hourStr = String(d.getHours()).padStart(2, '0') + 'h';
-        dates[hourStr] = { walkIn: 0, monthly: 0, vip: 0 };
+        dates[hourStr] = { walkIn: 0, monthly: 0, vip: 0, lostCard: 0 };
       }
       
       walkInSessions.forEach(s => {
         const hourStr = getHourKey(s.checkOutTime);
         if (dates[hourStr] !== undefined) {
-          dates[hourStr].walkIn += Number(s.totalAmount || 0);
+          dates[hourStr].walkIn += Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+        }
+      });
+
+      filteredSessions.forEach(s => {
+        const hourStr = getHourKey(s.checkOutTime);
+        if (dates[hourStr] !== undefined) {
+          dates[hourStr].lostCard += Number(s.penaltyFee || 0);
         }
       });
 
@@ -191,13 +199,20 @@ export default function AdminDashboardPage() {
       for (let i = 1; i <= numDays; i++) {
         const day = String(i).padStart(2, '0');
         const monthStr = String(month + 1).padStart(2, '0');
-        dates[`${day}/${monthStr}`] = { walkIn: 0, monthly: 0, vip: 0 };
+        dates[`${day}/${monthStr}`] = { walkIn: 0, monthly: 0, vip: 0, lostCard: 0 };
       }
 
       walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key].walkIn += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+        }
+      });
+
+      filteredSessions.forEach(s => {
+        const key = getFormatKey(s.checkOutTime);
+        if (dates[key] !== undefined) {
+          dates[key].lostCard += Number(s.penaltyFee || 0);
         }
       });
 
@@ -217,13 +232,20 @@ export default function AdminDashboardPage() {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(now.getDate() - i);
-        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0 };
+        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0, lostCard: 0 };
       }
 
       walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key].walkIn += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+        }
+      });
+
+      filteredSessions.forEach(s => {
+        const key = getFormatKey(s.checkOutTime);
+        if (dates[key] !== undefined) {
+          dates[key].lostCard += Number(s.penaltyFee || 0);
         }
       });
 
@@ -243,13 +265,20 @@ export default function AdminDashboardPage() {
       for (let i = 14; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(now.getDate() - i);
-        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0 };
+        dates[getFormatKey(d)] = { walkIn: 0, monthly: 0, vip: 0, lostCard: 0 };
       }
 
       walkInSessions.forEach(s => {
         const key = getFormatKey(s.checkOutTime);
         if (dates[key] !== undefined) {
-          dates[key].walkIn += Number(s.totalAmount || 0);
+          dates[key].walkIn += Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+        }
+      });
+
+      filteredSessions.forEach(s => {
+        const key = getFormatKey(s.checkOutTime);
+        if (dates[key] !== undefined) {
+          dates[key].lostCard += Number(s.penaltyFee || 0);
         }
       });
 
@@ -272,7 +301,8 @@ export default function AdminDashboardPage() {
       walkIn: dates[key].walkIn,
       monthly: dates[key].monthly,
       vip: dates[key].vip,
-      total: dates[key].walkIn + dates[key].monthly + dates[key].vip
+      lostCard: dates[key].lostCard,
+      total: dates[key].walkIn + dates[key].monthly + dates[key].vip + dates[key].lostCard
     }));
   };
 
@@ -342,7 +372,7 @@ export default function AdminDashboardPage() {
 
       <Row className="g-3">
         {[
-          { title: 'TỔNG DOANH THU', icon: <DollarSign size={14} color="#3b82f6" />, val: `${Number(totalRevenue || 0).toLocaleString('vi-VN')} đ`, s1: `Vãng lai: ${Number(walkInRevenue).toLocaleString('vi-VN')}đ`, s2: `Thẻ Tháng/VIP: ${Number(totalCardRevenue).toLocaleString('vi-VN')}đ` },
+          { title: 'TỔNG DOANH THU', icon: <DollarSign size={14} color="#3b82f6" />, val: `${Number(totalRevenue || 0).toLocaleString('vi-VN')} đ`, s1: `Vãng lai: ${Number(walkInRevenue).toLocaleString('vi-VN')}đ | Thẻ Tháng/VIP: ${Number(totalCardRevenue).toLocaleString('vi-VN')}đ`, s2: `Phạt mất thẻ: ${Number(lostCardRevenue).toLocaleString('vi-VN')}đ` },
           { title: 'LƯỢT XE ĐÃ THANH TOÁN', icon: <Activity size={14} color="#10b981" />, val: `${totalTransactions} giao dịch`, s1: 'Hóa đơn checkout thành công' },
           { title: 'TỶ LỆ ONLINE (VNPAY)', icon: <CreditCard size={14} color="#8b5cf6" />, val: `${cashlessRate}%`, s1: 'Còn lại: Tiền mặt/Thẻ RFID' },
           { title: 'XE ĐANG GỬI HIỆN TẠI', icon: <Users size={14} color="#ef4444" />, val: `${currentlyParkedCount} xe`, s1: `Tổng số User tài khoản: ${totalUsersCount}` }
@@ -366,7 +396,7 @@ export default function AdminDashboardPage() {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5 className="fw-bold m-0 fs-6">Biểu đồ Doanh thu phân bổ</h5>
               <ButtonGroup size="sm" className="bg-light p-1 rounded border">
-                {[{ key: 'ALL', label: 'Tất cả' }, { key: 'WALK_IN', label: 'Vãng lai' }, { key: 'CARD', label: 'Thẻ Tháng/VIP' }].map(opt => (
+                {[{ key: 'ALL', label: 'Tất cả' }, { key: 'WALK_IN', label: 'Vãng lai' }, { key: 'CARD', label: 'Thẻ Tháng/VIP' }, { key: 'LOST_CARD', label: 'Phạt mất thẻ' }].map(opt => (
                   <Button key={opt.key} variant={revenueChartType === opt.key ? 'white' : 'transparent'} className={`border-0 rounded shadow-sm ${revenueChartType === opt.key ? 'text-dark fw-bold' : 'text-muted'}`} onClick={() => setRevenueChartType(opt.key)}>{opt.label}</Button>
                 ))}
               </ButtonGroup>
@@ -378,20 +408,24 @@ export default function AdminDashboardPage() {
                   let showVal = d.total;
                   if (revenueChartType === 'WALK_IN') showVal = d.walkIn;
                   else if (revenueChartType === 'CARD') showVal = d.monthly + d.vip;
-
-                  const walkInPct = showVal > 0 && revenueChartType !== 'CARD' ? (d.walkIn / maxRevenue) * 100 : 0;
-                  const monthlyPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.monthly / maxRevenue) * 100 : 0;
-                  const vipPct = showVal > 0 && revenueChartType !== 'WALK_IN' ? (d.vip / maxRevenue) * 100 : 0;
-                  const totalPct = Math.max(5, walkInPct + monthlyPct + vipPct);
+                  else if (revenueChartType === 'LOST_CARD') showVal = d.lostCard;
+ 
+                  const walkInPct = showVal > 0 && revenueChartType !== 'CARD' && revenueChartType !== 'LOST_CARD' ? (d.walkIn / maxRevenue) * 100 : 0;
+                  const monthlyPct = showVal > 0 && revenueChartType !== 'WALK_IN' && revenueChartType !== 'LOST_CARD' ? (d.monthly / maxRevenue) * 100 : 0;
+                  const vipPct = showVal > 0 && revenueChartType !== 'WALK_IN' && revenueChartType !== 'LOST_CARD' ? (d.vip / maxRevenue) * 100 : 0;
+                  const lostCardPct = showVal > 0 && revenueChartType !== 'WALK_IN' && revenueChartType !== 'CARD' ? (d.lostCard / maxRevenue) * 100 : 0;
+                  
+                  const totalPct = Math.max(5, walkInPct + monthlyPct + vipPct + lostCardPct);
                   const labelAmount = showVal > 0 ? (showVal >= 1000000 ? `${(showVal / 1000000).toFixed(1)}M` : `${Math.round(showVal / 1000)}k`) : '';
                   
                   return (
                     <div key={index} className="flex-grow-1 d-flex flex-column align-items-center h-100 justify-content-end gap-1">
                       <span className="text-muted fw-bold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{labelAmount}</span>
                       <div className="w-100 d-flex flex-column justify-content-end rounded-top overflow-hidden" style={{ height: `${totalPct}%` }}>
-                        {revenueChartType !== 'WALK_IN' && d.vip > 0 && <div className="bg-warning w-100" style={{ height: `${(d.vip / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ VIP: ${d.vip.toLocaleString()}đ`} />}
-                        {revenueChartType !== 'WALK_IN' && d.monthly > 0 && <div className="bg-success w-100" style={{ height: `${(d.monthly / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ Tháng: ${d.monthly.toLocaleString()}đ`} />}
-                        {revenueChartType !== 'CARD' && d.walkIn > 0 && <div className="bg-primary w-100" style={{ height: `${(d.walkIn / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Khách vãng lai: ${d.walkIn.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'WALK_IN' && revenueChartType !== 'CARD' && d.lostCard > 0 && <div className="bg-danger w-100" style={{ height: `${(d.lostCard / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Phạt mất thẻ: ${d.lostCard.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'WALK_IN' && revenueChartType !== 'LOST_CARD' && d.vip > 0 && <div className="bg-warning w-100" style={{ height: `${(d.vip / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ VIP: ${d.vip.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'WALK_IN' && revenueChartType !== 'LOST_CARD' && d.monthly > 0 && <div className="bg-success w-100" style={{ height: `${(d.monthly / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Thẻ Tháng: ${d.monthly.toLocaleString()}đ`} />}
+                        {revenueChartType !== 'CARD' && revenueChartType !== 'LOST_CARD' && d.walkIn > 0 && <div className="bg-primary w-100" style={{ height: `${(d.walkIn / showVal) * 100}%`, transition: 'height 0.3s' }} title={`Khách vãng lai: ${d.walkIn.toLocaleString()}đ`} />}
                       </div>
                       <span className="text-muted fw-bold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{d.label}</span>
                     </div>
@@ -400,11 +434,12 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="d-flex justify-content-center gap-3 mt-3 small">
-              {revenueChartType !== 'CARD' && <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-primary rounded" style={{ width: 12, height: 12 }} /> Khách vãng lai</div>}
-              {revenueChartType !== 'WALK_IN' && (
+              {revenueChartType !== 'CARD' && revenueChartType !== 'LOST_CARD' && <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-primary rounded" style={{ width: 12, height: 12 }} /> Khách vãng lai</div>}
+              {revenueChartType !== 'WALK_IN' && revenueChartType !== 'LOST_CARD' && (
                 <><div className="d-flex align-items-center gap-1 text-muted"><div className="bg-success rounded" style={{ width: 12, height: 12 }} /> Thẻ Tháng</div>
                 <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-warning rounded" style={{ width: 12, height: 12 }} /> Thẻ VIP</div></>
               )}
+              {revenueChartType !== 'WALK_IN' && revenueChartType !== 'CARD' && <div className="d-flex align-items-center gap-1 text-muted"><div className="bg-danger rounded" style={{ width: 12, height: 12 }} /> Phạt mất thẻ</div>}
             </div>
           </Card>
         </Col>

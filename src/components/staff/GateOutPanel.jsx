@@ -38,12 +38,22 @@ const calculateParkingFee = (policy, durationMinutes) => {
   const basePrice = Number(policy.basePrice ?? policy.hourlyRate ?? policy.price ?? policy.firstBlockPrice ?? 0);
   const baseDuration = Number(policy.baseDurationMinutes || 60);
   const extraHourPrice = Number(policy.extraHourPrice ?? policy.hourlyRate ?? basePrice);
+  const extraBlockMinutes = Number(policy.extraDurationMinutes || 60);
 
   if (!basePrice || !durationMinutes) return 0;
-  if (durationMinutes <= baseDuration) return basePrice;
+  
+  let fee = basePrice;
+  if (durationMinutes > baseDuration) {
+    const extraMinutes = durationMinutes - baseDuration;
+    const extraBlocks = Math.ceil(extraMinutes / extraBlockMinutes);
+    fee = basePrice + extraBlocks * extraHourPrice;
+  }
 
-  const extraMinutes = durationMinutes - baseDuration;
-  return basePrice + Math.ceil(extraMinutes / 60) * extraHourPrice;
+  // Đảm bảo mức phí tối thiểu cho một phiên gửi xe là 10,000 VND (giống Backend)
+  if (fee < 10000) {
+    return 10000;
+  }
+  return fee;
 };
 
 // Màn "Cổng ra" — khớp ảnh thiết kế (Payment Summary + Captured Entry/Exit)
@@ -59,6 +69,7 @@ export default function GateOutPanel() {
   const [zones, setZones] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [lostCard, setLostCard] = useState(false);
 
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
@@ -218,24 +229,27 @@ export default function GateOutPanel() {
       const res = await staffApi.confirmExit({
         cardCode: cardCode.trim(),
         plateNumber: exitPlate.trim().toUpperCase(),
-        paymentMethod: selectedMethod
+        paymentMethod: selectedMethod,
+        lostCard: lostCard
       });
-      const paidAmount = getSessionAmount(res) ?? parkingCharge?.amount;
+      const paidAmount = getSessionAmount(res) ?? ((isPackageCard ? 0 : (parkingCharge?.amount || 0)) + (lostCard ? 50000 : 0));
 
-      // Tự động đưa thẻ về trạng thái AVAILABLE (còn trống) đối với TẤT CẢ CÁC THẺ sau khi checkout xong
+      // Tự động đưa thẻ về trạng thái AVAILABLE (còn trống) đối với TẤT CẢ CÁC THẺ sau khi checkout xong (nếu không mất thẻ)
       try {
-        const cleanCode = cardCode.trim().toUpperCase();
-        const cardsData = await managerApi.getParkingCards();
-        const parsedCards = Array.isArray(cardsData) ? cardsData : [];
-        const matchedCard = parsedCards.find(c => (c.cardCode || '').trim().toUpperCase() === cleanCode);
-        if (matchedCard) {
-          const type = cleanCode.startsWith('VIP-') ? 'VIP' : cleanCode.startsWith('MONTH-') ? 'MONTHLY' : 'REGULAR';
-          await managerApi.updateParkingCard(matchedCard.parkingCardId, {
-            cardCode: matchedCard.matchedCard || matchedCard.cardCode,
-            parkingBranchId: Number(matchedCard.parkingBranchId),
-            status: 'AVAILABLE',
-            type: type
-          });
+        if (!lostCard) {
+          const cleanCode = cardCode.trim().toUpperCase();
+          const cardsData = await managerApi.getParkingCards();
+          const parsedCards = Array.isArray(cardsData) ? cardsData : [];
+          const matchedCard = parsedCards.find(c => (c.cardCode || '').trim().toUpperCase() === cleanCode);
+          if (matchedCard) {
+            const type = cleanCode.startsWith('VIP-') ? 'VIP' : cleanCode.startsWith('MONTH-') ? 'MONTHLY' : cleanCode.startsWith('EMP-') ? 'EMPLOYEE' : 'REGULAR';
+            await managerApi.updateParkingCard(matchedCard.parkingCardId, {
+              cardCode: matchedCard.matchedCard || matchedCard.cardCode,
+              parkingBranchId: Number(matchedCard.parkingBranchId),
+              status: 'AVAILABLE',
+              type: type
+            });
+          }
         }
       } catch (err) {
         console.warn("Failed to reset card status to AVAILABLE during checkout:", err);
@@ -249,9 +263,10 @@ export default function GateOutPanel() {
         }
       }
 
-      if (selectedMethod === 'CASH' || isPackageCard) {
-        const msg = isPackageCard
-          ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
+      const isFree = isPackageCard && !lostCard;
+      if (selectedMethod === 'CASH' || isFree) {
+        const msg = isFree
+          ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : cardCode.startsWith('EMP-') ? 'Nhân viên' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
           : `Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`;
         toast.success(msg);
         setActiveSession(null);
@@ -259,6 +274,7 @@ export default function GateOutPanel() {
         setExitPlate('');
         setExitImages([]);
         setSelectedFiles([]);
+        setLostCard(false);
       } else if (selectedMethod === 'VNPAY') {
         if (res.paymentUrl) {
           toast.info('Đang mở trang thanh toán VNPay...');
@@ -320,8 +336,9 @@ export default function GateOutPanel() {
     };
   }, [activeSession, pricePolicies]);
 
-  // Kiểm tra thẻ tháng hoặc VIP (miễn phí, không cần thu tiền)
-  const isPackageCard = (cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-');
+  // Kiểm tra thẻ tháng hoặc VIP hoặc Nhân viên (miễn phí, không cần thu tiền)
+  const isPackageCard = (cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-') || (cardCode || '').startsWith('EMP-');
+  const showPaymentPanel = !isPackageCard || lostCard;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem' }}>
@@ -389,10 +406,10 @@ export default function GateOutPanel() {
                 </div>
               </div>
 
-              {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-')) && (
+              {((cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-') || (cardCode || '').startsWith('EMP-')) && (
                 <div style={{ background: 'rgba(59,130,246,0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #3b82f6', marginBottom: '1rem', color: 'var(--vin-primary)' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: 'var(--vin-primary)' }}>🎟️ THẺ THÁNG / VIP HỢP LỆ</div>
-                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Hệ thống ghi nhận thẻ tháng hoặc VIP còn hiệu lực. <strong style={{ color: 'var(--vin-text-main)' }}>Khách được miễn phí (Thanh toán = 0đ)</strong>. Không cần thu tiền!</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: 'var(--vin-primary)' }}>🎟️ THẺ ĐẶC BIỆT (THÁNG/VIP/NHÂN VIÊN)</div>
+                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>Hệ thống ghi nhận thẻ tháng, VIP hoặc nhân viên còn hiệu lực. <strong style={{ color: 'var(--vin-text-main)' }}>Khách/Nhân viên được miễn phí (Thanh toán = 0đ)</strong>. Không cần thu tiền!</div>
                 </div>
               )}
             </>
@@ -470,38 +487,57 @@ export default function GateOutPanel() {
 
           <div style={{ borderTop: '1px solid var(--vin-border)', margin: '1rem 0' }} />
 
-          {/* Ẩn phí khi là thẻ Tháng / VIP */}
-          {activeSession && !isPackageCard && (
+          {activeSession && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'rgba(251,191,36,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <input
+                type="checkbox"
+                id="lostCardCheckbox"
+                checked={lostCard}
+                onChange={(e) => setLostCard(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="lostCardCheckbox" style={{ color: '#fbbf24', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none', margin: 0 }}>
+                ⚠️ Báo mất thẻ vật lý (Phí: 50.000 đ)
+              </label>
+            </div>
+          )}
+
+          {activeSession && showPaymentPanel && (
             <div style={{ background: 'rgba(14,165,233,0.08)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(14,165,233,0.25)', marginBottom: '1rem' }}>
               <div style={{ color: 'var(--vin-primary)', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
                 💵 TẠM TÍNH PHÍ ĐẬU XE
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.75rem' }}>
-                <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', lineHeight: 1.6 }}>
-                  <div>Thời gian gửi: <strong style={{ color: 'var(--vin-text-main)' }}>{parkingCharge?.durationMinutes || 0} phút</strong></div>
-                  <div>Chính sách: <strong style={{ color: 'var(--vin-text-main)' }}>{parkingCharge?.policy?.policyName || 'Chưa có bảng giá'}</strong></div>
-                  {!parkingCharge?.isBackendAmount && parkingCharge?.policy && (
-                    <div>
-                      Giá cơ bản: {fmtMoney(parkingCharge.policy.basePrice)}đ / {parkingCharge.policy.baseDurationMinutes || 60} phút
-                    </div>
-                  )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', lineHeight: 1.6 }}>
+                <div className="d-flex justify-content-between">
+                  <span>Thời gian gửi:</span>
+                  <strong>{parkingCharge?.durationMinutes || 0} phút</strong>
                 </div>
-                <div style={{ color: 'var(--vin-text-main)', fontWeight: 900, fontSize: '1.5rem', whiteSpace: 'nowrap' }}>
-                  {parkingCharge?.amount !== null && parkingCharge?.amount !== undefined
-                    ? `${fmtMoney(parkingCharge.amount)}đ`
-                    : 'Chưa có giá'}
+                <div className="d-flex justify-content-between">
+                  <span>Chính sách:</span>
+                  <strong>{isPackageCard ? 'Thẻ tháng/VIP miễn phí' : (parkingCharge?.policy?.policyName || 'Chưa có bảng giá')}</strong>
+                </div>
+                <div className="d-flex justify-content-between">
+                  <span>Phí đỗ xe:</span>
+                  <strong style={{ color: 'var(--vin-text-main)' }}>{fmtMoney(isPackageCard ? 0 : (parkingCharge?.amount || 0))}đ</strong>
+                </div>
+                {lostCard && (
+                  <div className="d-flex justify-content-between" style={{ color: '#fbbf24' }}>
+                    <span>Phạt mất thẻ:</span>
+                    <strong>+ 50.000đ</strong>
+                  </div>
+                )}
+                <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', margin: '0.25rem 0' }} />
+                <div className="d-flex justify-content-between align-items-end">
+                  <span className="fw-bold" style={{ color: 'var(--vin-text-main)' }}>TỔNG THANH TOÁN:</span>
+                  <strong style={{ color: 'var(--vin-text-main)', fontWeight: 900, fontSize: '1.5rem' }}>
+                    {fmtMoney((isPackageCard ? 0 : (parkingCharge?.amount || 0)) + (lostCard ? 50000 : 0))}đ
+                  </strong>
                 </div>
               </div>
-              {!parkingCharge?.policy && parkingCharge?.amount === null && (
-                <div style={{ marginTop: '0.6rem', color: '#fbbf24', fontSize: '0.78rem' }}>
-                  Chưa tìm thấy chính sách giá cho loại xe này. Vui lòng cấu hình trong Manager &gt; Settings.
-                </div>
-              )}
             </div>
           )}
 
-          {/* Ẩn phương thức thanh toán khi là thẻ Tháng / VIP */}
-          {!isPackageCard && (
+          {showPaymentPanel && (
             <>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600 }}>
                 PHƯƠNG THỨC THANH TOÁN

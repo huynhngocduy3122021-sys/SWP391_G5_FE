@@ -74,7 +74,12 @@ export default function ReportsPanel({ branchId }) {
   const totalWalkInRevenue = completed.reduce((sum, s) => {
     const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
                    (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
-    return sum + (isMOrV ? 0 : Number(s.totalAmount || 0));
+    const walkInFee = isMOrV ? 0 : Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+    return sum + walkInFee;
+  }, 0);
+
+  const totalLostCardRevenue = completed.reduce((sum, s) => {
+    return sum + Number(s.penaltyFee || 0);
   }, 0);
 
   const totalTicketRevenue = tickets.reduce((sum, t) => {
@@ -82,13 +87,13 @@ export default function ReportsPanel({ branchId }) {
     return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
   }, 0);
 
-  const totalRevenue = totalWalkInRevenue + totalTicketRevenue;
+  const totalRevenue = totalWalkInRevenue + totalTicketRevenue + totalLostCardRevenue;
   
   // Only count transactions that had a payment for average amount calculation
   const payingTransactions = completed.filter(s => {
     const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
                    (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
-    return !isMOrV && s.totalAmount;
+    return (!isMOrV && s.totalAmount) || s.penaltyFee;
   });
   const transactionCount = payingTransactions.length + tickets.length;
   const averageAmount = transactionCount > 0 ? Math.round(totalRevenue / transactionCount) : 0;
@@ -97,21 +102,24 @@ export default function ReportsPanel({ branchId }) {
   const dailyGroups = completed.reduce((acc, s) => {
     const dateStr = new Date(s.checkOutTime).toLocaleDateString('vi-VN');
     if (!acc[dateStr]) {
-      acc[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, total: 0 };
+      acc[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, lostCard: 0, total: 0 };
     }
     
     const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
                    (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
-    const amt = isMOrV ? 0 : Number(s.totalAmount || 0);
-    acc[dateStr].total += amt;
+    const walkInFee = isMOrV ? 0 : Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+    const penaltyFee = Number(s.penaltyFee || 0);
+    
+    acc[dateStr].total += walkInFee + penaltyFee;
+    acc[dateStr].lostCard += penaltyFee;
     
     const vType = (s.vehicleTypeName || '').toLowerCase();
     if (vType.includes('ô tô') || vType.includes('car') || vType.includes('o to')) {
-      acc[dateStr].oto += amt;
+      acc[dateStr].oto += walkInFee;
     } else if (vType.includes('xe máy') || vType.includes('moto') || vType.includes('bike') || vType.includes('xe may')) {
-      acc[dateStr].xemay += amt;
+      acc[dateStr].xemay += walkInFee;
     } else {
-      acc[dateStr].xedien += amt;
+      acc[dateStr].xedien += walkInFee;
     }
     return acc;
   }, {});
@@ -121,7 +129,7 @@ export default function ReportsPanel({ branchId }) {
     if (dt) {
       const dateStr = new Date(dt).toLocaleDateString('vi-VN');
       if (!dailyGroups[dateStr]) {
-        dailyGroups[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, total: 0 };
+        dailyGroups[dateStr] = { time: dateStr, oto: 0, xemay: 0, xedien: 0, thethang: 0, lostCard: 0, total: 0 };
       }
       const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
       const amt = isVip ? VIP_PRICE : MONTHLY_PRICE;
@@ -227,9 +235,9 @@ export default function ReportsPanel({ branchId }) {
 
   const stats = [
     { label: 'TỔNG DOANH THU', value: loading ? '...' : fmt(totalRevenue) },
-    { label: 'TB MỖI GIAO DỊCH', value: loading ? '...' : fmt(averageAmount) },
+    { label: 'VÃNG LAI | PHẠT MẤT THẺ', value: loading ? '...' : `${fmt(totalWalkInRevenue)} | ${fmt(totalLostCardRevenue)}` },
+    { label: 'GÓI THÁNG / GÓI VIP', value: loading ? '...' : fmt(totalTicketRevenue) },
     { label: 'LƯỢT GIAO DỊCH', value: loading ? '...' : transactionCount.toLocaleString() },
-    { label: 'TĂNG TRƯỞNG', value: 'Live' },
   ];
 
   return (
@@ -400,20 +408,21 @@ export default function ReportsPanel({ branchId }) {
               <th style={{ padding: '8px' }}>Ô TÔ</th>
               <th style={{ padding: '8px' }}>XE MÁY</th>
               <th style={{ padding: '8px' }}>XE KHÁC</th>
-              <th style={{ padding: '8px' }}>THẺ THÁNG</th>
+              <th style={{ padding: '8px' }}>THẺ THÁNG/VIP</th>
+              <th style={{ padding: '8px' }}>PHẠT MẤT THẺ</th>
               <th style={{ padding: '8px', fontWeight: '700' }}>TỔNG DOANH THU</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>
+                <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>
                   Đang tải danh sách báo cáo...
                 </td>
               </tr>
             ) : sortedDays.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>
+                <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: mt.textMuted }}>
                   Chưa có dữ liệu doanh thu.
                 </td>
               </tr>
@@ -425,6 +434,7 @@ export default function ReportsPanel({ branchId }) {
                   <td style={{ padding: '8px' }}>{Number(r.xemay).toLocaleString()} đ</td>
                   <td style={{ padding: '8px' }}>{Number(r.xedien).toLocaleString()} đ</td>
                   <td style={{ padding: '8px', color: mt.warning, fontWeight: '600' }}>{Number(r.thethang || 0).toLocaleString()} đ</td>
+                  <td style={{ padding: '8px', color: '#ef4444', fontWeight: '600' }}>{Number(r.lostCard || 0).toLocaleString()} đ</td>
                   <td style={{ padding: '8px', fontWeight: 700, color: mt.primary }}>{Number(r.total).toLocaleString()} đ</td>
                 </tr>
               ))

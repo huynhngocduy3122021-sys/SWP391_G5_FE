@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import parkingApi from '../../api/parkingApi';
 
 export default function VehicleSection() {
+  const location = useLocation();
   const userId = localStorage.getItem('userId');
   
   const [vehicles, setVehicles] = useState([]);
@@ -59,7 +61,7 @@ export default function VehicleSection() {
       
       if (pkgRes) {
         const pkgList = Array.isArray(pkgRes) ? pkgRes : (pkgRes?.content || pkgRes?.data || []);
-        setPackages(pkgList.filter(p => p.active));
+        setPackages(pkgList.filter(p => p.active && (p.policyName || '').startsWith('[Gói')));
       }
 
       if (brRes) {
@@ -160,6 +162,19 @@ export default function VehicleSection() {
     setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
     setShowSubscribeModal(true);
   };
+
+  useEffect(() => {
+    if (packages.length > 0 && location.state?.autoSubscribePackage) {
+      const targetPkg = packages.find(p => 
+        String(p.pricePolicyId || p.id) === String(location.state.autoSubscribePackage.policyId || location.state.autoSubscribePackage.id)
+      );
+      if (targetPkg) {
+        handleSubscribeClick(targetPkg);
+        // Clear history state to avoid triggering on manual reload
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [packages, location.state]);
 
   const handleConfirmSubscribe = async (e) => {
     e.preventDefault();

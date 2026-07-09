@@ -23,6 +23,7 @@ import UserDashboardPage from './pages/UserDashboardPage';
 import BookingPage from './pages/BookingPage';
 import StaffEntryGate from './pages/staff/StaffEntryGate';    
 import StaffExitGate from './pages/staff/StaffExitGate';
+import StaffProfilePage from './pages/staff/StaffProfilePage';
 import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
 
 // --- Admin Portal Pages (MỚI THÊM) ---
@@ -148,6 +149,11 @@ export default function App() {
           <Route path="/staff/exit" element={
             <RoleRoute allowedRoles={[ROLES.STAFF, ROLES.MANAGER]}>
               <StaffExitGate />
+            </RoleRoute>
+          } />
+          <Route path="/staff/profile" element={
+            <RoleRoute allowedRoles={[ROLES.STAFF, ROLES.MANAGER]}>
+              <StaffProfilePage />
             </RoleRoute>
           } />
 

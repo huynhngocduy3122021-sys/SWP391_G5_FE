@@ -113,10 +113,10 @@ export default function Navbar() {
 
                 {/* Menu */}
                 <div style={{ padding: '0.5rem' }}>
-                  {[
-                    { icon: '👤', label: 'Hồ sơ của tôi', to: '/user-dashboard', tab: 'profile' },
-                    { icon: '🚗', label: 'Phương tiện & Gói cước', to: '/user-dashboard', tab: 'vehicles' },
-                  ].map((item) => (
+                   {[
+                    { icon: '👤', label: 'Hồ sơ của tôi', to: role === 'staff' ? '/staff/profile' : '/user-dashboard', tab: 'profile' },
+                    role !== 'staff' && { icon: '🚗', label: 'Phương tiện & Gói cước', to: '/user-dashboard', tab: 'vehicles' },
+                  ].filter(Boolean).map((item) => (
                     <Link key={item.label} to={item.to} state={{ activeTab: item.tab }}
                       onClick={() => setDropdownOpen(false)}
                       style={{

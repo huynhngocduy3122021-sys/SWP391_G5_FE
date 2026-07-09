@@ -54,6 +54,7 @@ const staffApi = {
       licensePlate: data.plateNumber.replace(/[^A-Za-z0-9\-.]/g, ''),
       cardCode: data.cardCode || 'UNKNOWN',
       paymentMethod: paymentMethod,
+      lostCard: !!data.lostCard
     };
     return (await API.post('/api/parking-sessions/guest/check-out', payload)).data;
   },

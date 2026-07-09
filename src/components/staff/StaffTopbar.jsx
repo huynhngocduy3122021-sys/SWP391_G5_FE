@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import managerApi from '../../api/manager';
@@ -8,6 +8,8 @@ import bookingApi from '../../api/bookingApi';
 export default function StaffTopbar({ mode, onModeChange }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   
   // Real stats state
   const [realStats, setRealStats] = useState({
@@ -56,7 +58,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
       const todayRevenue = sessions
         .filter(s => {
           const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
-                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
+                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
+                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
           return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
         })
         .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
@@ -84,9 +87,17 @@ export default function StaffTopbar({ mode, onModeChange }) {
     fetchStats();
     const statsId = setInterval(fetchStats, 10000);
 
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
     return () => {
       clearInterval(id);
       clearInterval(statsId);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -146,13 +157,53 @@ export default function StaffTopbar({ mode, onModeChange }) {
           🕐 {now.toLocaleTimeString('en-US')}
         </span>
 
-        <div
-          className="sidebar-avatar"
-          style={{ width: 32, height: 32, fontSize: '0.85rem', cursor: 'pointer' }}
-          title={fullName}
-          onClick={handleLogout}
-        >
-          {fullName.charAt(0).toUpperCase()}
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <div
+            className="sidebar-avatar"
+            style={{ width: 32, height: 32, fontSize: '0.85rem', cursor: 'pointer' }}
+            title={fullName}
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            {fullName.charAt(0).toUpperCase()}
+          </div>
+          {dropdownOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+              background: 'var(--vin-bg-card)', border: '1px solid var(--vin-border)',
+              borderRadius: 8, minWidth: 180, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              zIndex: 999, overflow: 'hidden'
+            }}>
+              <div style={{ padding: '0.5rem' }}>
+                <button onClick={() => { setDropdownOpen(false); navigate('/staff/profile'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.6rem 0.75rem', borderRadius: 6, width: '100%',
+                    background: 'transparent', border: 'none',
+                    color: 'var(--vin-text-main)', fontSize: '0.85rem', fontWeight: 500,
+                    cursor: 'pointer', textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  👤 Hồ sơ của tôi
+                </button>
+                <div style={{ borderTop: '1px solid var(--vin-border)', margin: '0.25rem 0' }} />
+                <button onClick={() => { setDropdownOpen(false); handleLogout(); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.6rem 0.75rem', borderRadius: 6, width: '100%',
+                    background: 'transparent', border: 'none',
+                    color: '#f87171', fontSize: '0.85rem', fontWeight: 500,
+                    cursor: 'pointer', textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  🚪 Đăng xuất
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

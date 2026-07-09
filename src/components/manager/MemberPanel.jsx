@@ -50,6 +50,13 @@ export default function MemberPanel({ branchId }) {
   const [submittingTicket, setSubmittingTicket] = useState(false);
   const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '' };
   const [ticketForm, setTicketForm] = useState(EMPTY_FORM);
+  const [showCreateEmpTicket, setShowCreateEmpTicket] = useState(false);
+  const [submittingEmpTicket, setSubmittingEmpTicket] = useState(false);
+  const EMPTY_EMP_FORM = { vehicleId: '', parkingCardId: '', startDate: todayISO(), endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10), licensePlateSearch: '' };
+  const [empTicketForm, setEmpTicketForm] = useState(EMPTY_EMP_FORM);
+  const [matchedEmpVehicle, setMatchedEmpVehicle] = useState(null);
+  const [newCardCodeInput, setNewCardCodeInput] = useState('');
+  const [newEmpCardCodeInput, setNewEmpCardCodeInput] = useState('');
   const RFID_TABS = [{ key: 'all', label: 'Tất cả' }, { key: 'AVAILABLE', label: 'Thẻ trống' }, { key: 'IN_USE', label: 'Đang dùng' }, { key: 'LOST', label: 'Báo mất' }, { key: 'DISABLED', label: 'Khóa' }];
 
   const fetchAll = useCallback(async () => {
@@ -92,6 +99,7 @@ export default function MemberPanel({ branchId }) {
     let code = createCardForm.cardCode.trim();
     if (createCardForm.cardType === 'MONTHLY' && !code.startsWith('MONTH-')) code = 'MONTH-' + code;
     else if (createCardForm.cardType === 'VIP' && !code.startsWith('VIP-')) code = 'VIP-' + code;
+    else if (createCardForm.cardType === 'EMPLOYEE' && !code.startsWith('EMP-')) code = 'EMP-' + code;
     setSubmittingCard(true);
     try {
       await managerApi.createParkingCard({ 
@@ -112,9 +120,10 @@ export default function MemberPanel({ branchId }) {
   const handleEditCard = async (e) => {
     e.preventDefault();
     if (!editCardForm.cardCode.trim()) return toast.warn('Nhập mã thẻ!');
-    let code = editCardForm.cardCode.trim().replace(/^(MONTH-|VIP-)/, '');
+    let code = editCardForm.cardCode.trim().replace(/^(MONTH-|VIP-|EMP-)/, '');
     if (editCardForm.cardType === 'MONTHLY') code = 'MONTH-' + code;
     else if (editCardForm.cardType === 'VIP') code = 'VIP-' + code;
+    else if (editCardForm.cardType === 'EMPLOYEE') code = 'EMP-' + code;
     setSubmittingCard(true);
     try {
       await managerApi.updateParkingCard(selectedCard.parkingCardId, { 
@@ -139,8 +148,8 @@ export default function MemberPanel({ branchId }) {
   const openEditCard = (c) => {
     setSelectedCard(c);
     const code = c.cardCode || '';
-    const isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-');
-    setEditCardForm({ cardCode: isM ? code.replace('MONTH-', '') : isV ? code.replace('VIP-', '') : code, parkingBranchId: c.parkingBranchId || '', status: c.status, cardType: isM ? 'MONTHLY' : isV ? 'VIP' : 'NORMAL' });
+    const isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-'), isE = code.startsWith('EMP-');
+    setEditCardForm({ cardCode: isM ? code.replace('MONTH-', '') : isV ? code.replace('VIP-', '') : isE ? code.replace('EMP-', '') : code, parkingBranchId: c.parkingBranchId || '', status: c.status, cardType: isM ? 'MONTHLY' : isV ? 'VIP' : isE ? 'EMPLOYEE' : 'NORMAL' });
     setShowEditCard(true);
   };
 
@@ -160,22 +169,56 @@ export default function MemberPanel({ branchId }) {
     e.preventDefault();
     if (!ticketForm.vehicleId) return toast.warn('Vui lòng tìm và chọn xe!');
     if (!ticketForm.parkingCardId) return toast.warn('Vui lòng chọn thẻ RFID!');
+    if (ticketForm.parkingCardId === 'new' && !newCardCodeInput.trim()) return toast.warn('Vui lòng nhập mã thẻ RFID mới!');
     if (!ticketForm.startDate || !ticketForm.endDate) return toast.warn('Chọn ngày hiệu lực!');
     
-    const selectedCardObj = allCards.find(c => String(c.parkingCardId) === String(ticketForm.parkingCardId));
-    const isVipCard = selectedCardObj && (selectedCardObj.cardCode || '').startsWith('VIP-');
-    const isGuest = matchedVehicle?.vehicleSource === 'GUEST';
-    
-    if (isVipCard && isGuest) return toast.error('Thẻ VIP bắt buộc chủ xe phải có tài khoản thành viên (không dành cho khách vãng lai)!');
-
-    if (isGuest) {
-      if (!ticketForm.guestName.trim()) return toast.warn('Nhập tên khách!');
-      if (!ticketForm.guestPhone.trim()) return toast.warn('Nhập số điện thoại!');
-    }
-    const payload = { vehicleId: Number(ticketForm.vehicleId), parkingCardId: Number(ticketForm.parkingCardId), startDate: new Date(ticketForm.startDate).toISOString(), endDate: new Date(ticketForm.endDate).toISOString(), status: 1, guestName: isGuest ? ticketForm.guestName.trim() : null, guestPhone: isGuest ? ticketForm.guestPhone.trim() : null };
     setSubmittingTicket(true);
     try {
+      let finalCardId = ticketForm.parkingCardId;
+      let finalCardCode = '';
+      
+      if (ticketForm.parkingCardId === 'new') {
+        let code = newCardCodeInput.trim();
+        if (!code.startsWith('MONTH-')) code = 'MONTH-' + code;
+        
+        const createdCard = await managerApi.createParkingCard({ 
+          cardCode: code, 
+          parking_branch_id: Number(cleanBranchId),
+          parkingBranchId: Number(cleanBranchId),
+          type: 'MONTHLY',
+          status: 'AVAILABLE'
+        });
+        
+        finalCardId = createdCard.parkingCardId;
+        finalCardCode = createdCard.cardCode;
+      }
+      
+      const selectedCardObj = ticketForm.parkingCardId === 'new' 
+        ? { parkingCardId: finalCardId, cardCode: finalCardCode, parkingBranchId: Number(cleanBranchId) }
+        : allCards.find(c => String(c.parkingCardId) === String(ticketForm.parkingCardId));
+        
+      const isVipCard = selectedCardObj && (selectedCardObj.cardCode || '').startsWith('VIP-');
+      const isGuest = matchedVehicle?.vehicleSource === 'GUEST';
+      
+      if (isVipCard && isGuest) return toast.error('Thẻ VIP bắt buộc chủ xe phải có tài khoản thành viên (không dành cho khách vãng lai)!');
+
+      if (isGuest) {
+        if (!ticketForm.guestName.trim()) return toast.warn('Nhập tên khách!');
+        if (!ticketForm.guestPhone.trim()) return toast.warn('Nhập số điện thoại!');
+      }
+      
+      const payload = { 
+        vehicleId: Number(ticketForm.vehicleId), 
+        parkingCardId: Number(finalCardId), 
+        startDate: new Date(ticketForm.startDate).toISOString(), 
+        endDate: new Date(ticketForm.endDate).toISOString(), 
+        status: 1, 
+        guestName: isGuest ? ticketForm.guestName.trim() : null, 
+        guestPhone: isGuest ? ticketForm.guestPhone.trim() : null 
+      };
+      
       await managerApi.createMonthlyTicket(payload);
+      
       if (selectedCardObj) {
         await managerApi.updateParkingCard(selectedCardObj.parkingCardId, {
           cardCode: selectedCardObj.cardCode,
@@ -184,10 +227,90 @@ export default function MemberPanel({ branchId }) {
           type: isVipCard ? 'VIP' : (selectedCardObj.cardCode || '').startsWith('MONTH-') ? 'MONTHLY' : 'REGULAR'
         }).catch(err => console.error("Failed to update card status:", err));
       }
+      
       toast.success('Cấp vé tháng thành công!');
-      setShowCreateTicket(false); setTicketForm(EMPTY_FORM); fetchAll();
-    } catch (err) { toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi tạo vé!')); }
-    finally { setSubmittingTicket(false); }
+      setShowCreateTicket(false); setTicketForm(EMPTY_FORM); setNewCardCodeInput(''); fetchAll();
+    } catch (err) { 
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi tạo vé!')); 
+    } finally { 
+      setSubmittingTicket(false); 
+    }
+  };
+
+  const handleSearchEmpVehicle = () => {
+    const q = empTicketForm.licensePlateSearch.trim().toUpperCase().replace(/\s/g, '');
+    if (!q) return toast.warn('Nhập biển số xe nhân viên để tìm!');
+    const found = vehicles.find(v => (v.licensePlate || '').toUpperCase().replace(/\s/g, '') === q);
+    if (!found) return toast.warn('Không tìm thấy xe!');
+    setMatchedEmpVehicle(found);
+    setEmpTicketForm(prev => ({ ...prev, vehicleId: String(found.vehicleId || found.vehiclesId || found.id) }));
+    toast.success('Tìm thấy xe: ' + found.licensePlate);
+  };
+
+  const handleCreateEmpTicket = async (e) => {
+    e.preventDefault();
+    if (!empTicketForm.vehicleId) return toast.warn('Vui lòng tìm và chọn xe nhân viên!');
+    if (!empTicketForm.parkingCardId) return toast.warn('Vui lòng chọn thẻ RFID Nhân viên!');
+    if (empTicketForm.parkingCardId === 'new' && !newEmpCardCodeInput.trim()) return toast.warn('Vui lòng nhập mã thẻ nhân viên mới!');
+    if (!empTicketForm.startDate || !empTicketForm.endDate) return toast.warn('Chọn ngày hiệu lực!');
+    
+    setSubmittingEmpTicket(true);
+    try {
+      let finalCardId = empTicketForm.parkingCardId;
+      let finalCardCode = '';
+      
+      if (empTicketForm.parkingCardId === 'new') {
+        let code = newEmpCardCodeInput.trim();
+        if (!code.startsWith('EMP-')) code = 'EMP-' + code;
+        
+        const createdCard = await managerApi.createParkingCard({ 
+          cardCode: code, 
+          parking_branch_id: Number(cleanBranchId),
+          parkingBranchId: Number(cleanBranchId),
+          type: 'REGULAR',
+          status: 'AVAILABLE'
+        });
+        
+        finalCardId = createdCard.parkingCardId;
+        finalCardCode = createdCard.cardCode;
+      }
+      
+      const selectedCardObj = empTicketForm.parkingCardId === 'new'
+        ? { parkingCardId: finalCardId, cardCode: finalCardCode, parkingBranchId: Number(cleanBranchId) }
+        : allCards.find(c => String(c.parkingCardId) === String(empTicketForm.parkingCardId));
+      
+      const payload = { 
+        vehicleId: Number(empTicketForm.vehicleId), 
+        parkingCardId: Number(finalCardId), 
+        startDate: new Date(empTicketForm.startDate).toISOString(), 
+        endDate: new Date(empTicketForm.endDate).toISOString(), 
+        status: 1, 
+        guestName: 'NHÂN VIÊN', 
+        guestPhone: 'SYSTEM' 
+      };
+      
+      await managerApi.createMonthlyTicket(payload);
+      
+      if (selectedCardObj) {
+        await managerApi.updateParkingCard(selectedCardObj.parkingCardId, {
+          cardCode: selectedCardObj.cardCode,
+          parkingBranchId: Number(selectedCardObj.parkingBranchId || cleanBranchId),
+          status: 'IN_USE',
+          type: 'REGULAR'
+        }).catch(err => console.error("Failed to update card status:", err));
+      }
+      
+      toast.success('Cấp thẻ nhân viên thành công!');
+      setShowCreateEmpTicket(false); 
+      setEmpTicketForm(EMPTY_EMP_FORM); 
+      setNewEmpCardCodeInput('');
+      setMatchedEmpVehicle(null);
+      fetchAll();
+    } catch (err) { 
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi cấp thẻ nhân viên!')); 
+    } finally { 
+      setSubmittingEmpTicket(false); 
+    }
   };
  
   const handleDeleteTicket = async (t) => {
@@ -282,11 +405,12 @@ export default function MemberPanel({ branchId }) {
     const matchQ = (c.cardCode || '').toLowerCase().includes(q) || (c.parkingBranchName || '').toLowerCase().includes(q);
     const matchT = rfidTab === 'all' || String(c.status || '').toUpperCase() === rfidTab;
     const code = c.cardCode || '';
-    const isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-'), isN = !isM && !isV;
+    const isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-'), isE = code.startsWith('EMP-'), isN = !isM && !isV && !isE;
     let matchType = true;
     if (cardTypeFilter === 'NORMAL') matchType = isN;
     else if (cardTypeFilter === 'MONTHLY') matchType = isM;
     else if (cardTypeFilter === 'VIP') matchType = isV;
+    else if (cardTypeFilter === 'EMPLOYEE') matchType = isE;
     return matchQ && matchT && matchType;
   });
 
@@ -305,7 +429,13 @@ export default function MemberPanel({ branchId }) {
     const s = String(c.status || '').toUpperCase();
     const code = String(c.cardCode || '').toUpperCase();
     const type = String(c.type || '').toUpperCase();
-    return (s === 'AVAILABLE' || s === '0' || s === '') && (code.startsWith('MONTH-') || code.startsWith('VIP-') || type === 'MONTHLY' || type === 'VIP');
+    return (s === 'AVAILABLE' || s === '0' || s === '') && (code.startsWith('MONTH-') || type === 'MONTHLY');
+  });
+
+  const availableEmployeeCards = allCards.filter(c => {
+    const s = String(c.status || '').toUpperCase();
+    const code = String(c.cardCode || '').toUpperCase();
+    return (s === 'AVAILABLE' || s === '0' || s === '') && code.startsWith('EMP-');
   });
 
   const pendingRequests = requests.filter(r => r.status === 0);
@@ -358,7 +488,7 @@ export default function MemberPanel({ branchId }) {
                 </div>
                 <div className="vr d-none d-md-block"></div>
                 <div className="d-flex gap-1">
-                  {[{ key: 'ALL', label: 'Tất cả thẻ' }, { key: 'NORMAL', label: 'Thường' }, { key: 'MONTHLY', label: 'Tháng' }, { key: 'VIP', label: 'VIP' }].map(t => (
+                  {[{ key: 'ALL', label: 'Tất cả thẻ' }, { key: 'NORMAL', label: 'Thường' }, { key: 'MONTHLY', label: 'Tháng' }, { key: 'VIP', label: 'VIP' }, { key: 'EMPLOYEE', label: 'Nhân viên' }].map(t => (
                     <Button key={t.key} size="sm" variant={cardTypeFilter === t.key ? 'primary' : 'link'} className={`text-decoration-none ${cardTypeFilter === t.key ? 'fw-bold' : 'text-muted'}`} onClick={() => setCardTypeFilter(t.key)}>{t.label}</Button>
                   ))}
                 </div>
@@ -374,12 +504,12 @@ export default function MemberPanel({ branchId }) {
                 <thead className="table-light text-muted small"><tr>{['MÃ THẺ RFID', 'CHI NHÁNH', 'LOẠI THẺ', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
                 <tbody>
                   {loading ? <tr><td colSpan={5} className="text-center py-4 text-muted">Đang tải...</td></tr> : filteredCards.length === 0 ? <tr><td colSpan={5} className="text-center py-4 text-muted">Không có thẻ nào.</td></tr> : filteredCards.map(c => {
-                    const code = c.cardCode || '', isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-'), display = isM ? code.replace('MONTH-', '') : isV ? code.replace('VIP-', '') : code, st = stColor(c.status);
+                    const code = c.cardCode || '', isM = code.startsWith('MONTH-'), isV = code.startsWith('VIP-'), isE = code.startsWith('EMP-'), display = isM ? code.replace('MONTH-', '') : isV ? code.replace('VIP-', '') : isE ? code.replace('EMP-', '') : code, st = stColor(c.status);
                     return (
                       <tr key={c.parkingCardId}>
                         <td className="fw-bold text-primary">{display}</td>
                         <td className="text-primary">{c.parkingBranchName || '—'}</td>
-                        <td><Badge bg={isM ? 'info' : isV ? 'warning' : 'primary'} text={isV ? 'dark' : 'white'}>{isM ? 'Thẻ tháng' : isV ? 'Thẻ VIP' : 'Thẻ thường'}</Badge></td>
+                        <td><Badge bg={isM ? 'info' : isV ? 'warning' : isE ? 'success' : 'primary'} text={isV ? 'dark' : 'white'}>{isM ? 'Thẻ tháng' : isV ? 'Thẻ VIP' : isE ? 'Thẻ nhân viên' : 'Thẻ thường'}</Badge></td>
                         <td className={`fw-semibold ${st.c}`}>● {st.l}</td>
                         <td>
                           <Button variant="link" size="sm" className="text-primary text-decoration-none px-1" onClick={() => openEditCard(c)}>Sửa</Button>
@@ -403,7 +533,8 @@ export default function MemberPanel({ branchId }) {
               </div>
               <div className="d-flex gap-2">
                 <Form.Control size="sm" type="text" placeholder="Biển số, tên khách..." value={ticketSearch} onChange={e => setTicketSearch(e.target.value)} style={{ width: 200 }} />
-                <Button size="sm" variant="success" className="fw-bold" onClick={() => { setTicketForm(EMPTY_FORM); setShowCreateTicket(true); }}>+ Cấp Vé Tháng</Button>
+                 <Button size="sm" variant="success" className="fw-bold text-nowrap" onClick={() => { setTicketForm({ ...EMPTY_FORM, parkingCardId: availableTicketCards.length === 0 ? 'new' : '' }); setNewCardCodeInput(''); setShowCreateTicket(true); }}>+ Cấp Vé Tháng</Button>
+                <Button size="sm" variant="info" className="fw-bold text-white text-nowrap" onClick={() => { setEmpTicketForm({ ...EMPTY_EMP_FORM, parkingCardId: availableEmployeeCards.length === 0 ? 'new' : '' }); setNewEmpCardCodeInput(''); setMatchedEmpVehicle(null); setShowCreateEmpTicket(true); }}>+ Cấp Thẻ Nhân Viên</Button>
               </div>
             </div>
             <div className="table-responsive">
@@ -483,7 +614,7 @@ export default function MemberPanel({ branchId }) {
           <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">Thêm thẻ RFID mới</Modal.Title></Modal.Header>
           <Modal.Body className="d-flex flex-column gap-3">
             <Form.Group><Form.Label className="small fw-bold text-muted">MÃ THẺ (RFID CODE)</Form.Label><Form.Control type="text" placeholder="VD: CARD-9921" value={createCardForm.cardCode} onChange={e => setCreateCardForm({ ...createCardForm, cardCode: e.target.value })} required /></Form.Group>
-            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={createCardForm.cardType} onChange={e => setCreateCardForm({ ...createCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng (MONTH-)</option><option value="VIP">Thẻ VIP (VIP-)</option></Form.Select></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={createCardForm.cardType} onChange={e => setCreateCardForm({ ...createCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng (MONTH-)</option><option value="VIP">Thẻ VIP (VIP-)</option><option value="EMPLOYEE">Thẻ nhân viên (EMP-)</option></Form.Select></Form.Group>
             <Form.Group><Form.Label className="small fw-bold text-muted">CHI NHÁNH</Form.Label><Form.Select value={createCardForm.parkingBranchId} onChange={e => setCreateCardForm({ ...createCardForm, parkingBranchId: e.target.value })} required disabled={!!cleanBranchId}><option value="">Chọn chi nhánh...</option>{branches.map(b => <option key={b.parkingBranchId} value={b.parkingBranchId}>{b.branchName || b.parkingBranchName}</option>)}</Form.Select></Form.Group>
           </Modal.Body>
           <Modal.Footer><Button variant="outline-secondary" onClick={() => setShowCreateCard(false)}>Hủy</Button><Button variant="primary" type="submit" disabled={submittingCard}>{submittingCard ? 'Đang xử lý...' : 'Lưu thẻ'}</Button></Modal.Footer>
@@ -495,7 +626,7 @@ export default function MemberPanel({ branchId }) {
           <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">Chỉnh sửa thẻ RFID</Modal.Title></Modal.Header>
           <Modal.Body className="d-flex flex-column gap-3">
             <Form.Group><Form.Label className="small fw-bold text-muted">MÃ THẺ</Form.Label><Form.Control type="text" value={editCardForm.cardCode} onChange={e => setEditCardForm({ ...editCardForm, cardCode: e.target.value })} required /></Form.Group>
-            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={editCardForm.cardType} onChange={e => setEditCardForm({ ...editCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng</option><option value="VIP">Thẻ VIP</option></Form.Select></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={editCardForm.cardType} onChange={e => setEditCardForm({ ...editCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng</option><option value="VIP">Thẻ VIP</option><option value="EMPLOYEE">Thẻ nhân viên</option></Form.Select></Form.Group>
             <Form.Group><Form.Label className="small fw-bold text-muted">CHI NHÁNH</Form.Label><Form.Select value={editCardForm.parkingBranchId} onChange={e => setEditCardForm({ ...editCardForm, parkingBranchId: e.target.value })} disabled={!!cleanBranchId}><option value="">Chọn chi nhánh...</option>{branches.map(b => <option key={b.parkingBranchId} value={b.parkingBranchId}>{b.branchName || b.parkingBranchName}</option>)}</Form.Select></Form.Group>
             <Form.Group><Form.Label className="small fw-bold text-muted">TRẠNG THÁI</Form.Label><Form.Select value={editCardForm.status} onChange={e => setEditCardForm({ ...editCardForm, status: e.target.value })}><option value="AVAILABLE">Còn trống</option><option value="IN_USE">Đang sử dụng</option><option value="LOST">Báo mất</option><option value="DISABLED">Đã khóa</option></Form.Select></Form.Group>
           </Modal.Body>
@@ -538,20 +669,140 @@ export default function MemberPanel({ branchId }) {
             <div className="bg-light border rounded p-3">
               <div className="fw-bold text-primary small mb-2">Bước {matchedVehicle?.vehicleSource === 'GUEST' ? '3' : '2'}: Chọn thẻ RFID và thời hạn</div>
               <Row className="g-3">
-                <Col md={4}><Form.Group><Form.Label className="small fw-bold text-muted">THẺ RFID *</Form.Label><Form.Select value={ticketForm.parkingCardId} onChange={e => setTicketForm(prev => ({ ...prev, parkingCardId: e.target.value }))} required><option value="">-- Chọn thẻ RFID --</option>{availableTicketCards.map(c => { const code = (c.cardCode || '').startsWith('MONTH-') ? c.cardCode.replace('MONTH-', '') : c.cardCode; return <option key={c.parkingCardId} value={String(c.parkingCardId)}>{code} (TRỐNG)</option>; })}</Form.Select></Form.Group></Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-muted">THẺ RFID *</Form.Label>
+                    <Form.Select 
+                      value={ticketForm.parkingCardId} 
+                      onChange={e => {
+                        setTicketForm(prev => ({ ...prev, parkingCardId: e.target.value }));
+                        if (e.target.value !== 'new') setNewCardCodeInput('');
+                      }} 
+                      required
+                    >
+                      {availableTicketCards.length > 0 ? (
+                        <>
+                          <option value="">-- Chọn thẻ RFID --</option>
+                          {availableTicketCards.map(c => { 
+                            const code = (c.cardCode || '').startsWith('MONTH-') ? c.cardCode.replace('MONTH-', '') : c.cardCode; 
+                            return <option key={c.parkingCardId} value={String(c.parkingCardId)}>{code} (TRỐNG)</option>; 
+                          })}
+                          <option value="new">+ Tạo thẻ mới</option>
+                        </>
+                      ) : (
+                        <option value="new">Tạo thẻ mới (Không còn thẻ trống)</option>
+                      )}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
                 <Col md={4}><Form.Group><Form.Label className="small fw-bold text-muted">NGÀY BẮT ĐẦU *</Form.Label><Form.Control type="date" value={ticketForm.startDate} onChange={e => setTicketForm(prev => ({ ...prev, startDate: e.target.value }))} required /></Form.Group></Col>
                 <Col md={4}><Form.Group><Form.Label className="small fw-bold text-muted">NGÀY KẾT THÚC *</Form.Label><Form.Control type="date" value={ticketForm.endDate} onChange={e => setTicketForm(prev => ({ ...prev, endDate: e.target.value }))} required /></Form.Group></Col>
               </Row>
+              
+              {ticketForm.parkingCardId === 'new' && (
+                <Form.Group className="mt-3">
+                  <Form.Label className="small fw-bold text-primary">MÃ THẺ RFID MỚI (Hệ thống tự tạo)</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="Nhập mã số thẻ mới (VD: 668899)" 
+                    value={newCardCodeInput} 
+                    onChange={e => setNewCardCodeInput(e.target.value)} 
+                    required 
+                  />
+                  <small className="text-muted d-block mt-1">Thẻ mới với tiền tố MONTH- sẽ tự động được thêm và gán vào vé tháng này.</small>
+                </Form.Group>
+              )}
             </div>
 
             {ticketForm.vehicleId && ticketForm.parkingCardId && (
               <div className="bg-success bg-opacity-10 border border-success rounded p-3 small text-success">
-                Xác nhận: Cấp vé cho xe {matchedVehicle?.licensePlate} → Thẻ #{ticketForm.parkingCardId}
+                Xác nhận: Cấp vé cho xe {matchedVehicle?.licensePlate} → Thẻ {ticketForm.parkingCardId === 'new' ? `mới (MONTH-${newCardCodeInput})` : `ID #${ticketForm.parkingCardId}`}
                 {matchedVehicle?.vehicleSource === 'GUEST' && ticketForm.guestName ? ' | Khách: ' + ticketForm.guestName + ' (' + ticketForm.guestPhone + ')' : matchedVehicle?.userFullName ? ' | Chủ xe: ' + matchedVehicle.userFullName : ''}
               </div>
             )}
           </Modal.Body>
           <Modal.Footer><Button variant="outline-secondary" onClick={() => setShowCreateTicket(false)}>Hủy</Button><Button variant="success" type="submit" disabled={submittingTicket || !ticketForm.vehicleId}>{submittingTicket ? 'Đang xử lý...' : 'Cấp Vé Tháng'}</Button></Modal.Footer>
+        </Form>
+      </Modal>
+
+      <Modal show={showCreateEmpTicket} onHide={() => setShowCreateEmpTicket(false)} size="lg" centered>
+        <Form onSubmit={handleCreateEmpTicket}>
+          <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">Cấp thẻ Nhân viên mới</Modal.Title></Modal.Header>
+          <Modal.Body className="d-flex flex-column gap-4">
+            <div className="bg-light border rounded p-3">
+              <div className="fw-bold text-primary small mb-2">Bước 1: Tìm xe nhân viên theo biển số</div>
+              <div className="d-flex gap-2">
+                <Form.Control type="text" placeholder="Nhập biển số xe nhân viên (VD: 30A-12345)" value={empTicketForm.licensePlateSearch} onChange={e => setEmpTicketForm(prev => ({ ...prev, licensePlateSearch: e.target.value, vehicleId: '' }))} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleSearchEmpVehicle())} />
+                <Button variant="primary" className="fw-bold text-nowrap" onClick={handleSearchEmpVehicle}>Tìm xe</Button>
+              </div>
+              {matchedEmpVehicle && (
+                <div className="bg-white border rounded p-2 mt-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <div className="fw-bold text-primary">{matchedEmpVehicle.licensePlate}</div>
+                    <div className="small text-muted">{[matchedEmpVehicle.vehicleBrand, matchedEmpVehicle.vehicleColor, matchedEmpVehicle.vehicleTypeName].filter(Boolean).join(' - ')}</div>
+                    {matchedEmpVehicle.userFullName && <div className="small text-primary mt-1">Nhân viên: {matchedEmpVehicle.userFullName}</div>}
+                  </div>
+                  <Badge bg="success">Thành viên</Badge>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-light border rounded p-3">
+              <div className="fw-bold text-primary small mb-2">Bước 2: Chọn thẻ RFID nhân viên và thời hạn</div>
+              <Row className="g-3">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-muted">THẺ NHÂN VIÊN (EMP-) *</Form.Label>
+                    <Form.Select 
+                      value={empTicketForm.parkingCardId} 
+                      onChange={e => {
+                        setEmpTicketForm(prev => ({ ...prev, parkingCardId: e.target.value }));
+                        if (e.target.value !== 'new') setNewEmpCardCodeInput('');
+                      }} 
+                      required
+                    >
+                      {availableEmployeeCards.length > 0 ? (
+                        <>
+                          <option value="">-- Chọn thẻ RFID --</option>
+                          {availableEmployeeCards.map(c => { 
+                            const code = (c.cardCode || '').startsWith('EMP-') ? c.cardCode.replace('EMP-', '') : c.cardCode; 
+                            return <option key={c.parkingCardId} value={String(c.parkingCardId)}>{code} (TRỐNG)</option>; 
+                          })}
+                          <option value="new">+ Tạo thẻ nhân viên mới</option>
+                        </>
+                      ) : (
+                        <option value="new">Tạo thẻ mới (Không còn thẻ trống)</option>
+                      )}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={4}><Form.Group><Form.Label className="small fw-bold text-muted">NGÀY BẮT ĐẦU *</Form.Label><Form.Control type="date" value={empTicketForm.startDate} onChange={e => setEmpTicketForm(prev => ({ ...prev, startDate: e.target.value }))} required /></Form.Group></Col>
+                <Col md={4}><Form.Group><Form.Label className="small fw-bold text-muted">NGÀY KẾT THÚC *</Form.Label><Form.Control type="date" value={empTicketForm.endDate} onChange={e => setEmpTicketForm(prev => ({ ...prev, endDate: e.target.value }))} required /></Form.Group></Col>
+              </Row>
+              
+              {empTicketForm.parkingCardId === 'new' && (
+                <Form.Group className="mt-3">
+                  <Form.Label className="small fw-bold text-primary">MÃ THẺ NHÂN VIÊN MỚI (Hệ thống tự tạo)</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="Nhập mã số thẻ nhân viên mới (VD: 775533)" 
+                    value={newEmpCardCodeInput} 
+                    onChange={e => setNewEmpCardCodeInput(e.target.value)} 
+                    required 
+                  />
+                  <small className="text-muted d-block mt-1">Thẻ mới với tiền tố EMP- sẽ tự động được thêm và gán cho nhân viên này.</small>
+                </Form.Group>
+              )}
+            </div>
+
+            {empTicketForm.vehicleId && empTicketForm.parkingCardId && (
+              <div className="bg-success bg-opacity-10 border border-success rounded p-3 small text-success">
+                Xác nhận: Cấp thẻ nhân viên cho xe {matchedEmpVehicle?.licensePlate} → Thẻ {empTicketForm.parkingCardId === 'new' ? `mới (EMP-${newEmpCardCodeInput})` : `ID #${empTicketForm.parkingCardId}`}
+                {matchedEmpVehicle?.userFullName ? ' | Nhân viên: ' + matchedEmpVehicle.userFullName : ''}
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer><Button variant="outline-secondary" onClick={() => setShowCreateEmpTicket(false)}>Hủy</Button><Button variant="success" type="submit" disabled={submittingEmpTicket || !empTicketForm.vehicleId}>{submittingEmpTicket ? 'Đang xử lý...' : 'Cấp Thẻ Nhân Viên'}</Button></Modal.Footer>
         </Form>
       </Modal>
     </div>

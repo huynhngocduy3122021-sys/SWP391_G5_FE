@@ -138,14 +138,19 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   // Xe đi ra hôm nay (so khớp ngày check-out)
   const checkoutsToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === today).length;
 
-  // Doanh thu hôm nay (Tính trên các xe thực hiện thanh toán và đi ra hôm nay - checkOutTime, loại trừ thẻ tháng/VIP)
+  // Doanh thu hôm nay (Tính trên các xe thực hiện thanh toán và đi ra hôm nay - checkOutTime)
   const walkInRevenueToday = sessions
     .filter(s => {
       const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
-                     (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-');
-      return s.checkOutTime && new Date(s.checkOutTime).toDateString() === today && !isMOrV && s.totalAmount;
+                     (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
+                     (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
+      return s.checkOutTime && new Date(s.checkOutTime).toDateString() === today && !isMOrV;
     })
-    .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+    .reduce((sum, s) => sum + Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0), 0);
+
+  const lostCardRevenueToday = sessions
+    .filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === today)
+    .reduce((sum, s) => sum + Number(s.penaltyFee || 0), 0);
 
   // Tính doanh thu thẻ tháng/VIP bán được hôm nay (dựa vào startDate)
   const monthlyPolicy = pricePolicies.find(p => (p.policyName || '').startsWith('[Gói Tháng]'));
@@ -161,7 +166,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
     return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
   }, 0);
 
-  const revenueToday = walkInRevenueToday + ticketRevenueToday;
+  const revenueToday = walkInRevenueToday + ticketRevenueToday + lostCardRevenueToday;
 
   // Cảnh báo: incidents chưa resolve
   const openIncidents = incidents.filter(i => i.status === 'PENDING' || i.status === 'IN_PROGRESS').length;
@@ -184,7 +189,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   }).length;
 
   const STATS = [
-    { label: 'DOANH THU HÔM NAY', value: fmt(revenueToday) + 'đ', color: mt.success },
+    { label: 'DOANH THU HÔM NAY', value: fmt(revenueToday) + 'đ', sub: `Vãng lai: ${fmt(walkInRevenueToday)}đ | Gói cước: ${fmt(ticketRevenueToday)}đ | Phạt mất thẻ: ${fmt(lostCardRevenueToday)}đ`, color: mt.success },
     { label: 'LƯỢT VÀO / RA',     value: `${checkinsToday} / ${checkoutsToday}`, sub: 'Hôm nay', color: mt.warning },
     { label: 'TỶ LỆ LẤP ĐẦY',    value: `${occupancy}%`, sub: `${activeVehicles} / ${totalSlots} chỗ`, color: mt.text },
     { label: 'THẺ THÁNG / VIP',   value: String(monthlyCardsCount + vipCardsCount), sub: `${monthlyCardsCount} Tháng | ${vipCardsCount} VIP (Còn hiệu lực)`, color: mt.primary },
@@ -393,8 +398,8 @@ export default function OverviewPanel({ onNavigate, branchId }) {
                   <td style={{ padding: '8px' }}>{s.vehicleTypeName || '—'}</td>
                   <td style={{ padding: '8px', color: mt.textMuted }}>{s.parkingBranchName || '—'}</td>
                   <td style={{ padding: '8px', fontWeight: 600 }}>
-                    {((s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-')) 
-                      ? '0đ (Thẻ tháng/VIP)' 
+                    {((s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') || (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-')) 
+                      ? '0đ (Vé đặc biệt)' 
                       : (s.totalAmount ? fmt(s.totalAmount) + 'đ' : '—')}
                   </td>
                   <td style={{ padding: '8px', color: statusColor, fontWeight: 600 }}>{statusLabel}</td>
