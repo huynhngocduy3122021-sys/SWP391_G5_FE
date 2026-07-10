@@ -336,8 +336,8 @@ export default function PricingPage() {
                     <div className="bg-light rounded-3 p-3 mb-4">
                       {s.mP ? (
                         <>
-                          <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.mP.toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
-                          <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63'}}>{s.cP.toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                          <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63'}}>{(s.mP || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                          <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63'}}>{(s.price || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
                         </>
                       ) : (
                         <div className="d-flex justify-content-between align-items-center">

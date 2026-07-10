@@ -9,6 +9,7 @@ export default function SearchPage() {
   const { user } = useAuth();
   const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [prices, setPrices] = useState({ carHourly: 30000, motorHourly: 5000, carMonthly: 2000000, motorMonthly: 200000 });
   const location = useLocation();
   const initialQuery = location.state?.searchQuery || '';
 
@@ -37,15 +38,49 @@ export default function SearchPage() {
   useEffect(() => {
     const fetchLots = async () => {
       try {
-        const branchesData = await parkingApi.getAllBranches();
+        const [branchesData, policiesData] = await Promise.all([
+          parkingApi.getAllBranches(),
+          parkingApi.getAllPricePolicies().catch(() => [])
+        ]);
+
         const branches = Array.isArray(branchesData) ? branchesData : (branchesData?.content || branchesData?.data || []);
         if (branches.length > 0) {
           setLots(branches.map(mapBranchToParkingLot));
         } else {
           setLots(PARKING_LOTS);
         }
+
+        const policies = Array.isArray(policiesData) ? policiesData : (policiesData?.content || policiesData?.data || []);
+        const activeHourly = policies.filter(p => p.active && !p.policyName?.includes('[Gói'));
+        const activeMonthly = policies.filter(p => p.active && p.policyName?.includes('[Gói'));
+
+        let cHourly = 30000, mHourly = 5000, cMonthly = 2000000, mMonthly = 200000;
+
+        activeHourly.forEach(p => {
+          const name = p.policyName?.toLowerCase() || '';
+          const type = p.vehicleType?.typeName?.toLowerCase() || '';
+          const isCar = name.includes('ô tô') || type.includes('car');
+          const isMotor = name.includes('xe máy') || type.includes('motor');
+          const isStandard = name.includes('tiêu chuẩn') || (!name.includes('qua đêm') && !name.includes('tháng'));
+
+          if (isCar && isStandard) cHourly = p.basePrice || cHourly;
+          if (isMotor && isStandard) mHourly = p.basePrice || mHourly;
+        });
+
+        activeMonthly.forEach(p => {
+          const name = p.policyName?.toLowerCase() || '';
+          const type = p.vehicleType?.typeName?.toLowerCase() || '';
+          const isCar = name.includes('ô tô') || type.includes('car');
+          const isMotor = name.includes('xe máy') || type.includes('motor');
+
+          if (isCar) cMonthly = p.basePrice || cMonthly;
+          if (isMotor) mMonthly = p.basePrice || mMonthly;
+        });
+
+        setPrices({ carHourly: cHourly, motorHourly: mHourly, carMonthly: cMonthly, motorMonthly: mMonthly });
+
       } catch (error) {
-        console.error('Error fetching branches in SearchPage:', error);
+        console.error('Error fetching data in SearchPage:', error);
         setLots(PARKING_LOTS);
       } finally {
         setLoading(false);
@@ -80,13 +115,13 @@ export default function SearchPage() {
       toast.info('Vui lòng đăng nhập để đặt chỗ!');
       navigate('/auth');
     } else {
-      navigate('/booking', { 
-        state: { 
-          lot, 
-          entryTime: search.dateFrom, 
+      navigate('/booking', {
+        state: {
+          lot,
+          entryTime: search.dateFrom,
           exitTime: search.dateTo,
           selectedVehicle: search.vehicle.includes('Xe máy') ? 'Xe máy' : 'Ô tô'
-        } 
+        }
       });
     }
   };
@@ -97,14 +132,14 @@ export default function SearchPage() {
     // 1. Keyword search (Location matches name, area, address)
     if (keyword) {
       const matchKeyword = lot.name.toLowerCase().includes(keyword) ||
-                           lot.area.toLowerCase().includes(keyword) ||
-                           lot.address.toLowerCase().includes(keyword);
+        lot.area.toLowerCase().includes(keyword) ||
+        lot.address.toLowerCase().includes(keyword);
       if (!matchKeyword) return false;
     }
 
     // 2. Price filter (differentiation for Car vs Motorcycle)
     const isMotorcycle = appliedSearch.vehicle.toLowerCase().includes('xe máy');
-    const priceNum = isMotorcycle ? 5000 : (parseInt(lot.price.replace(/[^0-9]/g, ''), 10) || 30000);
+    const priceNum = isMotorcycle ? prices.motorHourly : prices.carHourly;
     if (priceNum < minPrice || priceNum > maxPrice) return false;
 
     // 3. Amenities filter
@@ -152,16 +187,6 @@ export default function SearchPage() {
               />
             </div>
 
-            {/* Ngày nhận xe */}
-            <div className="flex-grow-1 px-3 py-2 w-100" style={{ borderRight: '1px solid #e2e8f0' }}>
-              <div className="text-muted small mb-1">📅 Ngày nhận xe</div>
-              <input
-                type="datetime-local"
-                className="form-control border-0 p-0 fw-medium shadow-none bg-transparent"
-                value={search.dateFrom}
-                onChange={e => setSearch({ ...search, dateFrom: e.target.value })}
-              />
-            </div>
 
             {/* Phương tiện */}
             <div className="flex-grow-1 px-3 py-2 w-100">
@@ -225,21 +250,21 @@ export default function SearchPage() {
               <div className="d-flex align-items-center gap-2 mb-4">
                 <div>
                   <small className="text-muted d-block mb-1">TỐI THIỂU</small>
-                  <input 
-                    type="number" 
-                    className="form-control form-control-sm text-dark bg-light border" 
-                    value={minPrice} 
-                    onChange={e => setMinPrice(Number(e.target.value) || 0)} 
+                  <input
+                    type="number"
+                    className="form-control form-control-sm text-dark bg-light border"
+                    value={minPrice}
+                    onChange={e => setMinPrice(Number(e.target.value) || 0)}
                   />
                 </div>
                 <span className="mt-4 text-muted">-</span>
                 <div>
                   <small className="text-muted d-block mb-1">TỐI ĐA</small>
-                  <input 
-                    type="number" 
-                    className="form-control form-control-sm text-dark bg-light border" 
-                    value={maxPrice} 
-                    onChange={e => setMaxPrice(Number(e.target.value) || 0)} 
+                  <input
+                    type="number"
+                    className="form-control form-control-sm text-dark bg-light border"
+                    value={maxPrice}
+                    onChange={e => setMaxPrice(Number(e.target.value) || 0)}
                   />
                 </div>
               </div>
@@ -247,9 +272,9 @@ export default function SearchPage() {
               <h6 className="fw-bold mb-3 text-dark">Tiện ích bãi đỗ</h6>
               <div className="d-flex flex-column gap-2 mb-4 text-dark">
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
                     id="fEv"
                     checked={amenities.ev}
                     onChange={e => setAmenities({ ...amenities, ev: e.target.checked })}
@@ -257,30 +282,30 @@ export default function SearchPage() {
                   <label className="form-check-label cursor-pointer" htmlFor="fEv">Sạc xe điện (EV)</label>
                 </div>
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
-                    id="fSecurity" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="fSecurity"
                     checked={amenities.security}
                     onChange={e => setAmenities({ ...amenities, security: e.target.checked })}
                   />
                   <label className="form-check-label cursor-pointer" htmlFor="fSecurity">Camera an ninh 24/7</label>
                 </div>
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
-                    id="fCovered" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="fCovered"
                     checked={amenities.covered}
                     onChange={e => setAmenities({ ...amenities, covered: e.target.checked })}
                   />
                   <label className="form-check-label cursor-pointer" htmlFor="fCovered">Mái che ngoài trời</label>
                 </div>
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
-                    id="fPrebook" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="fPrebook"
                     checked={amenities.prebook}
                     onChange={e => setAmenities({ ...amenities, prebook: e.target.checked })}
                   />
@@ -291,20 +316,20 @@ export default function SearchPage() {
               <h6 className="fw-bold mb-3 text-dark">Chất lượng bãi đỗ</h6>
               <div className="d-flex flex-column gap-2 text-dark">
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
-                    id="rFive" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="rFive"
                     checked={ratings.five}
                     onChange={e => setRatings({ ...ratings, five: e.target.checked })}
                   />
                   <label className="form-check-label text-warning cursor-pointer" htmlFor="rFive">★★★★★ (5 sao)</label>
                 </div>
                 <div className="form-check">
-                  <input 
-                    className="form-check-input cursor-pointer" 
-                    type="checkbox" 
-                    id="rFour" 
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="rFour"
                     checked={ratings.four}
                     onChange={e => setRatings({ ...ratings, four: e.target.checked })}
                   />
@@ -336,8 +361,8 @@ export default function SearchPage() {
                 <div style={{ fontSize: '3rem' }}>🔍</div>
                 <h5 className="text-muted mt-3">Không tìm thấy bãi đỗ phù hợp</h5>
                 <p className="text-muted small">Thử tìm với từ khóa khác như "Quận 1", "Hà Nội", "Landmark" hoặc điều chỉnh bộ lọc.</p>
-                <button 
-                  className="btn btn-outline-primary mt-2" 
+                <button
+                  className="btn btn-outline-primary mt-2"
                   onClick={() => {
                     setSearch({ location: '', dateFrom: '', dateTo: '', vehicle: 'Ô tô (1 phương tiện)' });
                     setAppliedSearch({ location: '', dateFrom: '', dateTo: '', vehicle: 'Ô tô (1 phương tiện)' });
@@ -354,9 +379,7 @@ export default function SearchPage() {
               <div className="d-flex flex-column gap-4">
                 {filtered.map(lot => {
                   const isMotorcycle = appliedSearch.vehicle.toLowerCase().includes('xe máy');
-                  const hourlyPriceLabel = isMotorcycle ? "5.000đ" : lot.price;
-                  const monthlyPriceLabel = isMotorcycle ? "200.000đ" : lot.monthlyPrice;
-                  
+
                   return (
                     <div key={lot.id} className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
                       <div className="row g-0">
@@ -395,21 +418,28 @@ export default function SearchPage() {
 
                               <div className="col-sm-4 text-end d-flex flex-column justify-content-end ps-sm-3 mt-3 mt-sm-0">
 
-                                <div className="mt-4 text-dark">
-                                  <div className="d-flex align-items-center justify-content-end gap-2 mb-1">
-                                    <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{hourlyPriceLabel}</h4>
+                                <div className="mt-4 text-dark d-flex flex-column align-items-sm-end">
+                                  <div className="d-flex flex-column gap-3 mb-3 w-100 text-end">
+                                    <div className="d-flex flex-column align-items-end">
+                                      <div className="fw-bold" style={{ color: '#164e63', fontSize: '1.1rem' }}>
+                                        Ô tô: {prices.carHourly.toLocaleString('vi-VN')}đ
+                                      </div>
+                                      <div className="text-muted small" style={{ fontSize: '0.85rem' }}>Gói tháng: {prices.carMonthly.toLocaleString('vi-VN')}đ</div>
+                                    </div>
+                                    <div className="d-flex flex-column align-items-end">
+                                      <div className="fw-bold" style={{ color: '#10b981', fontSize: '1.1rem' }}>
+                                        Xe máy: {prices.motorHourly.toLocaleString('vi-VN')}đ
+                                      </div>
+                                      <div className="text-muted small" style={{ fontSize: '0.85rem' }}>Gói tháng: {prices.motorMonthly.toLocaleString('vi-VN')}đ</div>
+                                    </div>
                                   </div>
-                                  <div className="text-muted small mt-1" style={{ fontSize: '0.75rem' }}>
-                                    {isMotorcycle ? "Giá vé ban ngày cho xe máy" : "Giá cho 1 giờ sử dụng"}
-                                  </div>
-                                  <div className="fw-bold text-dark small mt-1">Gói tháng: {monthlyPriceLabel}</div>
-                                  <button 
-                                    type="button" 
+                                  <button
+                                    type="button"
                                     onClick={() => !isMotorcycle && handleBooking(lot)}
                                     className={`btn w-100 fw-bold shadow-sm ${isMotorcycle ? 'btn-secondary text-white' : 'text-white'}`}
                                     disabled={isMotorcycle}
-                                    style={{ 
-                                      backgroundColor: isMotorcycle ? '#cbd5e1' : '#3b82f6', 
+                                    style={{
+                                      backgroundColor: isMotorcycle ? '#cbd5e1' : '#3b82f6',
                                       border: 'none',
                                       cursor: isMotorcycle ? 'not-allowed' : 'pointer'
                                     }}

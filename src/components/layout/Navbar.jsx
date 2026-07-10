@@ -116,6 +116,7 @@ export default function Navbar() {
                    {[
                     { icon: '👤', label: 'Hồ sơ của tôi', to: role === 'staff' ? '/staff/profile' : '/user-dashboard', tab: 'profile' },
                     role !== 'staff' && { icon: '🚗', label: 'Phương tiện & Gói cước', to: '/user-dashboard', tab: 'vehicles' },
+                    role !== 'staff' && { icon: '📅', label: 'Lịch sử giữ chỗ', to: '/user-dashboard', tab: 'bookings' },
                   ].filter(Boolean).map((item) => (
                     <Link key={item.label} to={item.to} state={{ activeTab: item.tab }}
                       onClick={() => setDropdownOpen(false)}
