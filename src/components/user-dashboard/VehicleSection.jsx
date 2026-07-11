@@ -3,6 +3,15 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import parkingApi from '../../api/parkingApi';
 
+const translateType = (type) => {
+  if (!type) return 'Không rõ';
+  const t = type.toLowerCase();
+  if (t.includes('car')) return 'Ô tô';
+  if (t.includes('motor') || t.includes('moto')) return 'Xe máy, Xe máy điện';
+  if (t.includes('bike') || t.includes('bicycle')) return 'Xe đạp, Xe đạp điện';
+  return type;
+};
+
 export default function VehicleSection() {
   const location = useLocation();
   const userId = localStorage.getItem('userId');
@@ -11,6 +20,8 @@ export default function VehicleSection() {
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [packages, setPackages] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [myTickets, setMyTickets] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   
   // Modal states
@@ -40,16 +51,24 @@ export default function VehicleSection() {
     if (!userId) return;
     setLoading(true);
     try {
-      const [vehRes, typeRes, pkgRes, brRes] = await Promise.all([
+      const [vehRes, typeRes, pkgRes, brRes, ticketsRes, reqsRes] = await Promise.all([
         parkingApi.getAllVehicles().catch(() => []),
         parkingApi.getAllVehicleTypes().catch(() => []),
         parkingApi.getAllPricePolicies().catch(() => []),
-        parkingApi.getAllBranches().catch(() => [])
+        parkingApi.getAllBranches().catch(() => []),
+        parkingApi.getMyMonthlyTickets().catch(() => []),
+        parkingApi.getMyMonthlyTicketRequests().catch(() => [])
       ]);
 
       const allVehiclesList = Array.isArray(vehRes) ? vehRes : (vehRes?.content || vehRes?.data || []);
       const userVehicles = allVehiclesList.filter(v => String(v.userId) === String(userId) && !v.deleted);
       setVehicles(userVehicles);
+
+      const parsedTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || ticketsRes?.data || []);
+      setMyTickets(parsedTickets);
+
+      const parsedReqs = Array.isArray(reqsRes) ? reqsRes : (reqsRes?.content || reqsRes?.data || []);
+      setMyRequests(parsedReqs);
 
       if (typeRes) {
         const typeList = Array.isArray(typeRes) ? typeRes : (typeRes?.content || typeRes?.data || []);
@@ -272,29 +291,44 @@ export default function VehicleSection() {
             </div>
           ) : (
             <div className="row g-3 mb-5">
-              {vehicles.map((v) => (
-                <div className="col-md-6" key={v.vehicleId}>
-                  <div className="card border p-3 rounded-4 h-100 shadow-sm" style={{ borderColor: '#e2e8f0' }}>
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <div className="bg-light rounded p-2 text-secondary">
-                        {v.vehicleTypeName?.toLowerCase().includes('máy') || v.vehicleTypeName?.toLowerCase().includes('moto') ? '🛵' : '🚙'}
+              {vehicles.map((v) => {
+                const activeTicket = myTickets.find(t => String(t.vehicleId) === String(v.vehicleId || v.id) && (t.status === 1 || t.status === true));
+                const pendingReq = myRequests.find(r => String(r.vehicle?.vehicleId || r.vehicle?.id || r.vehicleId) === String(v.vehicleId || v.id) && r.status === 0);
+                
+                return (
+                  <div className="col-md-6" key={v.vehicleId}>
+                    <div className="card border p-3 rounded-4 h-100 shadow-sm" style={{ borderColor: '#e2e8f0' }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div className="bg-light rounded p-2 text-secondary">
+                          {v.vehicleTypeName?.toLowerCase().includes('máy') || v.vehicleTypeName?.toLowerCase().includes('moto') ? '🛵' : '🚙'}
+                        </div>
+                        {activeTicket ? (
+                           <span className="badge rounded-pill bg-success text-white px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                             ✓ Đã có thẻ tháng
+                           </span>
+                        ) : pendingReq ? (
+                           <span className="badge rounded-pill bg-warning text-dark px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                             ⏳ Đang chờ duyệt gói
+                           </span>
+                        ) : (
+                           <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                             Chưa có vé tháng
+                           </span>
+                        )}
                       </div>
-                      <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" style={{ fontSize: '0.7rem' }}>
-                        ● Đã xác minh
-                      </span>
-                    </div>
-                    <div className="mb-3 mt-2">
-                      <div className="text-muted small">{v.vehicleBrand || 'Hãng xe'} {v.vehicleColor ? `(${v.vehicleColor})` : ''}</div>
-                      <h4 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px', color: '#164e63' }}>{v.licensePlate}</h4>
-                      <div className="text-muted small mt-1">{v.vehicleTypeName || 'Phương tiện'} • Đang hoạt động</div>
-                    </div>
-                    <div className="mt-auto border-top pt-2 d-flex justify-content-between">
-                      <button className="btn btn-link text-danger text-decoration-none p-0 fw-bold small" onClick={() => handleDelete(v.vehicleId)}>Xóa</button>
-                      <button className="btn btn-link text-decoration-none p-0 fw-bold small" style={{ color: '#164e63' }} onClick={() => handleOpenEdit(v)}>Chỉnh sửa</button>
+                      <div className="mb-3 mt-2">
+                        <div className="text-muted small">{v.vehicleBrand || 'Hãng xe'} {v.vehicleColor ? `(${v.vehicleColor})` : ''}</div>
+                        <h4 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px', color: '#164e63' }}>{v.licensePlate}</h4>
+                        <div className="text-muted small mt-1">{translateType(v.vehicleTypeName) || 'Phương tiện'} {activeTicket ? ` • Thẻ: ${activeTicket.parkingCard?.cardCode || activeTicket.cardCode || 'Không rõ'}` : ' • Đang hoạt động'}</div>
+                      </div>
+                      <div className="mt-auto border-top pt-2 d-flex justify-content-between">
+                        <button className="btn btn-link text-danger text-decoration-none p-0 fw-bold small" onClick={() => handleDelete(v.vehicleId)}>Xóa</button>
+                        <button className="btn btn-link text-decoration-none p-0 fw-bold small" style={{ color: '#164e63' }} onClick={() => handleOpenEdit(v)}>Chỉnh sửa</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -319,7 +353,7 @@ export default function VehicleSection() {
                       <div>
                         <h6 className="fw-bold text-dark m-0">{pkg.policyName}</h6>
                         <small className="text-muted">
-                          Phương tiện áp dụng: <strong>{pkg.vehicleType?.typeName}</strong> • Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
+                          Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
                         </small>
                       </div>
                     </div>
@@ -440,7 +474,6 @@ export default function VehicleSection() {
             
             <div className="mb-4 bg-light p-3 rounded-3 border">
               <h6 className="fw-bold text-primary mb-1">{selectedPackage?.policyName}</h6>
-              <div className="text-muted small mb-2">Phương tiện áp dụng: {selectedPackage?.vehicleType?.typeName}</div>
               <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
             </div>
 

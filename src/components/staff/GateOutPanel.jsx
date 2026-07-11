@@ -70,6 +70,13 @@ export default function GateOutPanel() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [lostCard, setLostCard] = useState(false);
+  const [timeOffset, setTimeOffset] = useState(() => Number(localStorage.getItem('demoTimeOffset') || 0));
+
+  useEffect(() => {
+    const handleTimeChange = () => setTimeOffset(Number(localStorage.getItem('demoTimeOffset') || 0));
+    window.addEventListener('timeOffsetChanged', handleTimeChange);
+    return () => window.removeEventListener('timeOffsetChanged', handleTimeChange);
+  }, []);
 
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
@@ -153,7 +160,9 @@ export default function GateOutPanel() {
     }
     setSearching(true);
     try {
-      const session = await staffApi.getActiveSessionByCardCode(cardCode.trim());
+      const tzOffset = new Date().getTimezoneOffset() * 60000;
+      const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1);
+      const session = await staffApi.getActiveSessionByCardCode(cardCode.trim(), simulatedTime);
       setActiveSession(session);
       setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
       
@@ -176,7 +185,9 @@ export default function GateOutPanel() {
     }
     setSearching(true);
     try {
-      const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim());
+      const tzOffset = new Date().getTimezoneOffset() * 60000;
+      const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1);
+      const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim(), simulatedTime);
       setActiveSession(session);
       setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
       
@@ -226,11 +237,15 @@ export default function GateOutPanel() {
         return;
       }
 
+      const tzOffset = new Date().getTimezoneOffset() * 60000;
+      const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1);
+
       const res = await staffApi.confirmExit({
         cardCode: cardCode.trim(),
         plateNumber: exitPlate.trim().toUpperCase(),
         paymentMethod: selectedMethod,
-        lostCard: lostCard
+        lostCard: lostCard,
+        time: simulatedTime
       });
       const paidAmount = getSessionAmount(res) ?? ((isPackageCard ? 0 : (parkingCharge?.amount || 0)) + (lostCard ? 50000 : 0));
 
@@ -304,8 +319,9 @@ export default function GateOutPanel() {
     if (!activeSession) return null;
 
     const checkIn = activeSession.checkInTime ? new Date(activeSession.checkInTime) : null;
+    const simulatedNow = Date.now() + timeOffset;
     const durationMinutes = checkIn && !Number.isNaN(checkIn.getTime())
-      ? Math.max(1, Math.ceil((Date.now() - checkIn.getTime()) / 60000))
+      ? Math.max(1, Math.ceil((simulatedNow - checkIn.getTime()) / 60000))
       : 0;
 
     const sessionAmount = getSessionAmount(activeSession);
@@ -334,7 +350,7 @@ export default function GateOutPanel() {
       policy: matchedPolicy,
       isBackendAmount: sessionAmount !== null,
     };
-  }, [activeSession, pricePolicies]);
+  }, [activeSession, pricePolicies, timeOffset]);
 
   // Kiểm tra thẻ tháng hoặc VIP hoặc Nhân viên (miễn phí, không cần thu tiền)
   const isPackageCard = (cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-') || (cardCode || '').startsWith('EMP-');

@@ -511,22 +511,7 @@ export default function ProfileSection() {
           </div>
         </div>
       )}
-      {/* Temporary Debug Info */}
-      <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 12 }}>
-        <h6 className="fw-bold text-dark mb-2">🔎 Thông tin Gỡ lỗi Bãi xe (Debug Info):</h6>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
-          <div><strong>Tài khoản ID:</strong> {userId}</div>
-          <div><strong>Số lượng phương tiện của bạn:</strong> {vehicles.length} (Biển số: {vehicles.map(v => v.licensePlate).join(', ')})</div>
-          <div><strong>Số vé tháng nhận được:</strong> {rawTickets.length}</div>
-          <div><strong>Có thẻ đỗ xe hợp lệ:</strong> {residentCard ? "CÓ" : "KHÔNG"}</div>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#475569', marginBottom: 4 }}>Dữ liệu vé đỗ xe thô từ API:</div>
-          <pre style={{ fontSize: '0.75rem', background: '#1e293b', color: '#f8fafc', padding: '10px', borderRadius: 8, overflow: 'auto', maxHeight: '180px' }}>
-            {JSON.stringify(rawTickets, null, 2)}
-          </pre>
-        </div>
-      </div>
+
     </div>
   );
 }

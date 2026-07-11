@@ -288,11 +288,15 @@ export default function GateInPanel() {
       }
 
       let parkingSessionId;
+      const timeOffset = Number(localStorage.getItem('demoTimeOffset') || 0);
+      const tzOffset = new Date().getTimezoneOffset() * 60000;
+      const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1); // e.g. 2026-07-11T11:24:54.123
+
       if (isBooking) {
-        const checkInResult = await parkingApi.checkInBooking(bookingCode.trim(), cardCode.trim());
+        const checkInResult = await parkingApi.checkInBooking(bookingCode.trim(), cardCode.trim(), simulatedTime);
         parkingSessionId = checkInResult.parkingSessionId;
       } else {
-        const checkInResult = await staffApi.confirmEntry({ licensePlate: licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''), vehicleTypeId: Number(vehicleTypeId), cardCode: cardCode.trim(), vehicleColor: vehicleColor.trim(), vehicleBrand: vehicleBrand.trim() });
+        const checkInResult = await staffApi.confirmEntry({ licensePlate: licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''), vehicleTypeId: Number(vehicleTypeId), cardCode: cardCode.trim(), vehicleColor: vehicleColor.trim(), vehicleBrand: vehicleBrand.trim(), time: simulatedTime });
         parkingSessionId = checkInResult.parkingSessionId;
       }
 
