@@ -7,16 +7,18 @@ import BookingPanel from './BookingPanel';
 import MemberPanel from './MemberPanel';
 import IotPanel from './IotPanel';
 import ManagerProfilePanel from './ManagerProfilePanel';
+import ReportsPanel from './ReportsPanel';
 import { mt } from './managerTheme';
 import authApi from '../../api/authApi';
 
 const NAV_ITEMS = [
-  { key: 'overview', label: 'Bảng điều khiển', icon: '\u25A6' },
-  { key: 'bookings', label: 'Quản lý Booking', icon: '\u2637' },
-  { key: 'members', label: 'Thẻ Thành viên', icon: '\u25EB' },
-  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '\u25A3' },
-  { key: 'iot', label: 'Lịch sử giữ xe', icon: '\u25C9' },
-  { key: 'incidents', label: 'Quản lý Sự cố', icon: '\u26A0' },
+  { key: 'overview', label: 'Bảng điều khiển', icon: '▦' },
+  { key: 'reports', label: 'Báo cáo doanh thu', icon: '📊' },
+  { key: 'bookings', label: 'Quản lý Booking', icon: '☷' },
+  { key: 'members', label: 'Thẻ Thành viên', icon: '◫' },
+  { key: 'zones', label: 'Sơ đồ bãi xe', icon: '▢' },
+  { key: 'iot', label: 'Lịch sử giữ xe', icon: '◉' },
+  { key: 'incidents', label: 'Quản lý Sự cố', icon: '⚠' },
 ];
 
 export default function ManagerDashboard() {
@@ -116,6 +118,7 @@ export default function ManagerDashboard() {
 
   const renderPanel = () => {
     switch (tab) {
+      case 'reports': return <ReportsPanel branchId={branchId} />;
       case 'bookings': return <BookingPanel branchId={branchId} />;
       case 'members': return <MemberPanel branchId={branchId} />;
       case 'zones': return <ZoneOverviewPanel branchId={branchId} />;

@@ -48,7 +48,7 @@ export default function MemberPanel({ branchId }) {
   const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [submittingTicket, setSubmittingTicket] = useState(false);
-  const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '' };
+  const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '', requestId: null };
   const [ticketForm, setTicketForm] = useState(EMPTY_FORM);
   const [showCreateEmpTicket, setShowCreateEmpTicket] = useState(false);
   const [submittingEmpTicket, setSubmittingEmpTicket] = useState(false);
@@ -225,6 +225,10 @@ export default function MemberPanel({ branchId }) {
         }).catch(err => console.error("Failed to update card status:", err));
       }
       
+      if (ticketForm.requestId && managerApi.updateMonthlyTicketRequestStatus) {
+        await managerApi.updateMonthlyTicketRequestStatus(ticketForm.requestId, 1).catch(e => console.error("Failed to update request status:", e));
+      }
+      
       toast.success('Cấp vé tháng thành công!');
       setShowCreateTicket(false); setTicketForm(EMPTY_FORM); setNewCardCodeInput(''); fetchAll();
     } catch (err) { 
@@ -342,30 +346,101 @@ export default function MemberPanel({ branchId }) {
     } catch (err) { toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi!')); }
   };
 
-  const handleApproveRequest = (req) => {
-    // Navigate to create ticket tab with prefilled data
-    setMainTab('monthly');
-    
-    // Ensure the vehicle exists in the local list so the form populates correctly
+  const handleApproveRequest = async (req) => {
     const veh = req.vehicle;
-    if (veh && !vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(veh.vehicleId || veh.vehiclesId || veh.id))) {
-      setVehicles(prev => [...prev, { ...veh, vehicleSource: 'REGISTER', userFullName: req.user?.fullName || req.user?.username }]);
-    }
-    
-    setTicketForm(prev => ({
-      ...EMPTY_FORM,
-      vehicleId: String(veh?.vehicleId || veh?.vehiclesId || veh?.id),
-      vehicleSource: 'REGISTER',
-      licensePlateSearch: veh?.licensePlate || ''
-    }));
-    setShowCreateTicket(true);
-    
-    // Set a small delay to allow the state to update, then update request in background
-    setTimeout(() => {
-      if (managerApi.updateMonthlyTicketRequestStatus) {
-        managerApi.updateMonthlyTicketRequestStatus(req.id, 1).catch(e => console.error(e));
+    // Tìm xem xe này đã có vé tháng trong hệ thống chưa
+    const existingTicket = tickets.find(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(veh?.vehicleId || veh?.vehiclesId || veh?.id));
+
+    if (existingTicket) {
+      // TRƯỜNG HỢP GIA HẠN: Manager chỉ duyệt, không cấp thẻ mới
+      const confirmRenew = window.confirm(`Xác nhận duyệt GIA HẠN gói cước cho xe ${veh?.licensePlate || ''}?`);
+      if (!confirmRenew) return;
+      const months = 1;
+
+      setLoading(true);
+      try {
+        // 1. Duyệt trạng thái yêu cầu
+        if (managerApi.updateMonthlyTicketRequestStatus) {
+          await managerApi.updateMonthlyTicketRequestStatus(req.id, 1);
+        }
+        
+        // 2. Tính ngày hiệu lực mới
+        const baseDurationDays = req.pricePolicy?.baseDurationMinutes ? (req.pricePolicy.baseDurationMinutes / (60 * 24)) : 30;
+        const durationDays = baseDurationDays * months;
+        const currentEnd = new Date(existingTicket.endDate);
+        const baseDate = (currentEnd > new Date()) ? currentEnd : new Date();
+        
+        // Ngày bắt đầu của chu kỳ mới là hôm nay (để ghi nhận doanh thu hôm nay/tháng này)
+        const newStartDateStr = new Date().toISOString(); 
+        
+        const endDateTime = new Date(baseDate);
+        endDateTime.setDate(endDateTime.getDate() + durationDays);
+        const newEndDateStr = endDateTime.toISOString();
+
+        // 3. Cập nhật trạng thái vé cũ thành hết hiệu lực (status = 0) ĐỂ TRÁNH LỖI OVERLAP
+        const oldTicketId = getTicketId(existingTicket);
+        if (oldTicketId) {
+          await managerApi.updateMonthlyTicket(oldTicketId, {
+            vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
+            parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
+            guestName: existingTicket.guestName || null,
+            guestPhone: existingTicket.guestPhone || null,
+            startDate: existingTicket.startDate,
+            endDate: existingTicket.endDate,
+            status: 0 // Vô hiệu hoá vé cũ trước
+          });
+        }
+
+        try {
+          // 4. Tạo một bản ghi vé tháng mới
+          await managerApi.createMonthlyTicket({
+            vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
+            parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
+            guestName: existingTicket.guestName || null,
+            guestPhone: existingTicket.guestPhone || null,
+            startDate: newStartDateStr,
+            endDate: newEndDateStr,
+            status: 1
+          });
+        } catch (createErr) {
+          // Revert old ticket if creation fails
+          if (oldTicketId) {
+            await managerApi.updateMonthlyTicket(oldTicketId, {
+              vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
+              parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
+              guestName: existingTicket.guestName || null,
+              guestPhone: existingTicket.guestPhone || null,
+              startDate: existingTicket.startDate,
+              endDate: existingTicket.endDate,
+              status: 1
+            });
+          }
+          throw createErr;
+        }
+
+        toast.success(`Đã gia hạn thành công xe ${veh?.licensePlate || ''}. Ngày hết hạn mới: ${new Date(newEndDateStr).toLocaleDateString('vi-VN')}`);
+        fetchAll();
+      } catch (err) {
+        toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi gia hạn vé tháng!'));
+      } finally {
+        setLoading(false);
       }
-    }, 500);
+    } else {
+      // TRƯỜNG HỢP ĐĂNG KÝ MỚI: Mở modal cấp thẻ tháng như cũ
+      setMainTab('monthly');
+      if (veh && !vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(veh.vehicleId || veh.vehiclesId || veh.id))) {
+        setVehicles(prev => [...prev, { ...veh, vehicleSource: 'REGISTER', userFullName: req.user?.fullName || req.user?.username }]);
+      }
+      
+      setTicketForm(prev => ({
+        ...EMPTY_FORM,
+        vehicleId: String(veh?.vehicleId || veh?.vehiclesId || veh?.id),
+        vehicleSource: 'REGISTER',
+        licensePlateSearch: veh?.licensePlate || '',
+        requestId: req.id
+      }));
+      setShowCreateTicket(true);
+    }
   };
 
   const handleRejectRequest = async (req) => {
@@ -573,12 +648,22 @@ export default function MemberPanel({ branchId }) {
                     const owner = r.user?.fullName || r.user?.username || '—';
                     const policy = r.pricePolicy?.policyName || '—';
                     const isPending = r.status === 0;
+                    const hasExisting = tickets.some(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(r.vehicle?.vehicleId || r.vehicle?.id));
                     return (
                       <tr key={r.id || i}>
                         <td className="text-muted small">{new Date(r.createdAt).toLocaleString('vi-VN')}</td>
                         <td className="fw-bold text-primary">{plate}</td>
                         <td className="fw-semibold">{owner}</td>
-                        <td className="text-primary">{policy}</td>
+                        <td className="text-primary">
+                          {policy}
+                          <div>
+                            {hasExisting ? (
+                              <Badge bg="info" style={{ fontSize: '0.7rem' }}>🔄 Gia hạn</Badge>
+                            ) : (
+                              <Badge bg="primary" style={{ fontSize: '0.7rem' }}>✨ Đăng ký mới</Badge>
+                            )}
+                          </div>
+                        </td>
                         <td className="fw-bold" style={{ color: '#059669' }}>
                           {r.pricePolicy?.basePrice ? `${Number(r.pricePolicy.basePrice).toLocaleString('vi-VN')} đ` : '—'}
                         </td>
@@ -590,7 +675,9 @@ export default function MemberPanel({ branchId }) {
                         <td>
                           {isPending && (
                             <>
-                              <Button variant="success" size="sm" className="fw-bold me-2 px-3" onClick={() => handleApproveRequest(r)}>Duyệt / Cấp Thẻ</Button>
+                              <Button variant="success" size="sm" className="fw-bold me-2 px-3" onClick={() => handleApproveRequest(r)}>
+                                {hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ'}
+                              </Button>
                               <Button variant="danger" size="sm" className="fw-bold px-3" onClick={() => handleRejectRequest(r)}>Từ chối</Button>
                             </>
                           )}
