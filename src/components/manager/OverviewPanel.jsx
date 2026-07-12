@@ -218,7 +218,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
     if (dates.length === 0) return new Date();
     return new Date(Math.max(...dates));
   };
-  const now = getReferenceDate();
+  const now = new Date();
   const getCounts = (filterFn) => {
     const checkIns = sessions.filter(s => s.checkInTime && filterFn(new Date(s.checkInTime))).length;
     const checkOuts = sessions.filter(s => s.checkOutTime && filterFn(new Date(s.checkOutTime))).length;
