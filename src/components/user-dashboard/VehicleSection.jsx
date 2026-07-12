@@ -3,8 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import parkingApi from '../../api/parkingApi';
 
-<<<<<<< Updated upstream
-=======
 const translateType = (type) => {
   if (!type) return 'Không rõ';
   const t = type.toLowerCase();
@@ -28,8 +26,6 @@ const getDaysLeft = (endDate) => {
   if (isNaN(end)) return null;
   return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
 };
-
->>>>>>> Stashed changes
 export default function VehicleSection() {
   const location = useLocation();
   const userId = localStorage.getItem('userId');
@@ -38,6 +34,8 @@ export default function VehicleSection() {
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [packages, setPackages] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [myTickets, setMyTickets] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Vehicle Modal
@@ -67,28 +65,24 @@ export default function VehicleSection() {
     if (!userId) return;
     setLoading(true);
     try {
-      const [vehRes, typeRes, pkgRes, brRes] = await Promise.all([
+      const [vehRes, typeRes, pkgRes, brRes, ticketsRes, reqsRes] = await Promise.all([
         parkingApi.getAllVehicles().catch(() => []),
         parkingApi.getAllVehicleTypes().catch(() => []),
         parkingApi.getAllPricePolicies().catch(() => []),
-<<<<<<< Updated upstream
-        parkingApi.getAllBranches().catch(() => [])
+        parkingApi.getAllBranches().catch(() => []),
+        parkingApi.getMyMonthlyTickets().catch(() => []),
+        parkingApi.getMyMonthlyTicketRequests().catch(() => [])
       ]);
 
       const allVehiclesList = Array.isArray(vehRes) ? vehRes : (vehRes?.content || vehRes?.data || []);
       const userVehicles = allVehiclesList.filter(v => String(v.userId) === String(userId) && !v.deleted);
       setVehicles(userVehicles);
 
-=======
-        parkingApi.getAllBranches().catch(() => []),
-        parkingApi.getMyMonthlyTickets().catch(() => []),
-        parkingApi.getMyMonthlyTicketRequests().catch(() => []),
-      ]);
-      const allVeh = Array.isArray(vehRes) ? vehRes : (vehRes?.content || vehRes?.data || []);
-      setVehicles(allVeh.filter(v => String(v.userId) === String(userId) && !v.deleted));
-      setMyTickets(Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || ticketsRes?.data || []));
-      setMyRequests(Array.isArray(reqsRes) ? reqsRes : (reqsRes?.content || reqsRes?.data || []));
->>>>>>> Stashed changes
+      const parsedTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || ticketsRes?.data || []);
+      setMyTickets(parsedTickets);
+
+      const parsedReqs = Array.isArray(reqsRes) ? reqsRes : (reqsRes?.content || reqsRes?.data || []);
+      setMyRequests(parsedReqs);
       if (typeRes) {
         const tList = Array.isArray(typeRes) ? typeRes : (typeRes?.content || typeRes?.data || []);
         setVehicleTypes(tList);
@@ -406,17 +400,10 @@ export default function VehicleSection() {
             </div>
           ) : (
             <div className="row g-3 mb-5">
-<<<<<<< Updated upstream
-              {vehicles.map((v) => (
-                <div className="col-md-6" key={v.vehicleId}>
-                  <div className="card border p-3 rounded-4 h-100 shadow-sm" style={{ borderColor: '#e2e8f0' }}>
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <div className="bg-light rounded p-2 text-secondary">
-                        {v.vehicleTypeName?.toLowerCase().includes('máy') || v.vehicleTypeName?.toLowerCase().includes('moto') ? '🛵' : '🚙'}
-=======
               {vehicles.map((v) => {
                 const activeTicket = myTickets.find(t => String(t.vehicle?.vehicleId || t.vehicleId) === String(v.vehicleId || v.id) && (t.status === 1 || t.status === true || t.status === 'ACTIVE'));
                 const pendingReq = myRequests.find(r => String(r.vehicle?.vehicleId || r.vehicle?.id || r.vehicleId) === String(v.vehicleId || v.id) && r.status === 0);
+                
                 return (
                   <div className="col-md-6" key={v.vehicleId}>
                     <div className="card border p-3 rounded-4 h-100 shadow-sm" style={{ borderColor: '#e2e8f0' }}>
@@ -440,24 +427,11 @@ export default function VehicleSection() {
                       <div className="mt-auto border-top pt-2 d-flex justify-content-between">
                         <button className="btn btn-link text-danger text-decoration-none p-0 fw-bold small" onClick={() => handleDelete(v.vehicleId)}>Xóa</button>
                         <button className="btn btn-link text-decoration-none p-0 fw-bold small" style={{ color: '#164e63' }} onClick={() => handleOpenEdit(v)}>Chỉnh sửa</button>
->>>>>>> Stashed changes
                       </div>
-                      <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" style={{ fontSize: '0.7rem' }}>
-                        ● Đã xác minh
-                      </span>
-                    </div>
-                    <div className="mb-3 mt-2">
-                      <div className="text-muted small">{v.vehicleBrand || 'Hãng xe'} {v.vehicleColor ? `(${v.vehicleColor})` : ''}</div>
-                      <h4 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px', color: '#164e63' }}>{v.licensePlate}</h4>
-                      <div className="text-muted small mt-1">{v.vehicleTypeName || 'Phương tiện'} • Đang hoạt động</div>
-                    </div>
-                    <div className="mt-auto border-top pt-2 d-flex justify-content-between">
-                      <button className="btn btn-link text-danger text-decoration-none p-0 fw-bold small" onClick={() => handleDelete(v.vehicleId)}>Xóa</button>
-                      <button className="btn btn-link text-decoration-none p-0 fw-bold small" style={{ color: '#164e63' }} onClick={() => handleOpenEdit(v)}>Chỉnh sửa</button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -477,13 +451,7 @@ export default function VehicleSection() {
                       <div className="bg-info bg-opacity-10 text-info rounded-3 d-flex justify-content-center align-items-center" style={{ width: '48px', height: '48px', fontSize: '1.5rem' }}>💎</div>
                       <div>
                         <h6 className="fw-bold text-dark m-0">{pkg.policyName}</h6>
-<<<<<<< Updated upstream
-                        <small className="text-muted">
-                          Phương tiện áp dụng: <strong>{pkg.vehicleType?.typeName}</strong> • Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
-                        </small>
-=======
                         <small className="text-muted">Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày</small>
->>>>>>> Stashed changes
                       </div>
                     </div>
                     <div className="d-flex align-items-center gap-3">
@@ -560,24 +528,6 @@ export default function VehicleSection() {
 
       {/* === Subscribe / Renew Modal === */}
       {showSubscribeModal && (
-<<<<<<< Updated upstream
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="card border-0 shadow-lg p-4 rounded-4" style={{ width: '100%', maxWidth: '450px', background: '#fff' }}>
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5 className="fw-bold text-dark m-0">
-                🎫 Đăng ký Gói tháng
-              </h5>
-              <button type="button" className="btn-close" onClick={() => setShowSubscribeModal(false)}></button>
-            </div>
-            
-            <div className="mb-4 bg-light p-3 rounded-3 border">
-              <h6 className="fw-bold text-primary mb-1">{selectedPackage?.policyName}</h6>
-              <div className="text-muted small mb-2">Phương tiện áp dụng: {selectedPackage?.vehicleType?.typeName}</div>
-              <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
-=======
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="card border-0 shadow-lg rounded-4 overflow-hidden" style={{ width: '100%', maxWidth: '520px', background: '#fff' }}>
             {/* Header */}
@@ -592,7 +542,6 @@ export default function VehicleSection() {
                 </small>
               </div>
               <button type="button" className="btn-close btn-close-white" onClick={handleCloseSubscribeModal}></button>
->>>>>>> Stashed changes
             </div>
 
             {/* Step indicator */}

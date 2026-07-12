@@ -221,9 +221,6 @@ export default function MemberPanel({ branchId }) {
       
       if (selectedCardObj) {
         await managerApi.updateParkingCard(selectedCardObj.parkingCardId, {
-          cardCode: selectedCardObj.cardCode,
-          parkingBranchId: Number(selectedCardObj.parkingBranchId || cleanBranchId),
-          status: 'IN_USE',
           type: isVipCard ? 'VIP' : (selectedCardObj.cardCode || '').startsWith('MONTH-') ? 'MONTHLY' : 'REGULAR'
         }).catch(err => console.error("Failed to update card status:", err));
       }
@@ -297,10 +294,7 @@ export default function MemberPanel({ branchId }) {
       
       if (selectedCardObj) {
         await managerApi.updateParkingCard(selectedCardObj.parkingCardId, {
-          cardCode: selectedCardObj.cardCode,
-          parkingBranchId: Number(selectedCardObj.parkingBranchId || cleanBranchId),
-          status: 'IN_USE',
-          type: 'REGULAR'
+          type: 'EMPLOYEE'
         }).catch(err => console.error("Failed to update card status:", err));
       }
       
@@ -326,9 +320,8 @@ export default function MemberPanel({ branchId }) {
       const assocCard = allCards.find(c => String(c.parkingCardId) === String(t.parkingCardId));
       if (assocCard) {
         await managerApi.updateParkingCard(assocCard.parkingCardId, {
-          cardCode: assocCard.cardCode,
-          parkingBranchId: Number(assocCard.parkingBranchId || cleanBranchId),
-          status: 'AVAILABLE'
+          status: 'AVAILABLE',
+          type: 'REGULAR'
         }).catch(err => console.error("Failed to reset card status:", err));
       }
       toast.success('Đã xóa vé!'); 
@@ -346,8 +339,6 @@ export default function MemberPanel({ branchId }) {
       const assocCard = allCards.find(c => String(c.parkingCardId) === String(cardId));
       if (assocCard) {
         await managerApi.updateParkingCard(assocCard.parkingCardId, {
-          cardCode: assocCard.cardCode,
-          parkingBranchId: Number(assocCard.parkingBranchId || cleanBranchId),
           status: isActive ? 'AVAILABLE' : 'IN_USE'
         }).catch(err => console.error("Failed to sync card status during toggle:", err));
       }
@@ -501,6 +492,8 @@ export default function MemberPanel({ branchId }) {
   });
 
   const availableTicketCards = allCards.filter(c => {
+    const isAssigned = tickets.some(t => String(t.parkingCardId) === String(c.parkingCardId));
+    if (isAssigned) return false;
     const s = String(c.status || '').toUpperCase();
     const code = String(c.cardCode || '').toUpperCase();
     const type = String(c.type || '').toUpperCase();
@@ -508,6 +501,8 @@ export default function MemberPanel({ branchId }) {
   });
 
   const availableEmployeeCards = allCards.filter(c => {
+    const isAssigned = tickets.some(t => String(t.parkingCardId) === String(c.parkingCardId));
+    if (isAssigned) return false;
     const s = String(c.status || '').toUpperCase();
     const code = String(c.cardCode || '').toUpperCase();
     return (s === 'AVAILABLE' || s === '0' || s === '') && code.startsWith('EMP-');
@@ -617,7 +612,8 @@ export default function MemberPanel({ branchId }) {
                 <thead className="table-light text-muted small"><tr>{['BIỂN SỐ', 'LOẠI XE', 'CHỦ XE / KHÁCH', 'NGUỒN', 'THẺ RFID', 'HIỆU LỰC', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
                 <tbody>
                   {loading ? <tr><td colSpan={8} className="text-center py-4 text-muted">Đang tải vé tháng...</td></tr> : filteredTickets.length === 0 ? <tr><td colSpan={8} className="text-center py-4 text-muted">Chưa có vé tháng nào.</td></tr> : filteredTickets.map((t, i) => {
-                    const isGuest = !!t.guestName, owner = t.guestName || t.userFullName || t.vehicle?.userFullName || '—', phone = t.guestPhone || '', plate = t.licensePlate || t.vehicle?.licensePlate || '—', vtName = t.vehicleTypeName || t.vehicle?.vehicleTypeName || '—', cardCode = t.cardCode || t.parkingCard?.cardCode || ('#' + t.parkingCardId), isActive = t.status === 1 || t.status === true, tid = getTicketId(t) || i;
+                    const veh = vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(t.vehicleId)) || t.vehicle || {};
+                    const isGuest = !!t.guestName, owner = t.guestName || t.userFullName || veh.userFullName || '—', phone = t.guestPhone || '', plate = t.licensePlate || veh.licensePlate || '—', vtName = t.vehicleTypeName || veh.vehicleTypeName || '—', cardCode = t.cardCode || t.parkingCard?.cardCode || ('#' + t.parkingCardId), isActive = t.status === 1 || t.status === true, tid = getTicketId(t) || i;
                     return (
                       <tr key={tid}>
                         <td className="fw-bold text-primary">{plate}</td>

@@ -69,6 +69,7 @@ const managerApi = {
 
   // ── Parking Sessions (dùng cho Overview) ──────────────────
   getAllSessions:            async (params = {}) => (await API.get('/api/parking-sessions', { params })).data,
+  getSessionImages:          async (id)          => (await API.get(`/api/parking-session/${id}/images`)).data,
 };
 
 export default managerApi;

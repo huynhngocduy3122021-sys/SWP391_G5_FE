@@ -33,14 +33,14 @@ const staffApi = {
       }
     })).data;
   },
-  getActiveSessionByCardCode: async (cardCode) => {
+  getActiveSessionByCardCode: async (cardCode, time) => {
     return (await API.get('/api/parking-sessions/active-session', {
-      params: { cardCode }
+      params: { cardCode, time }
     })).data;
   },
-  getActiveSessionByLicensePlate: async (licensePlate) => {
+  getActiveSessionByLicensePlate: async (licensePlate, time) => {
     return (await API.get('/api/parking-sessions/active-session/license-plate', {
-      params: { licensePlate }
+      params: { licensePlate, time }
     })).data;
   },
   verifyVnPayReturn: async (params) => {
@@ -54,7 +54,8 @@ const staffApi = {
       licensePlate: data.plateNumber.replace(/[^A-Za-z0-9\-.]/g, ''),
       cardCode: data.cardCode || 'UNKNOWN',
       paymentMethod: paymentMethod,
-      lostCard: !!data.lostCard
+      lostCard: !!data.lostCard,
+      time: data.time
     };
     return (await API.post('/api/parking-sessions/guest/check-out', payload)).data;
   },

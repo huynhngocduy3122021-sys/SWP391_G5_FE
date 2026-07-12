@@ -9,6 +9,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [timeOffset, setTimeOffset] = useState(() => Number(localStorage.getItem('demoTimeOffset') || 0));
   const dropdownRef = useRef(null);
   
   // Real stats state
@@ -81,7 +82,11 @@ export default function StaffTopbar({ mode, onModeChange }) {
   };
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    localStorage.setItem('demoTimeOffset', timeOffset);
+  }, [timeOffset]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date(Date.now() + timeOffset)), 1000);
     
     // Poll API stats every 10 seconds
     fetchStats();
@@ -153,8 +158,39 @@ export default function StaffTopbar({ mode, onModeChange }) {
           ))}
         </div>
 
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button 
+            onClick={() => {
+              setTimeOffset(prev => {
+                const newVal = prev - 3600 * 1000;
+                localStorage.setItem('demoTimeOffset', newVal);
+                window.dispatchEvent(new Event('timeOffsetChanged'));
+                return newVal;
+              });
+            }}
+            title="Giảm 1 giờ (Demo)"
+            style={{ background: '#ef4444', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.5rem', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            -1 Giờ
+          </button>
+          <button 
+            onClick={() => {
+              setTimeOffset(prev => {
+                const newVal = prev + 3600 * 1000;
+                localStorage.setItem('demoTimeOffset', newVal);
+                window.dispatchEvent(new Event('timeOffsetChanged'));
+                return newVal;
+              });
+            }}
+            title="Tăng 1 giờ (Demo)"
+            style={{ background: 'var(--vin-primary)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.5rem', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            +1 Giờ
+          </button>
+        </div>
+
         <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
-          🕐 {now.toLocaleTimeString('en-US')}
+          🕐 {new Date(Date.now() + timeOffset).toLocaleTimeString('en-US')}
         </span>
 
         <div ref={dropdownRef} style={{ position: 'relative' }}>

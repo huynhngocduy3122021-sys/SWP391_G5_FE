@@ -269,7 +269,7 @@ export default function IotPanel({ branchId }) {
                           <img 
                             src={inImg.imageUrl} 
                             alt="Gate In" 
-                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '160px', objectFit: 'cover' }}
+                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '300px', objectFit: 'contain' }}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.style.display = 'none';
@@ -294,7 +294,7 @@ export default function IotPanel({ branchId }) {
                           <img 
                             src={outImg.imageUrl} 
                             alt="Gate Out" 
-                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '160px', objectFit: 'cover' }}
+                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '300px', objectFit: 'contain' }}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.style.display = 'none';
