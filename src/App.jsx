@@ -15,6 +15,7 @@ import SearchPage from './pages/SearchPage';
 import AuthPage from './pages/AuthPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
+import PaymentResultPage from './pages/PaymentResultPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // --- User, Manager & Staff Pages ---
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
           <Route path="/locations" element={<PublicLayout><SearchPage /></PublicLayout>} />
           <Route path="/pricing" element={<PublicLayout><PricingPage /></PublicLayout>} />
+          <Route path="/payment-result" element={<PublicLayout><PaymentResultPage /></PublicLayout>} />
           <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
           <Route path="/auth" element={<AuthPage />} />
 

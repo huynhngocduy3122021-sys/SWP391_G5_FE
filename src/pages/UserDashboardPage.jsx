@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
 import VehicleSection from '../components/user-dashboard/VehicleSection';
@@ -8,7 +9,22 @@ import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const message = searchParams.get('message');
+    if (success === 'true') {
+      toast.success(message || 'Thanh toán thành công! Gói cước của bạn đang được duyệt.');
+      // Remove query params from URL so toast doesn't trigger again on reload safely
+      window.history.replaceState(null, '', window.location.pathname);
+    } else if (success === 'false') {
+      toast.error(message || 'Thanh toán thất bại hoặc đã bị huỷ!');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const tabFromState = location.state?.activeTab || location.state?.tab;
