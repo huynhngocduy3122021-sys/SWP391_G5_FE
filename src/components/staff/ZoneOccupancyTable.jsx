@@ -50,7 +50,7 @@ export default function ZoneOccupancyTable() {
   };
 
   return (
-    <div className="vin-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="vin-card bg-white shadow-sm" style={{ padding: 0, overflow: 'hidden', borderRadius: '12px', border: 'none' }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--vin-border)',
@@ -79,13 +79,13 @@ export default function ZoneOccupancyTable() {
           <tbody>
             {loading && sessions.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '1.5rem' }}>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--vin-text-muted)', padding: '1.5rem' }}>
                   Đang tải dữ liệu hoạt động...
                 </td>
               </tr>
             ) : sessions.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '1.5rem' }}>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--vin-text-muted)', padding: '1.5rem' }}>
                   Chưa có lượt xe vào/ra nào hôm nay.
                 </td>
               </tr>
@@ -95,8 +95,8 @@ export default function ZoneOccupancyTable() {
               return (
                 <tr key={s.parkingSessionId} style={{ borderTop: '1px solid var(--vin-border)' }}>
                   <td style={{ fontWeight: 700, color: 'var(--vin-text-main)' }}>{s.licensePlate || '—'}</td>
-                  <td style={{ color: 'rgba(255,255,255,0.7)' }}>{s.vehicleTypeName || '—'}</td>
-                  <td style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>{formatTime(time)}</td>
+                  <td style={{ color: 'var(--vin-text-main)' }}>{s.vehicleTypeName || '—'}</td>
+                  <td style={{ color: 'var(--vin-text-muted)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>{formatTime(time)}</td>
                   <td>
                     <span className={`vin-badge ${isExit ? 'vin-badge--success' : 'vin-badge--info'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                       {isExit ? 'XE RA' : 'XE VÀO'}

@@ -169,7 +169,7 @@ export default function SystemSettingsPage() {
       {/* Top Title & Search bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>System Settings</h2>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Cài đặt hệ thống</h2>
           <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Cấu hình nhận diện thương hiệu, bảo mật, thông báo và bảo trì hệ thống.</p>
         </div>
 

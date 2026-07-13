@@ -71,14 +71,13 @@ const SystemLogsPage = () => {
     <div style={{ paddingBottom: '2rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
-          <span style={{ cursor: 'pointer', hover: { color: '#0f172a' } }}>Dashboard</span>
-          <span style={{ margin: '0 8px' }}>›</span>
-          <span style={{ color: '#0f172a', fontWeight: '700' }}>System Logs</span>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Nhật ký hệ thống</h2>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Giám sát và ghi nhận các sự kiện, hoạt động của toàn bộ hệ thống.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>
-            <MdFileDownload size={16} /> Export
+            <MdFileDownload size={16} /> Xuất dữ liệu
           </button>
         </div>
       </div>
@@ -88,7 +87,7 @@ const SystemLogsPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 2.5fr', gap: '20px', alignItems: 'end' }}>
           {/* Date Range */}
           <div>
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date Range</label>
+            <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Thời gian</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#334155', fontSize: '13px' }}>
               <MdCalendarToday size={16} color="#64748b" />
               <span>Oct 24, 2026 - Oct 31, 2026</span>
@@ -97,26 +96,26 @@ const SystemLogsPage = () => {
           
           {/* Log Level */}
           <div>
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Log Level</label>
+            <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mức độ</label>
             <select 
               value={logLevel}
               onChange={(e) => { setLogLevel(e.target.value); setCurrentPage(1); }}
               style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', outline: 'none', color: '#334155', fontSize: '13px' }}
             >
-              <option>All Levels</option>
-              <option>Error</option>
-              <option>Warning</option>
-              <option>Info</option>
+              <option value="All Levels">Tất cả</option>
+              <option value="Error">Lỗi</option>
+              <option value="Warning">Cảnh báo</option>
+              <option value="Info">Thông tin</option>
             </select>
           </div>
 
           {/* Full Text Search */}
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full-Text Search</label>
+              <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tìm kiếm tự do</label>
               <input 
                 type="text" 
-                placeholder="Filter by message or source..." 
+                placeholder="Tìm theo nội dung hoặc nguồn..." 
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', outline: 'none', color: '#334155', fontSize: '13px', boxSizing: 'border-box' }} 
@@ -125,7 +124,7 @@ const SystemLogsPage = () => {
             
             {/* Live Feed Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>Live Feed</span>
+              <span style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>Trực tiếp</span>
               <div 
                 onClick={() => setLiveFeed(!liveFeed)}
                 style={{ 
@@ -141,7 +140,7 @@ const SystemLogsPage = () => {
             </div>
 
             <button style={{ padding: '10px 24px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' }}>
-              Apply Filters
+              Áp dụng
             </button>
           </div>
         </div>
@@ -151,7 +150,7 @@ const SystemLogsPage = () => {
       {/* Logs Table */}
       <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '24px' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Log Streams</h3>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Nhật ký sự kiện</h3>
           <div style={{ display: 'flex', gap: '12px', color: '#475569' }}>
             <MdRefresh size={20} style={{ cursor: 'pointer' }} />
             <MdMoreVert size={20} style={{ cursor: 'pointer' }} />
@@ -161,10 +160,10 @@ const SystemLogsPage = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '220px' }}>TIMESTAMP</th>
-              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '100px' }}>LEVEL</th>
-              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '180px' }}>SOURCE</th>
-              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>MESSAGE</th>
+              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '220px' }}>THỜI GIAN</th>
+              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '100px' }}>MỨC ĐỘ</th>
+              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', width: '180px' }}>NGUỒN</th>
+              <th style={{ padding: '14px 24px', fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>NỘI DUNG</th>
             </tr>
           </thead>
           <tbody>
@@ -188,7 +187,7 @@ const SystemLogsPage = () => {
             }) : (
               <tr>
                 <td colSpan="4" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                  No logs found matching your filters.
+                  Không tìm thấy nhật ký phù hợp với bộ lọc.
                 </td>
               </tr>
             )}
@@ -198,7 +197,7 @@ const SystemLogsPage = () => {
         {/* Pagination */}
         <div style={{ padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
-            Showing {filteredLogs.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + itemsPerPage, filteredLogs.length)} of {filteredLogs.length.toLocaleString()} logs
+            Đang hiển thị {filteredLogs.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + itemsPerPage, filteredLogs.length)} trên tổng số {filteredLogs.length.toLocaleString()} bản ghi
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: '#0f172a', fontWeight: '600', fontSize: '13px' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -217,7 +216,7 @@ const SystemLogsPage = () => {
                 &lt;
               </button>
             </div>
-            <span style={{ color: '#2563eb' }}>Page {currentPage} of {totalPages || 1}</span>
+            <span style={{ color: '#2563eb' }}>Trang {currentPage} / {totalPages || 1}</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button 
                 disabled={currentPage === totalPages || totalPages === 0} 
@@ -244,7 +243,7 @@ const SystemLogsPage = () => {
         {/* LOG DENSITY */}
         <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOG DENSITY</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>MẬT ĐỘ NHẬT KÝ</div>
             <MdShowChart size={20} color="#2563eb" />
           </div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -255,14 +254,14 @@ const SystemLogsPage = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569' }}>
             <FiTrendingUp color="#16a34a" /> 
-            <span><strong style={{ color: '#16a34a' }}>12% increase</strong> from last hour</span>
+            <span><strong style={{ color: '#16a34a' }}>Tăng 12%</strong> so với giờ trước</span>
           </div>
         </div>
 
         {/* ERROR RATE */}
         <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ERROR RATE</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TỶ LỆ LỖI</div>
             <MdErrorOutline size={20} color="#dc2626" />
           </div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#dc2626', marginBottom: '16px' }}>
@@ -273,14 +272,14 @@ const SystemLogsPage = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569' }}>
             <FiTrendingDown color="#ef4444" /> 
-            <span>Stable within normal parameters</span>
+            <span>Ổn định trong mức cho phép</span>
           </div>
         </div>
 
         {/* STORAGE USAGE */}
         <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>STORAGE USAGE</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LƯU TRỮ ĐÃ DÙNG</div>
             <MdStorage size={20} color="#64748b" />
           </div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -291,7 +290,7 @@ const SystemLogsPage = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569' }}>
             <MdInfoOutline color="#64748b" size={16} /> 
-            <span>Retention policy: 90 days</span>
+            <span>Chính sách lưu trữ: 90 ngày</span>
           </div>
         </div>
 

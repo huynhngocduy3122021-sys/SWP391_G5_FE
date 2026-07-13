@@ -94,7 +94,7 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
   };
 
   return (
-    <div className="vin-card">
+    <div className="vin-card bg-white shadow-sm" style={{ padding: '1.25rem', borderRadius: '12px', border: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
         <span className="vin-badge vin-badge--danger">HỆ THỐNG HỖ TRỢ</span>
       </div>
@@ -103,8 +103,8 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
       </h6>
 
       <div className="vin-field" style={{ marginBottom: '0.75rem' }}>
-        <label>LOẠI NGOẠI LỆ</label>
-        <select value={type} onChange={handleTypeChange}>
+        <label style={{ color: 'var(--vin-text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>LOẠI NGOẠI LỆ</label>
+        <select value={type} onChange={handleTypeChange} style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--vin-border)', background: '#f8fafc', color: 'var(--vin-text-main)', fontSize: '0.85rem' }}>
           {INCIDENT_TYPES.map((t, i) => (
             <option key={i} value={t.enum}>{t.label}</option>
           ))}
@@ -112,14 +112,14 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
       </div>
 
       <div className="vin-field" style={{ marginBottom: '1rem' }}>
-        <label>GHI CHÚ VẬN HÀNH <span style={{ color: '#f87171' }}>*</span></label>
+        <label style={{ color: 'var(--vin-text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>GHI CHÚ VẬN HÀNH <span style={{ color: '#ef4444' }}>*</span></label>
         <textarea
           rows={4}
           placeholder="Nhập chi tiết sự cố tại đây..."
           value={note}
           onChange={(e) => setNote(e.target.value)}
           style={{
-            width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)',
+            width: '100%', background: '#f8fafc', border: '1px solid var(--vin-border)',
             borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--vin-text-main)', fontSize: '0.85rem',
             outline: 'none', resize: 'vertical',
           }}
@@ -128,7 +128,7 @@ export default function SupportPanel({ plateNumber, gateId, activeSession }) {
 
       <button
         className="vin-btn vin-btn--full"
-        style={{ background: 'var(--vin-success)', color: 'var(--vin-text-main)' }}
+        style={{ background: 'var(--vin-success)', color: '#ffffff', padding: '0.75rem', fontWeight: 'bold' }}
         disabled={sending}
         onClick={handleSend}
       >
