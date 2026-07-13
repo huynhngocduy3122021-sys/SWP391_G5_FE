@@ -123,7 +123,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--vin-border)',
-      background: 'rgba(15,23,42,0.95)', flexWrap: 'wrap', gap: '1rem',
+      background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', flexWrap: 'wrap', gap: '1rem',
+      position: 'relative', zIndex: 1000
     }}>
       {/* Logo */}
       <div>
@@ -142,7 +143,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
       {/* Mode toggle + clock + actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 2 }}>
+        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.04)', borderRadius: 8, padding: 2 }}>
           {['ENTRY', 'EXIT'].map((m) => (
             <button
               key={m}
@@ -150,7 +151,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
               className="vin-btn vin-btn--sm"
               style={{
                 background: mode === m ? 'var(--vin-primary)' : 'transparent',
-                color: mode === m ? '#fff' : 'rgba(255,255,255,0.6)',
+                color: mode === m ? '#fff' : 'var(--vin-text-muted)',
               }}
             >
               {m === 'ENTRY' ? 'Vào' : 'Ra'}
@@ -189,7 +190,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
           </button>
         </div>
 
-        <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--vin-text-muted)', fontVariantNumeric: 'tabular-nums', fontWeight: '500' }}>
           🕐 {new Date(Date.now() + timeOffset).toLocaleTimeString('en-US')}
         </span>
 
@@ -218,7 +219,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
                     color: 'var(--vin-text-main)', fontSize: '0.85rem', fontWeight: 500,
                     cursor: 'pointer', textAlign: 'left'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   👤 Hồ sơ của tôi
@@ -249,8 +250,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
 function StatItem({ label, value, color }) {
   return (
     <div>
-      <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em' }}>{label}</div>
-      <div style={{ fontWeight: 700, color: color || '#fff', fontSize: '0.95rem' }}>{value}</div>
+      <div style={{ fontSize: '0.65rem', color: 'var(--vin-text-muted)', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontWeight: 700, color: color || 'var(--vin-text-main)', fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
     </div>
   );
 }

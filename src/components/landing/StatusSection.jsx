@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import parkingApi from '../../api/parkingApi';
-import { PARKING_LOTS, mapBranchToParkingLot } from '../../data/parkingData';
+import { mapBranchToParkingLot } from '../../utils/mapBranch';
 
 export default function StatusSection() {
   const navigate = useNavigate();
@@ -16,11 +16,11 @@ export default function StatusSection() {
         if (branches.length > 0) {
           setLots(branches.map(mapBranchToParkingLot));
         } else {
-          setLots(PARKING_LOTS);
+          setLots([]);
         }
       } catch (error) {
         console.error('Error fetching parking branches:', error);
-        setLots(PARKING_LOTS);
+        setLots([]);
       } finally {
         setLoading(false);
       }
@@ -49,6 +49,12 @@ export default function StatusSection() {
                     <tr>
                       <td colSpan="5" style={{ textAlign: 'center', color: 'var(--vin-text-muted)', padding: '20px' }}>
                         Đang tải trạng thái bãi đỗ...
+                      </td>
+                    </tr>
+                  ) : lots.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--vin-text-muted)', padding: '20px' }}>
+                        Không có dữ liệu bãi đỗ.
                       </td>
                     </tr>
                   ) : (

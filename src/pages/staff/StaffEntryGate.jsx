@@ -6,7 +6,7 @@ export default function StaffEntryGate() {
   const navigate = useNavigate();
 
   return (
-    <div className="dark-theme" style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)', color: 'var(--vin-text-main)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)', color: 'var(--vin-text-main)' }}>
       <StaffTopbar 
         mode="ENTRY" 
         onModeChange={(m) => navigate(m === 'ENTRY' ? '/staff/entry' : '/staff/exit')} 

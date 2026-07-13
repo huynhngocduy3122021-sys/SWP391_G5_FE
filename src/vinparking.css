@@ -3,13 +3,15 @@
    Import 1 lần duy nhất trong main.jsx
    ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 /* ── 1. CSS Variables ─────────────────────────────────────── */
 :root {
-  --vin-bg-deep:    #ffffff;
+  --vin-bg-deep:    #f8fafc;
   --vin-bg-card:    #ffffff;
-  --vin-bg-glass:   #ffffff;
-  --vin-border:     #e2e8f0;
-  --vin-border-sec: #cbd5e1;
+  --vin-bg-glass:   rgba(255, 255, 255, 0.85);
+  --vin-border:     rgba(22, 78, 99, 0.1);
+  --vin-border-sec: rgba(22, 78, 99, 0.15);
   --vin-primary:    #164e63;
   --vin-teal:       #164e63;
   --vin-teal-hover: #0c4355;
@@ -17,10 +19,12 @@
   --vin-purple:     #0c4355;
   --vin-success:    #10b981;
   --vin-danger:     #ef4444;
-  --vin-bg-light:   #f8fafc;
+  --vin-bg-light:   #f1f5f9;
   --vin-text-main:  #1e293b;
   --vin-text-muted: #64748b;
   --vin-text-inverse: #ffffff;
+  --vin-shadow-sm:  0 4px 12px rgba(22, 78, 99, 0.04);
+  --vin-shadow-md:  0 10px 30px -10px rgba(22, 78, 99, 0.08);
 }
 
 /* ── 2. Reset nhẹ ─────────────────────────────────────────── */
@@ -32,7 +36,9 @@ body {
   margin: 0;
   background-color: var(--vin-bg-deep);
   color: var(--vin-text-main);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── 3. Utilities ─────────────────────────────────────────── */
@@ -142,6 +148,7 @@ body {
   padding: 2rem 2.5rem;
   backdrop-filter: blur(20px);
   position: relative;
+  box-shadow: var(--vin-shadow-md);
 }
 
 .auth-tabs {
@@ -286,6 +293,8 @@ body {
   border: 1px solid var(--vin-border);
   border-radius: 16px;
   padding: 1.5rem;
+  box-shadow: var(--vin-shadow-sm);
+  backdrop-filter: blur(10px);
 }
 
 .stat-card {
@@ -335,7 +344,8 @@ body {
 .vin-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,9 +439,10 @@ body {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
 }
+.vin-btn:active { transform: scale(0.97); }
 .vin-btn--primary { background: var(--vin-primary); color: var(--vin-text-inverse); }
 .vin-btn--primary:hover  { background: #2563eb; }
 
@@ -599,14 +610,15 @@ body {
 }
 
 .place-card {
-  background: var(--vin-bg-glass);
+  background: var(--vin-bg-card);
   border: 1px solid var(--vin-border);
   border-radius: 16px;
   overflow: hidden;
-  transition: transform 0.2s;
-  
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--vin-shadow-sm);
 }
-.place-card:hover { transform: translateY(-4px); }
+.place-card:hover { transform: translateY(-4px); box-shadow: var(--vin-shadow-md); }
+.place-card:active { transform: scale(0.98); }
 
 .place-card__img-wrap { position: relative; }
 .place-card__img { width: 100%; height: 160px; object-fit: cover; display: block; }

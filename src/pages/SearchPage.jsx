@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import { mapBranchToParkingLot } from '../utils/mapBranch';
 import parkingApi from '../api/parkingApi';
 import { useAuth } from '../hooks/useAuth';
 
 export default function SearchPage() {
   const { user } = useAuth();
   const [lots, setLots] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [prices, setPrices] = useState({ carHourly: 30000, motorHourly: 5000, carMonthly: 2000000, motorMonthly: 200000 });
   const location = useLocation();
   const initialQuery = location.state?.searchQuery || '';
@@ -47,7 +46,7 @@ export default function SearchPage() {
         if (branches.length > 0) {
           setLots(branches.map(mapBranchToParkingLot));
         } else {
-          setLots(PARKING_LOTS);
+          setLots([]);
         }
 
         const policies = Array.isArray(policiesData) ? policiesData : (policiesData?.content || policiesData?.data || []);
@@ -81,9 +80,7 @@ export default function SearchPage() {
 
       } catch (error) {
         console.error('Error fetching data in SearchPage:', error);
-        setLots(PARKING_LOTS);
-      } finally {
-        setLoading(false);
+        setLots([]);
       }
     };
     fetchLots();
@@ -381,7 +378,14 @@ export default function SearchPage() {
                   const isMotorcycle = appliedSearch.vehicle.toLowerCase().includes('xe máy');
 
                   return (
-                    <div key={lot.id} className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                    <div 
+                      key={lot.id} 
+                      className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white"
+                      style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 0.125rem 0.25rem rgba(0,0,0,0.075)'; }}
+                      onClick={() => navigate('/pricing', { state: { selectedLotId: lot.id } })}
+                    >
                       <div className="row g-0">
                         <div className="col-md-4 position-relative">
                           <img src={lot.image} alt={lot.title} className="w-100 h-100 object-fit-cover" style={{ minHeight: '220px' }} />
@@ -433,10 +437,13 @@ export default function SearchPage() {
                                       <div className="text-muted small" style={{ fontSize: '0.85rem' }}>Gói tháng: {prices.motorMonthly.toLocaleString('vi-VN')}đ</div>
                                     </div>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => !isMotorcycle && handleBooking(lot)}
-                                    className={`btn w-100 fw-bold shadow-sm ${isMotorcycle ? 'btn-secondary text-white' : 'text-white'}`}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isMotorcycle) handleBooking(lot);
+                                      }}
+                                      className={`btn w-100 fw-bold shadow-sm ${isMotorcycle ? 'btn-secondary text-white' : 'text-white'}`}
                                     disabled={isMotorcycle}
                                     style={{
                                       backgroundColor: isMotorcycle ? '#cbd5e1' : '#3b82f6',

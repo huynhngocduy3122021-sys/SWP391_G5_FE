@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import parkingApi from '../../api/parkingApi';
-import { PARKING_LOTS, mapBranchToParkingLot } from '../../data/parkingData';
+import { mapBranchToParkingLot } from '../../utils/mapBranch';
 
 export default function FeaturedSection() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function FeaturedSection() {
         if (branches.length > 0) {
           setLots(branches.map(mapBranchToParkingLot));
         } else {
-          setLots(PARKING_LOTS);
+          setLots([]);
         }
 
         const policies = Array.isArray(policiesData) ? policiesData : (policiesData?.content || policiesData?.data || []);
@@ -45,7 +45,7 @@ export default function FeaturedSection() {
 
       } catch (error) {
         console.error('Error fetching data:', error);
-        setLots(PARKING_LOTS);
+        setLots([]);
       } finally {
         setLoading(false);
       }
@@ -61,7 +61,25 @@ export default function FeaturedSection() {
       </div>
       <div className="place-grid">
         {loading ? (
-          <div style={{ color: 'rgba(255,255,255,0.7)', padding: '20px' }}>Đang tải danh sách bãi đỗ...</div>
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="place-card" style={{ pointerEvents: 'none' }}>
+              <div className="place-card__img-wrap">
+                <div style={{ width: '100%', height: '160px', background: 'rgba(0,0,0,0.05)', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+              </div>
+              <div className="place-card__body">
+                <div style={{ width: '70%', height: '18px', background: 'rgba(0,0,0,0.05)', marginBottom: '8px', borderRadius: '4px', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                <div style={{ width: '40%', height: '14px', background: 'rgba(0,0,0,0.05)', marginBottom: '12px', borderRadius: '4px', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                <div className="d-flex flex-column gap-2">
+                  <div style={{ width: '90%', height: '14px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                  <div style={{ width: '85%', height: '14px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : lots.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', gridColumn: '1 / -1', color: '#64748b' }}>
+            Không tìm thấy bãi đỗ nổi bật nào.
+          </div>
         ) : (
           lots.map((p) => (
             <div 
@@ -78,8 +96,8 @@ export default function FeaturedSection() {
                 <h6 className="place-card__name">{p.name}</h6>
                 <small className="place-card__loc">📍 {p.area}</small>
                 <div className="d-flex flex-column mt-2 gap-1">
-                  <span className="place-card__price" style={{ fontSize: '0.85rem' }}>🚗 Ô tô: {prices.car.toLocaleString('vi-VN')}đ/Block</span>
-                  <span className="place-card__price" style={{ fontSize: '0.85rem', color: '#10b981' }}>🏍️ Xe máy: {prices.motor.toLocaleString('vi-VN')}đ/Block</span>
+                  <span className="place-card__price" style={{ fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>🚗 Ô tô: {prices.car.toLocaleString('vi-VN')}đ/Block</span>
+                  <span className="place-card__price" style={{ fontSize: '0.85rem', color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>🏍️ Xe máy: {prices.motor.toLocaleString('vi-VN')}đ/Block</span>
                 </div>
               </div>
             </div>

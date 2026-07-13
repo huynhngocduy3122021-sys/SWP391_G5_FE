@@ -11,17 +11,17 @@ const PermissionsPage = () => {
   const [saving, setSaving] = useState(false);
 
   const modules = [
-    { id: 'users', name: 'User Management', desc: 'Account creations, roles assignment & profile lookups' },
-    { id: 'parking', name: 'Parking Infrastructure', desc: 'Branches, zones, parking slots & pricing plans' },
-    { id: 'bookings', name: 'Booking Reservations', desc: 'Pre-bookings, scheduling & parking approvals' },
-    { id: 'incidents', name: 'Maintenance & Incidents', desc: 'Incident reporting, hardware logs & support tickets' },
+    { id: 'users', name: 'Quản lý Người dùng', desc: 'Tạo tài khoản, phân vai trò & tra cứu hồ sơ' },
+    { id: 'parking', name: 'Hạ tầng Bãi đỗ', desc: 'Chi nhánh, khu vực, vị trí & bảng giá' },
+    { id: 'bookings', name: 'Quản lý Đặt chỗ', desc: 'Đặt trước, lên lịch & phê duyệt đỗ xe' },
+    { id: 'incidents', name: 'Bảo trì & Sự cố', desc: 'Báo cáo sự cố, nhật ký thiết bị & hỗ trợ' },
   ];
 
   const actions = [
-    { id: 'view', label: 'VIEW' },
-    { id: 'edit', label: 'EDIT' },
-    { id: 'delete', label: 'DELETE' },
-    { id: 'admin', label: 'ADMIN' },
+    { id: 'view', label: 'XEM' },
+    { id: 'edit', label: 'SỬA' },
+    { id: 'delete', label: 'XÓA' },
+    { id: 'admin', label: 'QUẢN TRỊ' },
   ];
 
   useEffect(() => {
@@ -34,7 +34,7 @@ const PermissionsPage = () => {
       const data = await adminApi.getRolePermissions();
       setMatrix(data || {});
     } catch (err) {
-      toast.error('Failed to load permissions');
+      toast.error('Không thể tải danh sách quyền');
     } finally {
       setLoading(false);
     }
@@ -63,9 +63,9 @@ const PermissionsPage = () => {
     setSaving(true);
     try {
       await adminApi.saveRolePermissions(matrix);
-      toast.success('Permissions matrix saved successfully');
+      toast.success('Lưu ma trận phân quyền thành công');
     } catch (err) {
-      toast.error('Failed to save permissions');
+      toast.error('Không thể lưu phân quyền');
     } finally {
       setSaving(false);
     }
@@ -73,11 +73,11 @@ const PermissionsPage = () => {
 
   const getRoleDesc = (role) => {
     switch (role) {
-      case 'ADMIN': return 'Full administrative control of the system.';
-      case 'MANAGER': return 'Manage branches, pricing, and staff roles.';
-      case 'STAFF': return 'Operate gates, register check-in/outs & report issues.';
-      case 'USER': return 'Standard guest customer with reserving capabilities.';
-      default: return 'Custom system role access configurations.';
+      case 'ADMIN': return 'Toàn quyền quản trị hệ thống.';
+      case 'MANAGER': return 'Quản lý chi nhánh, bảng giá và nhân sự.';
+      case 'STAFF': return 'Vận hành cổng, ghi nhận xe ra/vào & báo cáo sự cố.';
+      case 'USER': return 'Khách hàng tiêu chuẩn với chức năng đặt chỗ.';
+      default: return 'Cấu hình quyền truy cập vai trò tùy chỉnh.';
     }
   };
 
@@ -88,7 +88,7 @@ const PermissionsPage = () => {
   if (loading) {
     return (
       <div style={{ padding: '80px 0', textAlign: 'center', color: '#64748b' }}>
-        <Spinner animation="border" size="sm" className="me-2" /> Loading permission matrix...
+        <Spinner animation="border" size="sm" className="me-2" /> Đang tải ma trận phân quyền...
       </div>
     );
   }
@@ -98,8 +98,8 @@ const PermissionsPage = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Permissions & Role Management</h2>
-        <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Define granular access control and manage administrative roles across the ecosystem.</p>
+        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Quản lý Vai trò & Phân quyền</h2>
+        <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Thiết lập quyền truy cập chi tiết và quản lý các vai trò quản trị trong hệ thống.</p>
       </div>
 
       {/* Role Cards Grid */}
@@ -125,7 +125,7 @@ const PermissionsPage = () => {
               <div style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', color: isSelected ? 'var(--vin-primary)' : '#1e293b' }}>{role}</div>
               <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', minHeight: '36px' }}>{getRoleDesc(role)}</div>
               <button style={{ border: 'none', background: 'transparent', color: isSelected ? 'var(--vin-primary)' : '#64748b', fontWeight: '600', fontSize: '13px', padding: 0 }}>
-                {isSelected ? 'Currently Selected' : 'Configure Permissions'}
+                {isSelected ? 'Đang chọn' : 'Cấu hình phân quyền'}
               </button>
             </div>
           );
@@ -136,14 +136,14 @@ const PermissionsPage = () => {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>
-            Permissions Matrix: <span style={{ color: 'var(--vin-primary)' }}>{selectedRole}</span>
+            Ma trận Phân quyền: <span style={{ color: 'var(--vin-primary)' }}>{selectedRole}</span>
           </h4>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button 
               onClick={fetchPermissions}
               style={{ padding: '8px 14px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
             >
-              Discard Changes
+              Hủy thay đổi
             </button>
             <button 
               onClick={handleSaveChanges}
@@ -151,7 +151,7 @@ const PermissionsPage = () => {
               style={{ padding: '8px 14px', backgroundColor: 'var(--vin-bg-card)', color: 'var(--vin-text-main)', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center' }}
             >
               {saving && <Spinner size="sm" className="me-2" />}
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           </div>
         </div>
@@ -159,7 +159,7 @@ const PermissionsPage = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #eef0f3', backgroundColor: '#f8fafc' }}>
-              <th style={{ padding: '12px 16px', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>SYSTEM MODULE</th>
+              <th style={{ padding: '12px 16px', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>PHÂN HỆ HỆ THỐNG</th>
               {actions.map(act => (
                 <th key={act.id} style={{ padding: '12px 16px', fontSize: '12px', color: '#64748b', textAlign: 'center', fontWeight: '600' }}>{act.label}</th>
               ))}
