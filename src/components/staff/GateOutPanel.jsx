@@ -291,11 +291,15 @@ export default function GateOutPanel() {
         setSelectedFiles([]);
         setLostCard(false);
       } else if (selectedMethod === 'VNPAY') {
-        if (res.paymentUrl) {
+        const pUrl = res?.paymentUrl || res?.url || res?.redirectUrl || (typeof res === 'string' && res.startsWith('http') ? res : res?.data?.paymentUrl || res?.data?.url);
+        if (pUrl) {
           toast.info('Đang mở trang thanh toán VNPay...');
-          window.open(res.paymentUrl, '_blank');
+          // Mở trực tiếp trong tab hiện tại hoặc tab mới. Để tránh popup blocker, ta có thể dùng window.location.href 
+          // nhưng nhân viên thường muốn giữ nguyên trang trực và quét QR trên tab mới. 
+          // Tuy nhiên, lỗi "không chuyển qua trang" thường do popup blocker. Ta sẽ redirect thẳng luôn.
+          window.location.href = pUrl;
         } else {
-          toast.success('Giao dịch VNPay đã được khởi tạo.');
+          toast.success('Giao dịch VNPay đã được khởi tạo. (Không tìm thấy link)');
         }
       }
     } catch (err) {

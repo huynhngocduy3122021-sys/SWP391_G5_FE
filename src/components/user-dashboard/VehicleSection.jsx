@@ -217,7 +217,7 @@ export default function VehicleSection() {
         policyId: selectedPackage.pricePolicyId || selectedPackage.id,
         branchId: Number(selectedBranchId),
       });
-      createdRequestId = reqResult?.requestId || reqResult?.id || reqResult?.monthlyTicketRequestId;
+      createdRequestId = reqResult?.requestId || reqResult?.id || reqResult?.monthlyTicketRequestId || (typeof reqResult === 'number' || typeof reqResult === 'string' ? reqResult : reqResult?.data?.requestId || reqResult?.data?.id || reqResult?.data?.monthlyTicketRequestId);
       setSubmittedRequestId(createdRequestId);
       setSubmittedLicensePlate(finalLicensePlate);
 
@@ -225,7 +225,7 @@ export default function VehicleSection() {
       if (createdRequestId) {
         try {
           const payRes = await parkingApi.createMonthlyTicketPayment(createdRequestId);
-          const pUrl = payRes?.paymentUrl || payRes?.url || payRes?.redirectUrl || payRes;
+          const pUrl = payRes?.paymentUrl || payRes?.url || payRes?.redirectUrl || (typeof payRes === 'string' ? payRes : payRes?.data?.paymentUrl || payRes?.data?.url);
           if (typeof pUrl === 'string' && pUrl.startsWith('http')) {
             setPaymentUrl(pUrl);
             // Extract QR data from URL (use the URL itself as QR content)
@@ -233,14 +233,14 @@ export default function VehicleSection() {
           } else if (payRes?.qrCode) {
             setPaymentQrData(payRes.qrCode);
           } else {
-            setPaymentError('no_payment_url');
+            setPaymentError('no_payment_url: ' + JSON.stringify(payRes).substring(0, 100));
           }
         } catch (payErr) {
           console.warn('Payment URL fetch failed:', payErr);
-          setPaymentError('api_error');
+          setPaymentError('api_error: ' + (payErr.response?.data?.message || payErr.message || '').substring(0, 100));
         }
       } else {
-        setPaymentError('no_request_id');
+        setPaymentError('no_request_id: ' + JSON.stringify(reqResult).substring(0, 100));
       }
 
       // Advance to payment step
@@ -714,8 +714,7 @@ export default function VehicleSection() {
                       {paymentUrl && (
                         <a
                           href={paymentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          rel="noreferrer"
                           className="btn fw-bold px-5 py-3 rounded-pill text-white d-inline-flex align-items-center justify-content-center gap-3 w-100"
                           style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.4)', fontSize: '1.1rem' }}
                         >
@@ -724,13 +723,14 @@ export default function VehicleSection() {
                         </a>
                       )}
                     </div>
-                  ) : paymentError === 'api_error' || paymentError === 'no_request_id' ? (
+                  ) : paymentError ? (
                     <div className="rounded-3 p-3 mb-4" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
                       <div className="d-flex align-items-start gap-2 text-start">
                         <span>⚠️</span>
                         <div className="small">
                           <strong className="text-amber-700">Không thể khởi tạo thanh toán online</strong><br />
-                          Yêu cầu của bạn đã được ghi nhận. Vui lòng đến quầy để hoàn tất thanh toán, hoặc liên hệ hotline <strong>1900 8868</strong>.
+                          Yêu cầu của bạn đã được ghi nhận. Vui lòng đến quầy để hoàn tất thanh toán, hoặc liên hệ hotline <strong>1900 8868</strong>.<br />
+                          <span className="text-muted" style={{ fontSize: '0.75rem', wordBreak: 'break-all' }}>Chi tiết lỗi: {paymentError}</span>
                         </div>
                       </div>
                     </div>
