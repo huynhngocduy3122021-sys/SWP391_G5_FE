@@ -209,13 +209,6 @@ export default function ManagerDashboard() {
         </nav>
 
         <div style={{ borderTop: `1px solid ${mt.border}`, paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button type="button" style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem',
-            borderRadius: 8, border: 'none', background: 'transparent', color: '#334155',
-            fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer',
-          }}>
-            <span>?</span> Trung tâm hỗ trợ
-          </button>
           <button
             type="button"
             onClick={handleLogout}

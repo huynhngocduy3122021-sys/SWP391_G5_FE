@@ -20,19 +20,22 @@ API.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const url = error.config?.url || '';
+      const hasToken = Boolean(localStorage.getItem('token'));
+
       // Không tự động redirect nếu đang thực hiện login, reset password hoặc register
       if (!url.includes('/api/auth/login') && !url.includes('/api/auth/reset-password') && !url.includes('/api/auth/register')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('email');
-        localStorage.removeItem('fullName');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('phone');
-        localStorage.removeItem('userPhone');
-        localStorage.removeItem('address');
-        localStorage.removeItem('userAddress');
-        window.dispatchEvent(new Event('storage'));
-        window.location.href = '/auth'; // Redirect to login
+        if (hasToken) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('email');
+          localStorage.removeItem('fullName');
+          localStorage.removeItem('userId');
+          localStorage.removeItem('phone');
+          localStorage.removeItem('userPhone');
+          localStorage.removeItem('address');
+          localStorage.removeItem('userAddress');
+          window.dispatchEvent(new Event('storage'));
+        }
       }
     }
     return Promise.reject(error);

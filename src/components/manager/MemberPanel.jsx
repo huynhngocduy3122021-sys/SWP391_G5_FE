@@ -48,7 +48,7 @@ export default function MemberPanel({ branchId }) {
   const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [submittingTicket, setSubmittingTicket] = useState(false);
-  const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '', requestId: null };
+  const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '', requestId: null, policyName: '' };
   const [ticketForm, setTicketForm] = useState(EMPTY_FORM);
   const [showCreateEmpTicket, setShowCreateEmpTicket] = useState(false);
   const [submittingEmpTicket, setSubmittingEmpTicket] = useState(false);
@@ -177,15 +177,18 @@ export default function MemberPanel({ branchId }) {
       let finalCardId = ticketForm.parkingCardId;
       let finalCardCode = '';
       
+      const isVipPolicy = (ticketForm.policyName || '').toUpperCase().includes('VIP');
+      
       if (ticketForm.parkingCardId === 'new') {
         let code = newCardCodeInput.trim();
-        if (!code.startsWith('MONTH-')) code = 'MONTH-' + code;
+        const prefix = isVipPolicy ? 'VIP-' : 'MONTH-';
+        if (!code.startsWith(prefix)) code = prefix + code;
         
         const createdCard = await managerApi.createParkingCard({ 
           cardCode: code, 
           parking_branch_id: Number(cleanBranchId),
           parkingBranchId: Number(cleanBranchId),
-          type: 'MONTHLY',
+          type: isVipPolicy ? 'VIP' : 'MONTHLY',
           status: 'AVAILABLE'
         });
         
@@ -197,7 +200,7 @@ export default function MemberPanel({ branchId }) {
         ? { parkingCardId: finalCardId, cardCode: finalCardCode, parkingBranchId: Number(cleanBranchId) }
         : allCards.find(c => String(c.parkingCardId) === String(ticketForm.parkingCardId));
         
-      const isVipCard = selectedCardObj && (selectedCardObj.cardCode || '').startsWith('VIP-');
+      const isVipCard = isVipPolicy || (selectedCardObj && ((selectedCardObj.cardCode || '').startsWith('VIP-') || selectedCardObj.type === 'VIP'));
       const isGuest = matchedVehicle?.vehicleSource === 'GUEST';
       
       if (isVipCard && isGuest) return toast.error('Thẻ VIP bắt buộc chủ xe phải có tài khoản thành viên (không dành cho khách vãng lai)!');
@@ -221,7 +224,9 @@ export default function MemberPanel({ branchId }) {
       
       if (selectedCardObj) {
         await managerApi.updateParkingCard(selectedCardObj.parkingCardId, {
-          type: isVipCard ? 'VIP' : (selectedCardObj.cardCode || '').startsWith('MONTH-') ? 'MONTHLY' : 'REGULAR'
+          ...selectedCardObj,
+          type: isVipCard ? 'VIP' : 'MONTHLY',
+          cardType: isVipCard ? 'VIP' : 'MONTHLY'
         }).catch(err => console.error("Failed to update card status:", err));
       }
       
@@ -348,8 +353,11 @@ export default function MemberPanel({ branchId }) {
 
   const handleApproveRequest = async (req) => {
     const veh = req.vehicle;
-    // Tìm xem xe này đã có vé tháng trong hệ thống chưa
-    const existingTicket = tickets.find(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(veh?.vehicleId || veh?.vehiclesId || veh?.id));
+    const existingTicket = tickets.find(t => {
+      const tVehId = t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.id || t.vehicle?.vehiclesId;
+      const rVehId = veh?.vehicleId || veh?.vehiclesId || veh?.id;
+      return tVehId && rVehId && String(tVehId) === String(rVehId);
+    });
 
     if (existingTicket) {
       // TRƯỜNG HỢP GIA HẠN: Manager chỉ duyệt, không cấp thẻ mới
@@ -368,57 +376,53 @@ export default function MemberPanel({ branchId }) {
         const baseDurationDays = req.pricePolicy?.baseDurationMinutes ? (req.pricePolicy.baseDurationMinutes / (60 * 24)) : 30;
         const durationDays = baseDurationDays * months;
         const currentEnd = new Date(existingTicket.endDate);
-        const baseDate = (currentEnd > new Date()) ? currentEnd : new Date();
+        const isFutureExpiry = currentEnd > new Date();
         
-        // Ngày bắt đầu của chu kỳ mới là hôm nay (để ghi nhận doanh thu hôm nay/tháng này)
-        const newStartDateStr = new Date().toISOString(); 
-        
-        const endDateTime = new Date(baseDate);
+        const newStartDate = isFutureExpiry ? currentEnd : new Date();
+        const endDateTime = new Date(newStartDate);
         endDateTime.setDate(endDateTime.getDate() + durationDays);
+        
+        const newStartDateStr = newStartDate.toISOString();
         const newEndDateStr = endDateTime.toISOString();
 
-        // 3. Cập nhật trạng thái vé cũ thành hết hiệu lực (status = 0) ĐỂ TRÁNH LỖI OVERLAP
+        // 3. Xử lý vé cũ và tạo vé mới
         const oldTicketId = getTicketId(existingTicket);
         if (oldTicketId) {
+          const cardId = existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId || existingTicket.parkingCard?.id;
+          const assocCard = allCards.find(c => String(c.parkingCardId) === String(cardId));
+          if (assocCard) {
+            const isVip = (assocCard.cardCode || '').startsWith('VIP-') || (req.pricePolicy?.policyName || '').toUpperCase().includes('VIP');
+            await managerApi.updateParkingCard(assocCard.parkingCardId, {
+              ...assocCard,
+              type: isVip ? 'VIP' : 'MONTHLY',
+              cardType: isVip ? 'VIP' : 'MONTHLY'
+            }).catch(err => console.error("Failed to fix card type during renewal:", err));
+          }
+
+          // A. Vô hiệu hóa vé cũ (status = 0) để lưu lại lịch sử
           await managerApi.updateMonthlyTicket(oldTicketId, {
             vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
-            parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
+            parkingCardId: Number(cardId),
             guestName: existingTicket.guestName || null,
             guestPhone: existingTicket.guestPhone || null,
             startDate: existingTicket.startDate,
             endDate: existingTicket.endDate,
-            status: 0 // Vô hiệu hoá vé cũ trước
-          });
-        }
+            status: 0
+          }).catch(err => console.error("Failed to deactivate old ticket:", err));
 
-        try {
-          // 4. Tạo một bản ghi vé tháng mới
+          // B. Tạo vé mới thừa hưởng thời hạn gia hạn
           await managerApi.createMonthlyTicket({
             vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
-            parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
+            parkingCardId: Number(cardId),
             guestName: existingTicket.guestName || null,
             guestPhone: existingTicket.guestPhone || null,
             startDate: newStartDateStr,
             endDate: newEndDateStr,
             status: 1
           });
-        } catch (createErr) {
-          // Revert old ticket if creation fails
-          if (oldTicketId) {
-            await managerApi.updateMonthlyTicket(oldTicketId, {
-              vehicleId: Number(existingTicket.vehicleId || existingTicket.vehicle?.vehicleId),
-              parkingCardId: Number(existingTicket.parkingCardId || existingTicket.parkingCard?.parkingCardId),
-              guestName: existingTicket.guestName || null,
-              guestPhone: existingTicket.guestPhone || null,
-              startDate: existingTicket.startDate,
-              endDate: existingTicket.endDate,
-              status: 1
-            });
-          }
-          throw createErr;
         }
 
-        toast.success(`Đã gia hạn thành công xe ${veh?.licensePlate || ''}. Ngày hết hạn mới: ${new Date(newEndDateStr).toLocaleDateString('vi-VN')}`);
+        toast.success(`Đã gia hạn thành công xe ${veh?.licensePlate || ''}. Vé cũ đã hủy, vé mới có hiệu lực từ: ${new Date(newStartDateStr).toLocaleDateString('vi-VN')} đến ${new Date(newEndDateStr).toLocaleDateString('vi-VN')}`);
         fetchAll();
       } catch (err) {
         toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi gia hạn vé tháng!'));
@@ -437,7 +441,8 @@ export default function MemberPanel({ branchId }) {
         vehicleId: String(veh?.vehicleId || veh?.vehiclesId || veh?.id),
         vehicleSource: 'REGISTER',
         licensePlateSearch: veh?.licensePlate || '',
-        requestId: req.id
+        requestId: req.id,
+        policyName: req.pricePolicy?.policyName || ''
       }));
       setShowCreateTicket(true);
     }
@@ -491,13 +496,21 @@ export default function MemberPanel({ branchId }) {
     return matchQ && matchS;
   });
 
+  const isVipPolicy = (ticketForm.policyName || '').toUpperCase().includes('VIP');
+
   const availableTicketCards = allCards.filter(c => {
     const isAssigned = tickets.some(t => String(t.parkingCardId) === String(c.parkingCardId));
     if (isAssigned) return false;
     const s = String(c.status || '').toUpperCase();
     const code = String(c.cardCode || '').toUpperCase();
     const type = String(c.type || '').toUpperCase();
-    return (s === 'AVAILABLE' || s === '0' || s === '') && (code.startsWith('MONTH-') || type === 'MONTHLY');
+    const isAvailable = (s === 'AVAILABLE' || s === '0' || s === '');
+    if (!isAvailable) return false;
+    if (isVipPolicy) {
+      return code.startsWith('VIP-') || type === 'VIP';
+    } else {
+      return code.startsWith('MONTH-') || type === 'MONTHLY';
+    }
   });
 
   const availableEmployeeCards = allCards.filter(c => {
@@ -648,22 +661,17 @@ export default function MemberPanel({ branchId }) {
                     const owner = r.user?.fullName || r.user?.username || '—';
                     const policy = r.pricePolicy?.policyName || '—';
                     const isPending = r.status === 0;
-                    const hasExisting = tickets.some(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(r.vehicle?.vehicleId || r.vehicle?.id));
+                    const hasExisting = tickets.some(t => {
+                      const tVehId = t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.id || t.vehicle?.vehiclesId;
+                      const rVehId = r.vehicle?.vehicleId || r.vehicle?.id || r.vehicleId || r.vehicle?.vehiclesId;
+                      return tVehId && rVehId && String(tVehId) === String(rVehId);
+                    });
                     return (
-                      <tr key={r.id || i}>
+                       <tr key={r.id || i}>
                         <td className="text-muted small">{new Date(r.createdAt).toLocaleString('vi-VN')}</td>
                         <td className="fw-bold text-primary">{plate}</td>
                         <td className="fw-semibold">{owner}</td>
-                        <td className="text-primary">
-                          {policy}
-                          <div>
-                            {hasExisting ? (
-                              <Badge bg="info" style={{ fontSize: '0.7rem' }}>🔄 Gia hạn</Badge>
-                            ) : (
-                              <Badge bg="primary" style={{ fontSize: '0.7rem' }}>✨ Đăng ký mới</Badge>
-                            )}
-                          </div>
-                        </td>
+                        <td className="text-primary fw-semibold">{policy}</td>
                         <td className="fw-bold" style={{ color: '#059669' }}>
                           {r.pricePolicy?.basePrice ? `${Number(r.pricePolicy.basePrice).toLocaleString('vi-VN')} đ` : '—'}
                         </td>
@@ -792,14 +800,14 @@ export default function MemberPanel({ branchId }) {
                     onChange={e => setNewCardCodeInput(e.target.value)} 
                     required 
                   />
-                  <small className="text-muted d-block mt-1">Thẻ mới với tiền tố MONTH- sẽ tự động được thêm và gán vào vé tháng này.</small>
+                  <small className="text-muted d-block mt-1">Thẻ mới với tiền tố {isVipPolicy ? 'VIP-' : 'MONTH-'} sẽ tự động được thêm và gán vào vé tháng này.</small>
                 </Form.Group>
               )}
             </div>
 
             {ticketForm.vehicleId && ticketForm.parkingCardId && (
               <div className="bg-success bg-opacity-10 border border-success rounded p-3 small text-success">
-                Xác nhận: Cấp vé cho xe {matchedVehicle?.licensePlate} → Thẻ {ticketForm.parkingCardId === 'new' ? `mới (MONTH-${newCardCodeInput})` : `ID #${ticketForm.parkingCardId}`}
+                Xác nhận: Cấp vé cho xe {matchedVehicle?.licensePlate} → Thẻ {ticketForm.parkingCardId === 'new' ? `mới (${isVipPolicy ? 'VIP-' : 'MONTH-'}${newCardCodeInput})` : `ID #${ticketForm.parkingCardId}`}
                 {matchedVehicle?.vehicleSource === 'GUEST' && ticketForm.guestName ? ' | Khách: ' + ticketForm.guestName + ' (' + ticketForm.guestPhone + ')' : matchedVehicle?.userFullName ? ' | Chủ xe: ' + matchedVehicle.userFullName : ''}
               </div>
             )}

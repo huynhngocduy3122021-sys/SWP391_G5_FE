@@ -29,8 +29,7 @@ import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
 // --- Admin Portal Pages (MỚI THÊM) ---
 import AdminLayout from './components/layout/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import SystemLogsPage from './components/admin/SystemLogsPage';
-import PermissionsPage from './components/admin/PermissionsPage';
+import RevenueReportPage from './pages/admin/RevenueReportPage';
 import UserAccountsPage from './components/admin/UserAccountsPage';
 import SystemSettingsPage from './components/admin/SystemSettingsPage';
 import AIConfigPage from './components/admin/AIConfigPage';
@@ -166,11 +165,10 @@ export default function App() {
             {/* Các route con của Admin */}
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="revenue" element={<RevenueReportPage />} />
             <Route path="users" element={<UserAccountsPage />} />
-            <Route path="permissions" element={<PermissionsPage />} />
             <Route path="settings" element={<SystemSettingsPage />} />
             <Route path="ai-config" element={<AIConfigPage />} />
-            <Route path="logs" element={<SystemLogsPage />} />
           </Route>
 
           {/* Fallback */}

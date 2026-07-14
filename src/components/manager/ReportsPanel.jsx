@@ -204,19 +204,6 @@ export default function ReportsPanel({ branchId }) {
     }
   });
 
-  filteredTickets.forEach(t => {
-    const amt = calculateTicketRevenue(t, VIP_PRICE, MONTHLY_PRICE);
-    const vType = (t.vehicleType?.typeName || t.vehicleTypeName || '').toLowerCase();
-    
-    if (vType.includes('ô tô') || vType.includes('car') || vType.includes('o to')) {
-      breakdownByVehicle.oto.amount += amt;
-    } else if (vType.includes('xe máy') || vType.includes('moto') || vType.includes('bike') || vType.includes('xe may')) {
-      breakdownByVehicle.xemay.amount += amt;
-    } else {
-      breakdownByVehicle.xedien.amount += amt;
-    }
-  });
-
   // 2. Phân loại theo hình thức dịch vụ (Service Type Classification)
   let breakdownByService = {
     walkIn: { amount: totalWalkInRevenue, percentage: 0 },
@@ -224,13 +211,17 @@ export default function ReportsPanel({ branchId }) {
     lostCard: { amount: totalLostCardRevenue, percentage: 0 }
   };
 
-  // Tính phần trăm phân loại
-  if (totalRevenue > 0) {
-    breakdownByVehicle.oto.percentage = Math.round((breakdownByVehicle.oto.amount / totalRevenue) * 100);
-    breakdownByVehicle.xemay.percentage = Math.round((breakdownByVehicle.xemay.amount / totalRevenue) * 100);
+  // Tính phần trăm phân loại theo loại xe (chỉ tính trên doanh thu xe vãng lai/vãng lai điện)
+  const totalVehicleRevenue = breakdownByVehicle.oto.amount + breakdownByVehicle.xemay.amount + breakdownByVehicle.xedien.amount;
+  if (totalVehicleRevenue > 0) {
+    breakdownByVehicle.oto.percentage = Math.round((breakdownByVehicle.oto.amount / totalVehicleRevenue) * 100);
+    breakdownByVehicle.xemay.percentage = Math.round((breakdownByVehicle.xemay.amount / totalVehicleRevenue) * 100);
     breakdownByVehicle.xedien.percentage = Math.max(0, 100 - breakdownByVehicle.oto.percentage - breakdownByVehicle.xemay.percentage);
     if (breakdownByVehicle.xedien.amount === 0) breakdownByVehicle.xedien.percentage = 0;
+  }
 
+  // Tính phần trăm phân loại theo loại dịch vụ
+  if (totalRevenue > 0) {
     breakdownByService.walkIn.percentage = Math.round((breakdownByService.walkIn.amount / totalRevenue) * 100);
     breakdownByService.ticket.percentage = Math.round((breakdownByService.ticket.amount / totalRevenue) * 100);
     breakdownByService.lostCard.percentage = Math.max(0, 100 - breakdownByService.walkIn.percentage - breakdownByService.ticket.percentage);

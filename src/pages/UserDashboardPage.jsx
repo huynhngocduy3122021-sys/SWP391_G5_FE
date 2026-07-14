@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
+<<<<<<< Updated upstream
 import { useLocation } from 'react-router-dom';
+=======
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+>>>>>>> Stashed changes
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
 import VehicleSection from '../components/user-dashboard/VehicleSection';
@@ -8,9 +13,36 @@ import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
+<<<<<<< Updated upstream
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
 
   useEffect(() => {
+=======
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
+
+  useEffect(() => {
+    const paymentNotice = location.state?.paymentNotice;
+    const successParam = searchParams.get('success');
+    const message = paymentNotice?.message || searchParams.get('message') || '';
+    const isSuccess = paymentNotice?.success ?? successParam === 'true';
+    const isFailure = paymentNotice?.success === false || successParam === 'false';
+
+    if (isSuccess) {
+      setActiveTab('vehicles');
+      toast.success(message || '🎉 Thanh toán thành công! Gói cước của bạn đang được xử lý.', { autoClose: 6000 });
+    } else if (isFailure) {
+      setActiveTab('vehicles');
+      toast.error(message || 'Thanh toán thất bại hoặc đã bị huỷ!');
+    }
+
+    if (successParam || paymentNotice) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [location.state, searchParams]);
+
+  useEffect(() => {
+>>>>>>> Stashed changes
     const tabFromState = location.state?.activeTab || location.state?.tab;
     if (tabFromState) {
       setActiveTab(tabFromState);
