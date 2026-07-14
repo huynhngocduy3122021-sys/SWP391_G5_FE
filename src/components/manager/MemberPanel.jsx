@@ -41,6 +41,7 @@ export default function MemberPanel({ branchId }) {
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [showEditCard, setShowEditCard] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [processedReqIds, setProcessedReqIds] = useState(new Set());
   const [createCardForm, setCreateCardForm] = useState({ cardCode: '', parkingBranchId: '', cardType: 'NORMAL' });
   const [editCardForm, setEditCardForm] = useState({ cardCode: '', parkingBranchId: '', status: '', cardType: 'NORMAL' });
   const [submittingCard, setSubmittingCard] = useState(false);
@@ -73,12 +74,19 @@ export default function MemberPanel({ branchId }) {
       const parsedBranches = Array.isArray(branchesRes) ? branchesRes : [];
       const parsedVehicles = Array.isArray(vehiclesRes) ? vehiclesRes : (vehiclesRes?.content || []);
       const parsedTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || []);
-      const parsedReqs = Array.isArray(reqRes) ? reqRes : (reqRes?.content || []);
+      const parsedReqs = Array.isArray(reqRes) ? reqRes : (reqRes?.content || reqRes?.data || []);
       const filteredCards = cleanBranchId ? parsedCards.filter(c => getBranchId(c) === cleanBranchId) : parsedCards;
       const filteredBranches = cleanBranchId ? parsedBranches.filter(b => getBranchId(b) === cleanBranchId) : parsedBranches;
       const branchCardIds = new Set(filteredCards.map(c => String(c.parkingCardId)));
-      const filteredTickets = cleanBranchId ? parsedTickets.filter(t => branchCardIds.has(String(t.parkingCardId))) : parsedTickets;
-      const filteredReqs = cleanBranchId ? parsedReqs.filter(r => String(r.parkingBranch?.parkingBranchId || r.parkingBranch?.id) === cleanBranchId) : parsedReqs;
+      const filteredTickets = cleanBranchId ? parsedTickets.filter(t => branchCardIds.has(String(t.parkingCardId || t.parkingCard?.parkingCardId || t.parkingCard?.id))) : parsedTickets;
+      const filteredReqs = cleanBranchId ? parsedReqs.filter(r => {
+        const reqBranchId = String(
+          r.parkingBranch?.parkingBranchId || r.parkingBranch?.id ||
+          r.branch?.parkingBranchId || r.branch?.id ||
+          r.parkingBranchId || r.branchId || r.parking_branch_id || ''
+        );
+        return reqBranchId === cleanBranchId;
+      }) : parsedReqs;
       
       setAllCards(filteredCards);
       setBranches(filteredBranches);
@@ -232,6 +240,7 @@ export default function MemberPanel({ branchId }) {
       }
       
       toast.success('Cấp vé tháng thành công!');
+      if (ticketForm.requestId) setProcessedReqIds(prev => new Set(prev).add(ticketForm.requestId));
       setShowCreateTicket(false); setTicketForm(EMPTY_FORM); setNewCardCodeInput(''); fetchAll();
     } catch (err) { 
       toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi tạo vé!')); 
@@ -426,6 +435,7 @@ export default function MemberPanel({ branchId }) {
         }
 
         toast.success(`Đã gia hạn thành công xe ${veh?.licensePlate || ''}. Ngày hết hạn mới: ${new Date(newEndDateStr).toLocaleDateString('vi-VN')}`);
+        setProcessedReqIds(prev => new Set(prev).add(req.id));
         fetchAll();
       } catch (err) {
         toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi gia hạn vé tháng!'));
@@ -654,8 +664,22 @@ export default function MemberPanel({ branchId }) {
                     const plate = r.vehicle?.licensePlate || '—';
                     const owner = r.user?.fullName || r.user?.username || '—';
                     const policy = r.pricePolicy?.policyName || '—';
-                    const isPending = r.status === 0;
                     const hasExisting = tickets.some(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(r.vehicle?.vehicleId || r.vehicle?.id));
+                    const isProcessed = processedReqIds.has(r.id) || tickets.some(t => {
+                      const tVehId = String(t.vehicleId || t.vehicle?.vehicleId);
+                      const rVehId = String(r.vehicle?.vehicleId || r.vehicle?.id);
+                      if (tVehId !== rVehId) return false;
+                      
+                      if (t.createdAt) {
+                        return new Date(t.createdAt).getTime() >= (new Date(r.createdAt).getTime() - 60000);
+                      }
+                      
+                      // Fallback to startDate if createdAt is missing
+                      const tStart = t.startDate ? String(t.startDate).slice(0, 10) : '';
+                      const rStart = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : '';
+                      return tStart && rStart && tStart >= rStart;
+                    });
+                    const isPending = (r.status === 0 || r.status === 1) && !isProcessed;
                     return (
                       <tr key={r.id || i}>
                         <td className="text-muted small">{new Date(r.createdAt).toLocaleString('vi-VN')}</td>
@@ -675,8 +699,8 @@ export default function MemberPanel({ branchId }) {
                           {r.pricePolicy?.basePrice ? `${Number(r.pricePolicy.basePrice).toLocaleString('vi-VN')} đ` : '—'}
                         </td>
                         <td>
-                          <Badge bg={r.status === 0 ? 'warning' : r.status === 1 ? 'success' : 'danger'} text={r.status === 0 ? 'dark' : 'white'}>
-                            {r.status === 0 ? 'Chờ duyệt' : r.status === 1 ? 'Đã duyệt' : 'Từ chối'}
+                          <Badge bg={r.status === 0 ? 'warning' : r.status === 1 ? (isProcessed ? 'success' : 'info') : 'danger'} text={r.status === 0 ? 'dark' : 'white'}>
+                            {r.status === 0 ? 'Chờ thanh toán' : r.status === 1 ? (isProcessed ? 'Đã duyệt' : 'Đã thanh toán (Chờ duyệt)') : 'Từ chối'}
                           </Badge>
                         </td>
                         <td>
