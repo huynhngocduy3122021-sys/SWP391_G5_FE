@@ -47,6 +47,104 @@ export default function PricingPage() {
   const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '', type: 'Car' });
   const userId = localStorage.getItem('userId');
 
+  // Real API payment state variables
+  const [submittedRequestId, setSubmittedRequestId] = useState(null);
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [paymentQrData, setPaymentQrData] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedLicensePlate, setSubmittedLicensePlate] = useState('');
+
+  const handleCloseSubModal = () => {
+    setActiveSubPlan(null);
+    setSubModalStep(1);
+    setPaymentUrl('');
+    setPaymentQrData('');
+    setPaymentError('');
+    setSubmittedRequestId(null);
+    setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '', type: 'Car' });
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedLotId) return toast.warning('Vui lòng chọn bãi đỗ!');
+    if (!activeSubPlan) return toast.warning('Vui lòng chọn gói dịch vụ!');
+    
+    setSubmitting(true);
+    setPaymentUrl('');
+    setPaymentQrData('');
+    setPaymentError('');
+
+    try {
+      const payload = {
+        vehicleId: selectedSubVehicleId === 'new' ? undefined : Number(selectedSubVehicleId),
+        policyId: activeSubPlan.policyId
+      };
+      
+      if (!payload.policyId) {
+        payload.policyId = activeSubPlan.type === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4);
+      }
+      
+      let finalLicensePlate = currentSelectedVehicle.plate;
+      if (selectedSubVehicleId === 'new') {
+        if (!newVehicleData.licensePlate.trim()) {
+          toast.warning('Vui lòng nhập biển số xe!');
+          setSubmitting(false);
+          return;
+        }
+        const created = await parkingApi.createVehicle({
+          licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
+          vehicleColor: newVehicleData.vehicleColor.trim(),
+          vehicleBrand: newVehicleData.vehicleBrand.trim(),
+          vehicleTypeId: currentSelectedVehicle.type === 'Car' ? 1 : 2,
+          userId: Number(userId)
+        });
+        payload.vehicleId = created.vehicleId || created.id;
+        finalLicensePlate = created.licensePlate;
+      }
+
+      const reqResult = await parkingApi.submitMonthlyTicketRequest({
+        vehicleId: payload.vehicleId,
+        policyId: payload.policyId,
+        branchId: Number(selectedLotId)
+      });
+      
+      const createdRequestId = reqResult?.requestId || reqResult?.id || reqResult?.monthlyTicketRequestId;
+      setSubmittedRequestId(createdRequestId);
+      setSubmittedLicensePlate(finalLicensePlate);
+
+      // Nếu phương thức thanh toán là VNPay hoặc thẻ online
+      if (paymentMethod === 'vnpay' || paymentMethod === 'card') {
+        if (createdRequestId) {
+          try {
+            const payRes = await parkingApi.createMonthlyTicketPayment(createdRequestId);
+            const pUrl = payRes?.paymentUrl || payRes?.url || payRes?.redirectUrl || payRes;
+            if (typeof pUrl === 'string' && pUrl.startsWith('http')) {
+              setPaymentUrl(pUrl);
+              setPaymentQrData(pUrl);
+            } else if (payRes?.qrCode) {
+              setPaymentQrData(payRes.qrCode);
+            } else {
+              setPaymentError('no_payment_url');
+            }
+          } catch (payErr) {
+            console.warn('Payment URL fetch failed:', payErr);
+            setPaymentError('api_error');
+          }
+        } else {
+          setPaymentError('no_request_id');
+        }
+      }
+
+      setSubModalStep(3);
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || err.response?.data || 'Có lỗi xảy ra khi gửi yêu cầu đăng ký.';
+      toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const [pricePolicies, setPricePolicies] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
   useEffect(() => {
@@ -385,13 +483,14 @@ export default function PricingPage() {
 
         {/* Subscription Confirmation Modal Overlay */}
         {activeSubPlan && (
-          <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 2000 }} onClick={(e) => { if (e.target === e.currentTarget) { setActiveSubPlan(null); setSubModalStep(1); } }}>
+          <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 2000 }} onClick={(e) => { if (e.target === e.currentTarget) { handleCloseSubModal(); } }}>
             <div className="bg-white rounded-4 shadow-lg p-4 p-md-5 overflow-auto w-100 m-3" style={{ maxWidth: subModalStep === 2 ? 1000 : 750, maxHeight: '90vh' }}>
               <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
                 <div className="d-flex align-items-center gap-3">
                   {subModalStep > 1 && subModalStep < 3 && <button onClick={() => setSubModalStep(s => s - 1)} className="btn btn-link text-dark p-0"><ChevronLeft size={24} /></button>}
                   <strong className="fs-5" style={{ color: '#164e63' }}>Vinparking</strong>
                 </div>
+                <button onClick={handleCloseSubModal} className="btn-close" aria-label="Close"></button>
               </div>
 
               {subModalStep === 1 && (
@@ -544,7 +643,19 @@ export default function PricingPage() {
                   </div>
                   <div className="position-absolute bottom-0 start-0 w-100 bg-white border-top py-3 px-4 d-flex justify-content-between align-items-center" style={{ margin: '0 -2rem -2rem -2rem', width: 'calc(100% + 4rem)' }}>
                     <div><small className="text-muted">Tổng cộng</small><strong className="d-block fs-5" style={{ color: '#164e63' }}>{Math.floor(activePlanPrice * 1.1 - discount).toLocaleString('vi-VN')}đ</strong></div>
-                    <button onClick={() => setSubModalStep(3)} className="btn text-white px-4 py-2.5 rounded-3 fw-bold" style={{ backgroundColor: '#164e63' }}><ShieldCheck size={18} /> Xác nhận thanh toán</button>
+                    <button 
+                      onClick={handleConfirmPayment} 
+                      disabled={submitting}
+                      className="btn text-white px-4 py-2.5 rounded-3 fw-bold d-flex align-items-center gap-2" 
+                      style={{ backgroundColor: '#164e63' }}
+                    >
+                      {submitting ? (
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      ) : (
+                        <ShieldCheck size={18} />
+                      )}
+                      Xác nhận thanh toán
+                    </button>
                   </div>
                 </div>
               )}
@@ -552,62 +663,66 @@ export default function PricingPage() {
               {subModalStep === 3 && (
                 <div className="row justify-content-center g-4 py-2">
                   <div className="col-md-6 col-lg-5">
-                    <div className="border rounded-4 bg-white shadow-sm h-100 text-center d-flex flex-column">
-                      <div className="bg-light py-2 border-bottom fw-bold small text-dark">HẾT HẠN TRONG 14:58</div>
-                      <div className="p-4 flex-grow-1 bg-light d-flex flex-column align-items-center justify-content-center">
-                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VP-${Date.now()}`} alt="QR" className="bg-white p-2 rounded-3 shadow-sm mb-4" />
-                        <div className="fw-bold text-dark" style={{ letterSpacing: '4px' }}>VIN - 1234 - 5678</div>
-                      </div>
+                    <div className="border rounded-4 bg-white shadow-sm h-100 text-center d-flex flex-column p-4 align-items-center justify-content-center">
+                      <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style={{ width: 72, height: 72, background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', fontSize: '2.5rem' }}>✅</div>
+                      <h5 className="fw-bold text-dark mb-1">Yêu cầu đã được gửi!</h5>
+                      <p className="text-muted small">
+                        Hệ thống đã ghi nhận đăng ký gói tháng cho xe <strong>{submittedLicensePlate}</strong>.
+                      </p>
                     </div>
                   </div>
                   <div className="col-md-6 col-lg-5 d-flex flex-column gap-3">
-                    <div className="border rounded-3 p-4 bg-white">
-                      <h6 className="text-muted fw-bold mb-4 small">THÔNG TIN VÉ THÁNG</h6>
-                      <div className="d-flex align-items-start gap-3 mb-3"><MapPin size={18} className="text-muted"/><div><small className="text-muted d-block">Bãi đỗ</small><strong>{currentLot.name}</strong></div></div>
-                      <div className="d-flex align-items-start gap-3 mb-3"><Car size={18} className="text-muted"/><div><small className="text-muted d-block">Phương tiện</small><strong>{currentSelectedVehicle.type === 'Car' ? 'Ô tô' : 'Xe máy'} - {currentSelectedVehicle.plate}</strong></div></div>
+                    <div className="border rounded-3 p-4 bg-white shadow-sm">
+                      <h6 className="text-muted fw-bold mb-3 small">THÔNG TIN THANH TOÁN</h6>
+                      <div className="d-flex align-items-start gap-3 mb-2"><MapPin size={18} className="text-muted"/><div><small className="text-muted d-block">Bãi đỗ</small><strong>{currentLot?.name}</strong></div></div>
+                      <div className="d-flex align-items-start gap-3 mb-2"><Car size={18} className="text-muted"/><div><small className="text-muted d-block">Phương tiện</small><strong>{submittedLicensePlate}</strong></div></div>
                       <div className="bg-light rounded-3 p-3 mt-3 d-flex justify-content-between align-items-center">
-                        <span className="fw-semibold small">Phí thuê tháng</span><strong style={{color: '#164e63'}}>{Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')}đ</strong>
+                        <span className="fw-semibold small">Tổng thanh toán</span><strong style={{color: '#164e63'}}>{Math.floor(activePlanPrice * 1.1).toLocaleString('vi-VN')}đ</strong>
                       </div>
                     </div>
-                    <button onClick={async () => { 
-                      try {
-                        const payload = {
-                          vehicleId: selectedSubVehicleId === 'new' ? undefined : Number(selectedSubVehicleId),
-                          policyId: activeSubPlan.policyId
-                        };
-                        
-                        if (!payload.policyId) {
-                          payload.policyId = activeSubPlan.type === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4);
-                        }
-                        
-                        let finalLicensePlate = currentSelectedVehicle.plate;
-                        if (selectedSubVehicleId === 'new') {
-                          const created = await parkingApi.createVehicle({
-                            licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
-                            vehicleColor: newVehicleData.vehicleColor.trim(),
-                            vehicleBrand: newVehicleData.vehicleBrand.trim(),
-                            vehicleTypeId: currentSelectedVehicle.type === 'Car' ? 1 : 2,
-                            userId: Number(userId)
-                          });
-                          payload.vehicleId = created.vehicleId || created.id;
-                          finalLicensePlate = created.licensePlate;
-                        }
 
-                        await parkingApi.submitMonthlyTicketRequest({
-                          vehicleId: payload.vehicleId,
-                          policyId: payload.policyId,
-                          branchId: Number(selectedLotId)
-                        });
-                        
-                        toast.success(`Đã gửi yêu cầu đăng ký gói "${activeSubPlan.title || activeSubPlan.name}" cho xe ${finalLicensePlate}! Ban quản lý sẽ sớm duyệt yêu cầu của bạn.`);
-                        setActiveSubPlan(null);
-                        setSubModalStep(1);
-                      } catch (err) {
-                        console.error(err);
-                        toast.error('Có lỗi xảy ra khi gửi yêu cầu đăng ký. Vui lòng thử lại!');
-                      }
-                    }} className="btn text-white w-100 fw-bold py-2.5 rounded-3" style={{ backgroundColor: '#164e63' }}>Hoàn tất đăng ký</button>
-                    <button onClick={() => { toast.info('Đã hủy đặt chỗ!'); setActiveSubPlan(null); }} className="btn btn-link text-danger w-100 small text-decoration-none">Hủy đặt chỗ</button>
+                    {(paymentMethod === 'vnpay' || paymentMethod === 'card') ? (
+                      paymentUrl ? (
+                        <div className="text-center">
+                          <p className="small text-muted mb-3">
+                            Vui lòng nhấn nút bên dưới để chuyển hướng đến cổng thanh toán VNPay để hoàn tất.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => { window.location.href = paymentUrl; }}
+                            className="btn fw-bold px-4 py-3 rounded-3 text-white d-inline-flex align-items-center justify-content-center gap-2 w-100"
+                            style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.3)', border: 'none' }}
+                          >
+                            <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" alt="VNPay" style={{ height: 20, width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                            Thanh toán qua VNPay
+                          </button>
+                        </div>
+                      ) : paymentError ? (
+                        <div className="rounded-3 p-3" style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>
+                          <div className="small">
+                            <strong>⚠️ Không thể kết nối cổng thanh toán online</strong><br />
+                            Yêu cầu đã được lưu. Vui lòng đến quầy quản lý của chi nhánh để thanh toán và nhận thẻ.
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-2">
+                          <div className="spinner-border spinner-border-sm" role="status" style={{ color: '#164e63' }} />
+                          <div className="small text-muted mt-2">Đang tạo liên kết thanh toán VNPay...</div>
+                        </div>
+                      )
+                    ) : (
+                      <div className="rounded-3 p-3" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
+                        <div className="small">
+                          <strong>ℹ️ Đăng ký trả sau / trả trực tiếp</strong><br />
+                          Vui lòng đến quầy quản trị bãi xe để nộp tiền mặt và kích hoạt thẻ tháng. Hotline hỗ trợ: 1900 8868.
+                        </div>
+                      </div>
+                    )}
+
+                    <button onClick={handleCloseSubModal} className="btn btn-outline-secondary w-100 fw-bold py-2 rounded-3 mt-2">
+                      Đóng cửa sổ
+                    </button>
                   </div>
                 </div>
               )}
