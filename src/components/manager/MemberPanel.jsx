@@ -106,7 +106,8 @@ export default function MemberPanel({ branchId }) {
         cardCode: code, 
         parking_branch_id: Number(createCardForm.parkingBranchId),
         parkingBranchId: Number(createCardForm.parkingBranchId),
-        type: createCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : createCardForm.cardType === 'VIP' ? 'VIP' : 'REGULAR',
+        type: createCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : createCardForm.cardType === 'VIP' ? 'VIP' : createCardForm.cardType === 'EMPLOYEE' ? 'EMPLOYEE' : 'REGULAR',
+        cardType: createCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : createCardForm.cardType === 'VIP' ? 'VIP' : createCardForm.cardType === 'EMPLOYEE' ? 'EMPLOYEE' : 'REGULAR',
         status: 'AVAILABLE'
       });
       toast.success('Đã thêm thẻ RFID mới!');
@@ -131,7 +132,8 @@ export default function MemberPanel({ branchId }) {
         parking_branch_id: Number(editCardForm.parkingBranchId),
         parkingBranchId: Number(editCardForm.parkingBranchId), 
         status: editCardForm.status,
-        type: editCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : editCardForm.cardType === 'VIP' ? 'VIP' : 'REGULAR'
+        type: editCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : editCardForm.cardType === 'VIP' ? 'VIP' : editCardForm.cardType === 'EMPLOYEE' ? 'EMPLOYEE' : 'REGULAR',
+        cardType: editCardForm.cardType === 'MONTHLY' ? 'MONTHLY' : editCardForm.cardType === 'VIP' ? 'VIP' : editCardForm.cardType === 'EMPLOYEE' ? 'EMPLOYEE' : 'REGULAR'
       });
       toast.success('Cập nhật thẻ thành công!');
       setShowEditCard(false); setSelectedCard(null); fetchAll();
@@ -325,8 +327,10 @@ export default function MemberPanel({ branchId }) {
       const assocCard = allCards.find(c => String(c.parkingCardId) === String(t.parkingCardId));
       if (assocCard) {
         await managerApi.updateParkingCard(assocCard.parkingCardId, {
+          ...assocCard,
           status: 'AVAILABLE',
-          type: 'REGULAR'
+          type: assocCard.type || assocCard.cardType || 'MONTHLY',
+          cardType: assocCard.cardType || assocCard.type || 'MONTHLY'
         }).catch(err => console.error("Failed to reset card status:", err));
       }
       toast.success('Đã xóa vé!'); 
@@ -344,7 +348,10 @@ export default function MemberPanel({ branchId }) {
       const assocCard = allCards.find(c => String(c.parkingCardId) === String(cardId));
       if (assocCard) {
         await managerApi.updateParkingCard(assocCard.parkingCardId, {
-          status: isActive ? 'AVAILABLE' : 'IN_USE'
+          ...assocCard,
+          status: isActive ? 'AVAILABLE' : 'IN_USE',
+          type: assocCard.type || assocCard.cardType || 'MONTHLY',
+          cardType: assocCard.cardType || assocCard.type || 'MONTHLY'
         }).catch(err => console.error("Failed to sync card status during toggle:", err));
       }
       toast.success(isActive ? 'Đã tạm dừng vé!' : 'Đã kích hoạt vé!'); fetchAll();

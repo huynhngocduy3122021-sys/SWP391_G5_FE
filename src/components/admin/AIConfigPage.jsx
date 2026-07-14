@@ -168,7 +168,7 @@ export default function AIConfigPage() {
       {/* Page Title & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: 'var(--vin-primary)' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0, color: '#1e293b' }}>
             Phân tích Vận hành & Quản lý Ngoại lệ
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '13px' }}>Giám sát hoạt động xe ra/vào, xử lý các phản hồi khiếu nại và sự cố phát sinh tại các chi nhánh.</p>
@@ -187,7 +187,7 @@ export default function AIConfigPage() {
         {/* Branch Operations Table */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', boxShadow: '0 4px 12px rgba(0,0,0,0.01)', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--vin-bg-card)' }}>Số liệu Vận hành Chi nhánh</h4>
+            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Số liệu Vận hành Chi nhánh</h4>
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '6px' }}>
               <Search size={14} color="#64748b" style={{ marginRight: '6px' }} />
               <input 
@@ -241,7 +241,7 @@ export default function AIConfigPage() {
 
         {/* Incidents Pie Chart */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: 'var(--vin-bg-card)', alignSelf: 'flex-start' }}>Phân loại Ngoại lệ & Sự cố</h4>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b', alignSelf: 'flex-start' }}>Phân loại Ngoại lệ & Sự cố</h4>
           
           <div style={{
             width: '130px', height: '130px', borderRadius: '50%',
@@ -282,7 +282,7 @@ export default function AIConfigPage() {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eef0f3', padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <AlertTriangle size={18} color="#dc2626" />
-          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--vin-primary)' }}>Bảng xử lý Khiếu nại & Sự cố kỹ thuật</h4>
+          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Bảng xử lý Khiếu nại & Sự cố kỹ thuật</h4>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>

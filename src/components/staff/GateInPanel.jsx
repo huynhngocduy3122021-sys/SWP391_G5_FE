@@ -315,26 +315,26 @@ export default function GateInPanel() {
   };
 
   return (
-    <div className="p-3 bg-dark text-white " style={{ minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+    <div className="p-3 text-dark" style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)' }}>
       <Row className="g-4">
         {/* L/H Column */}
         <Col lg={8} className="d-flex flex-column gap-3">
           <CameraFeed label={`LÀN VÀO - ${GATE_ID}`} sub="CAM 01: NHẬN DIỆN BIỂN SỐ" status="SẴN SÀNG" tone="success" imageUrl={previewUrls.length > 0 ? previewUrls[0] : null} />
 
-          <Card className="bg-secondary bg-opacity-25 border-0 shadow-sm p-3 text-white">
+          <Card className="bg-white border-0 shadow-sm p-3 text-dark" style={{ borderRadius: '12px' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="small text-light fw-bold">⚙️ Chi tiết phương tiện</span>
+              <span className="small text-muted fw-bold">⚙️ Chi tiết phương tiện</span>
               <ButtonGroup size="sm">
-                <Button variant={!isBooking ? 'info' : 'outline-light'} onClick={() => setIsBooking(false)} className="fw-bold">Khách vãng lai</Button>
-                <Button variant={isBooking ? 'info' : 'outline-light'} onClick={() => setIsBooking(true)} className="fw-bold">Đã đặt trước</Button>
+                <Button variant={!isBooking ? 'info' : 'outline-secondary'} onClick={() => setIsBooking(false)} className="fw-bold">Khách vãng lai</Button>
+                <Button variant={isBooking ? 'info' : 'outline-secondary'} onClick={() => setIsBooking(true)} className="fw-bold">Đã đặt trước</Button>
               </ButtonGroup>
             </div>
 
             {isBooking && (
               <Form.Group className="mb-3">
-                <Form.Label className="small fw-bold text-light mb-1">MÃ ĐẶT CHỖ (NẾU CÓ)</Form.Label>
+                <Form.Label className="small fw-bold text-muted mb-1">MÃ ĐẶT CHỖ (NẾU CÓ)</Form.Label>
                 <div className="d-flex gap-2">
-                  <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" placeholder="Nhập mã đặt chỗ..." value={bookingCode} onChange={e => setBookingCode(e.target.value)} />
+                  <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" placeholder="Nhập mã đặt chỗ..." value={bookingCode} onChange={e => setBookingCode(e.target.value)} style={{ boxShadow: 'inset 0 0 0 1px var(--vin-border)' }} />
                   <Button variant="primary" className="fw-bold px-4" onClick={handleLookupBooking}>Tra cứu</Button>
                 </div>
               </Form.Group>
@@ -350,7 +350,7 @@ export default function GateInPanel() {
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-bold text-warning mb-1">⭐ CHỌN PHƯƠNG TIỆN VIP (CHỦ XE: {vipOwnerName.toUpperCase()})</Form.Label>
                 <Form.Select className="bg-warning bg-opacity-10 border-warning text-warning fw-bold" value={selectedVipVehicleId} onChange={handleVipVehicleChange}>
-                  {vipVehicles.map(v => <option key={v.vehicleId || v.id} value={v.vehicleId || v.id} className="bg-dark text-white">{v.licensePlate} — {v.vehicleBrand || 'Không rõ'} {v.vehicleColor || ''} ({v.vehicleTypeName || v.vehicleType?.typeName || 'Xe'})</option>)}
+                  {vipVehicles.map(v => <option key={v.vehicleId || v.id} value={v.vehicleId || v.id} className="bg-white text-dark">{v.licensePlate} — {v.vehicleBrand || 'Không rõ'} {v.vehicleColor || ''} ({v.vehicleTypeName || v.vehicleType?.typeName || 'Xe'})</option>)}
                 </Form.Select>
               </Form.Group>
             )}
@@ -360,38 +360,38 @@ export default function GateInPanel() {
               return (
                 <>
                   <Form.Group className="mb-3">
-                    <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>BIỂN SỐ {isMOrV && '— THẺ ĐĂNG KÝ'}</Form.Label>
-                    <Form.Control type="text" className={`fw-bold fs-5 ${isMOrV ? 'bg-info bg-opacity-25 text-info border-info' : 'bg-light text-dark border-0'}`} value={licensePlate} onChange={e => setLicensePlate(e.target.value)} readOnly={isMOrV} />
+                    <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-muted'}`}>BIỂN SỐ {isMOrV && '— THẺ ĐĂNG KÝ'}</Form.Label>
+                    <Form.Control type="text" className={`fw-bold fs-5 ${isMOrV ? 'bg-info bg-opacity-10 text-info border-info' : 'bg-light text-dark border-0'}`} value={licensePlate} onChange={e => setLicensePlate(e.target.value)} readOnly={isMOrV} style={!isMOrV ? { boxShadow: 'inset 0 0 0 1px var(--vin-border)' } : {}} />
                   </Form.Group>
                   <Form.Group className="mb-3">
-                    <Form.Label className="small fw-bold text-light mb-1">MÃ THẺ (QUẸT THẺ)</Form.Label>
-                    <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" value={cardCode} onChange={e => setCardCode(e.target.value)} />
+                    <Form.Label className="small fw-bold text-muted mb-1">MÃ THẺ (QUẸT THẺ)</Form.Label>
+                    <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" value={cardCode} onChange={e => setCardCode(e.target.value)} style={{ boxShadow: 'inset 0 0 0 1px var(--vin-border)' }} />
                   </Form.Group>
                   <Row className="g-3 mb-3">
                     <Col xs={6}>
                       <Form.Group>
-                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>MÀU XE</Form.Label>
-                        <Form.Control type="text" className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-25 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleColor} onChange={e => setVehicleColor(e.target.value)} readOnly={isMOrV} />
+                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-muted'}`}>MÀU XE</Form.Label>
+                        <Form.Control type="text" className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-10 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleColor} onChange={e => setVehicleColor(e.target.value)} readOnly={isMOrV} style={!isMOrV ? { boxShadow: 'inset 0 0 0 1px var(--vin-border)' } : {}} />
                       </Form.Group>
                     </Col>
                     <Col xs={6}>
                       <Form.Group>
-                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>HIỆU XE</Form.Label>
-                        <Form.Control type="text" className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-25 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleBrand} onChange={e => setVehicleBrand(e.target.value)} readOnly={isMOrV} />
+                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-muted'}`}>HIỆU XE</Form.Label>
+                        <Form.Control type="text" className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-10 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleBrand} onChange={e => setVehicleBrand(e.target.value)} readOnly={isMOrV} style={!isMOrV ? { boxShadow: 'inset 0 0 0 1px var(--vin-border)' } : {}} />
                       </Form.Group>
                     </Col>
                   </Row>
                   <Row className="g-3 mb-3">
                     <Col xs={6}>
                       <Form.Group>
-                        <Form.Label className="small fw-bold text-light mb-1">THỜI GIAN VÀO</Form.Label>
-                        <Form.Control type="text" className="bg-light text-dark border-0 opacity-75" value={detected.entryTime} readOnly />
+                        <Form.Label className="small fw-bold text-muted mb-1">THỜI GIAN VÀO</Form.Label>
+                        <Form.Control type="text" className="bg-light text-dark border-0 opacity-75" value={detected.entryTime} readOnly style={{ boxShadow: 'inset 0 0 0 1px var(--vin-border)' }} />
                       </Form.Group>
                     </Col>
                     <Col xs={6}>
                       <Form.Group>
-                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-light'}`}>LOẠI XE</Form.Label>
-                        <Form.Select className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-25 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleTypeId} onChange={e => setVehicleTypeId(e.target.value)} disabled={isMOrV}>
+                        <Form.Label className={`small fw-bold mb-1 ${isMOrV ? 'text-info' : 'text-muted'}`}>LOẠI XE</Form.Label>
+                        <Form.Select className={`fw-bold ${isMOrV ? 'bg-info bg-opacity-10 text-info border-info' : 'bg-light text-dark border-0'}`} value={vehicleTypeId} onChange={e => setVehicleTypeId(e.target.value)} disabled={isMOrV} style={!isMOrV ? { boxShadow: 'inset 0 0 0 1px var(--vin-border)' } : {}}>
                           {vehicleTypes.map((type) => <option key={type.vehicleTypeId} value={type.vehicleTypeId}>{type.typeName}</option>)}
                         </Form.Select>
                       </Form.Group>
@@ -402,8 +402,8 @@ export default function GateInPanel() {
             })()}
 
             <Form.Group className="mb-4">
-              <Form.Label className="small fw-bold text-light mb-1">ẢNH PHƯƠNG TIỆN</Form.Label>
-              <Form.Control type="file" multiple accept="image/*" className="bg-light text-dark border-0 mb-2" onChange={(e) => {
+              <Form.Label className="small fw-bold text-muted mb-1">ẢNH PHƯƠNG TIỆN</Form.Label>
+              <Form.Control type="file" multiple accept="image/*" className="bg-light text-dark border-0 mb-2" style={{ boxShadow: 'inset 0 0 0 1px var(--vin-border)' }} onChange={(e) => {
                 if (e.target.files) {
                   const newFiles = Array.from(e.target.files);
                   setSelectedFiles(prev => [...prev, ...newFiles.filter(nf => !prev.some(pf => pf.name === nf.name && pf.size === nf.size))]);
@@ -411,11 +411,11 @@ export default function GateInPanel() {
                 }
               }} />
               {selectedFiles.length > 0 && (
-                <div className="bg-dark border border-secondary p-2 rounded">
+                <div className="bg-light border p-2 rounded">
                   <div className="small fw-bold text-success mb-2">Đã chọn ({selectedFiles.length}):</div>
                   <ul className="list-unstyled mb-0" style={{ maxHeight: '120px', overflowY: 'auto' }}>
                     {selectedFiles.map((file, idx) => (
-                      <li key={idx} className="d-flex justify-content-between align-items-center small text-light py-1">
+                      <li key={idx} className="d-flex justify-content-between align-items-center small text-dark py-1">
                         <span className="text-truncate" style={{ maxWidth: '85%' }}>📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
                         <Button variant="link" size="sm" className="text-danger p-0 text-decoration-none fw-bold" onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}>✕</Button>
                       </li>
@@ -437,22 +437,22 @@ export default function GateInPanel() {
         <Col lg={4} className="d-flex flex-column gap-3">
           <SupportPanel plateNumber={detected.plateNumber || licensePlate} gateId={GATE_ID} />
 
-          <Card className="bg-secondary bg-opacity-25 border-0 shadow-sm p-3 text-white h-100">
-            <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+          <Card className="bg-white border-0 shadow-sm p-3 text-dark h-100" style={{ borderRadius: '12px' }}>
+            <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
               <span className="fw-bold small">🚗 LƯỢT XE GỬI GẦN ĐÂY</span>
-              <span className="small text-light fw-bold">Mới nhất</span>
+              <span className="small text-muted fw-bold">Mới nhất</span>
             </div>
-            <Table hover variant="dark" size="sm" className="align-middle small m-0 border-transparent bg-transparent">
+            <Table hover size="sm" className="align-middle small m-0 border-transparent bg-transparent">
               <thead><tr><th>BIỂN SỐ</th><th>THỜI GIAN</th><th>LOẠI XE</th><th>TRẠNG THÁI</th></tr></thead>
               <tbody>
-                {recentSessions.length === 0 ? <tr><td colSpan="4" className="text-center text-light py-3">Chưa có lượt gửi xe nào gần đây</td></tr> : recentSessions.map((s, idx) => {
+                {recentSessions.length === 0 ? <tr><td colSpan="4" className="text-center text-muted py-3">Chưa có lượt gửi xe nào gần đây</td></tr> : recentSessions.map((s, idx) => {
                   const checkInTimeStr = s.checkInTime ? new Date(s.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—';
                   const isActive = s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime);
                   return (
                     <tr key={s.parkingSessionId || idx}>
-                      <td className="fw-bold text-info">{s.licensePlate}</td>
-                      <td className="text-light">{checkInTimeStr}</td>
-                      <td className="text-light">{s.vehicleTypeName || s.vehicleType?.typeName || 'Xe máy'}</td>
+                      <td className="fw-bold text-primary">{s.licensePlate}</td>
+                      <td className="text-muted">{checkInTimeStr}</td>
+                      <td className="text-muted">{s.vehicleTypeName || s.vehicleType?.typeName || 'Xe máy'}</td>
                       <td><Badge bg={isActive ? 'success' : 'info'}>{isActive ? 'Đang đỗ' : 'Đã ra'}</Badge></td>
                     </tr>
                   );
@@ -468,13 +468,13 @@ export default function GateInPanel() {
 
 export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrl }) {
   return (
-    <Card className="bg-secondary bg-opacity-25 border-0 overflow-hidden text-white shadow-sm">
-      <div className="d-flex justify-content-between align-items-center p-2 px-3 border-bottom border-secondary small">
-        <span className="text-light fw-bold">📷 {label}</span>
+    <Card className="bg-white border-0 overflow-hidden text-dark shadow-sm" style={{ borderRadius: '12px' }}>
+      <div className="d-flex justify-content-between align-items-center p-2 px-3 border-bottom small">
+        <span className="text-muted fw-bold">📷 {label}</span>
         <Badge bg={tone}>{status}</Badge>
       </div>
       <div className="position-relative d-flex align-items-center justify-content-center bg-black" style={{ height: 220, background: imageUrl ? `url(${imageUrl}) center/contain no-repeat #000` : 'linear-gradient(135deg, #0b1120, #111827)' }}>
-        {!imageUrl && <span className="text-light small">{sub}</span>}
+        {!imageUrl && <span className="text-muted small">{sub}</span>}
         <Badge bg="success" className="bg-opacity-25 text-success border border-success position-absolute bottom-0 start-0 m-2 px-2 py-1">● ĐANG NHẬN DIỆN...</Badge>
       </div>
     </Card>

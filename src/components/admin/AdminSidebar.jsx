@@ -7,12 +7,7 @@ export default function AdminSidebar() {
     { path: '/admin/revenue', name: 'Báo cáo doanh thu', icon: <MdListAlt size={20} /> },
     { path: '/admin/users', name: 'Tài khoản', icon: <MdPeople size={20} /> },
     { path: '/admin/settings', name: 'Cài đặt hệ thống', icon: <MdSettings size={20} /> },
-<<<<<<< Updated upstream
-    { path: '/admin/ai-config', name: 'Cấu hình AI', icon: <MdComputer size={20} /> },
-    { path: '/admin/logs', name: 'Nhật ký hệ thống', icon: <MdListAlt size={20} /> },
-=======
     { path: '/admin/ai-config', name: 'Quản lý thiết bị', icon: <MdComputer size={20} /> },
->>>>>>> Stashed changes
   ];
 
   return (

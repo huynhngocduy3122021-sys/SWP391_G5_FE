@@ -10,17 +10,12 @@ export default function PaymentResultPage() {
   const message = searchParams.get('message') || '';
 
   useEffect(() => {
-    const paymentSuccess = searchParams.get('success') === 'true';
-    const paymentFailed = searchParams.get('success') === 'false';
-
-    if (paymentSuccess) {
-      const targetUrl = `/user-dashboard?success=true&message=${encodeURIComponent(message || '🎉 Thanh toán thành công! Gói cước của bạn đang được xử lý.')}`;
-      navigate(targetUrl, { replace: true });
-    } else if (paymentFailed) {
-      const targetUrl = `/user-dashboard?success=false&message=${encodeURIComponent(message || 'Thanh toán thất bại hoặc đã bị huỷ!')}`;
-      navigate(targetUrl, { replace: true });
+    if (success) {
+      toast.success(message || 'Thanh toán thành công! Giao dịch của bạn đã hoàn tất.');
+    } else if (searchParams.get('success') === 'false') {
+      toast.error(message || 'Thanh toán thất bại hoặc đã bị huỷ!');
     }
-  }, [message, navigate, searchParams]);
+  }, [success, message, searchParams]);
 
   return (
     <div className="min-vh-100 d-flex flex-column align-items-center justify-content-center bg-light py-5">

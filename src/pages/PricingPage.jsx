@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Dropdown } from 'react-bootstrap';
-import { PARKING_LOTS, mapBranchToParkingLot } from '../data/parkingData';
+import { mapBranchToParkingLot } from '../utils/mapBranch';
 import parkingApi from '../api/parkingApi';
 import { CheckCircle2, ChevronLeft, MapPin, Car, Clock, ShieldCheck, Info } from 'lucide-react';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [lots, setLots] = useState(PARKING_LOTS);
+  const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedLotId, setSelectedLotId] = useState(() => Number(location.state?.selectedLotId) || 1);
 
@@ -27,6 +27,8 @@ export default function PricingPage() {
           const mapped = branches.map(mapBranchToParkingLot);
           setLots(mapped);
           if (!mapped.some(lot => lot.id === Number(selectedLotId))) setSelectedLotId(mapped[0].id);
+        } else {
+          setLots([]);
         }
       } catch (error) {
         console.error('Error fetching branches in PricingPage:', error);
@@ -41,15 +43,12 @@ export default function PricingPage() {
   const [subModalStep, setSubModalStep] = useState(1);
   const [selectedSubVehicleId, setSelectedSubVehicleId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('vnpay');
-  const [discount, setDiscount] = useState(0);
   const [userVehicles, setUserVehicles] = useState([]);
   const [newVehicleData, setNewVehicleData] = useState({ licensePlate: '', vehicleBrand: '', vehicleColor: '', type: 'Car' });
   const userId = localStorage.getItem('userId');
 
   const [pricePolicies, setPricePolicies] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
-  const [loadingPricing, setLoadingPricing] = useState(true);
-
   useEffect(() => {
     const fetchPricingData = async () => {
       try {
@@ -61,8 +60,6 @@ export default function PricingPage() {
         setVehicleTypes(Array.isArray(vtData) ? vtData : []);
       } catch (err) {
         console.error("Failed to load pricing data:", err);
-      } finally {
-        setLoadingPricing(false);
       }
     };
     fetchPricingData();
@@ -85,7 +82,7 @@ export default function PricingPage() {
     }
   }, [userId]);
 
-  const currentLot = lots.find(lot => lot.id === Number(selectedLotId)) || lots[0];
+  const currentLot = lots.length > 0 ? (lots.find(lot => lot.id === Number(selectedLotId)) || lots[0]) : null;
 
   const isPackage = (p) => {
     const name = p.policyName || '';
@@ -117,7 +114,7 @@ export default function PricingPage() {
   const activePackages = pricePolicies.filter(p => p.active && isPackage(p)).map(getPackageDetails);
 
   const prices = (() => {
-    const vipCarPrice = parseInt(currentLot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000;
+    const vipCarPrice = currentLot ? (parseInt(currentLot.monthlyPrice.replace(/[^0-9]/g, ''), 10) || 2500000) : 2500000;
     const ecoCarPrice = Math.max(1000000, vipCarPrice - 1000000);
     const ecoMotorPrice = Math.max(150000, Math.round((ecoCarPrice / 6) / 10000) * 10000);
     return { ecoCar: ecoCarPrice, ecoMotor: ecoMotorPrice, vipCar: vipCarPrice, vipMotor: ecoMotorPrice * 2 };
@@ -159,9 +156,10 @@ export default function PricingPage() {
     return isNaN(num) ? 30000 : num;
   };
 
-  const basePrice = getBasePrice(currentLot.price);
+  const basePrice = currentLot ? getBasePrice(currentLot.price) : 30000;
   
   if (loading) return <div className="p-5 text-center text-muted">Đang tải dữ liệu bãi đỗ...</div>;
+  if (!loading && lots.length === 0) return <div className="p-5 text-center text-muted">Không có dữ liệu bãi đỗ.</div>;
 
   return (
     <div className="bg-light min-vh-100 pb-5 text-dark">
@@ -298,11 +296,11 @@ export default function PricingPage() {
                           <span className="text-muted small d-block fw-bold">{row[0]}</span>
                           <small className="text-muted">{row[2]}</small>
                         </div>
-                        <strong className="text-dark align-self-center">{row[1]}</strong>
+                        <strong className="text-dark align-self-center" style={{ fontVariantNumeric: 'tabular-nums' }}>{row[1]}</strong>
                       </div>
                     ))}
                   </div>
-                  <button disabled={!r.canBook} onClick={() => r.canBook && handleBookNow('Standard')} className={`btn fw-bold py-2.5 rounded-3 w-100 ${r.canBook ? 'text-white' : 'btn-secondary'}`} style={{ backgroundColor: r.canBook ? '#164e63' : '', cursor: r.canBook ? 'pointer' : 'not-allowed' }}>
+                  <button disabled={!r.canBook} onClick={() => r.canBook && handleBookNow('Standard')} className={`vin-btn vin-btn--full rounded-3 py-2.5 ${r.canBook ? 'vin-btn--primary' : 'vin-btn--secondary'}`} style={{ cursor: r.canBook ? 'pointer' : 'not-allowed' }}>
                     {r.canBook ? 'Đặt chỗ ngay' : 'Không hỗ trợ đặt trước xe máy'}
                   </button>
                 </div>
@@ -328,7 +326,7 @@ export default function PricingPage() {
 
               return (
                 <div className="col-md-6" key={s.policyId || idx}>
-                  <div className="card shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column position-relative" style={{ border: isVip ? '2px solid #164e63' : '1px solid #dee2e6' }}>
+                  <div className="card p-4 rounded-4 bg-white h-100 d-flex flex-column position-relative" style={{ border: isVip ? '2px solid #164e63' : '1px solid var(--vin-border)', transform: isVip ? 'scale(1.02)' : 'none', boxShadow: isVip ? 'var(--vin-shadow-md)' : 'var(--vin-shadow-sm)', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: isVip ? 2 : 1 }}>
                     {isVip && <div className="position-absolute px-3 py-1 bg-primary text-white fw-bold text-uppercase" style={{ top: 0, right: 24, fontSize: '0.68rem', borderRadius: '0 0 8px 8px' }}>PHỔ BIẾN NHẤT</div>}
                     <h5 className="fw-bold mb-1">{s.title}</h5>
                     <p className="text-muted small mb-2">{s.desc}</p>
@@ -336,13 +334,13 @@ export default function PricingPage() {
                     <div className="bg-light rounded-3 p-3 mb-4">
                       {s.mP ? (
                         <>
-                          <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63'}}>{(s.mP || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
-                          <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63'}}>{(s.price || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                          <div className="d-flex justify-content-between mb-2"><span className="text-muted small">🛵 Xe máy:</span><strong className="fs-5" style={{color: '#164e63', fontVariantNumeric: 'tabular-nums'}}>{(s.mP || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
+                          <div className="d-flex justify-content-between"><span className="text-muted small">🚗 Ô tô:</span><strong className="fs-5" style={{color: '#164e63', fontVariantNumeric: 'tabular-nums'}}>{(s.price || 0).toLocaleString('vi-VN')} đ<span className="fs-6 text-muted fw-normal">/tháng</span></strong></div>
                         </>
                       ) : (
                         <div className="d-flex justify-content-between align-items-center">
                           <span className="text-muted small">🚙 Loại xe: {s.vehicleTypeName}</span>
-                          <strong className="fs-5" style={{color: '#164e63'}}>{priceLabel}<span className="fs-6 text-muted fw-normal"> {durationLabel}</span></strong>
+                          <strong className="fs-5" style={{color: '#164e63', fontVariantNumeric: 'tabular-nums'}}>{priceLabel}<span className="fs-6 text-muted fw-normal"> {durationLabel}</span></strong>
                         </div>
                       )}
                     </div>
@@ -359,7 +357,7 @@ export default function PricingPage() {
                         }
                         navigate('/user-dashboard', { state: { tab: 'vehicles', autoSubscribePackage: s } });
                       }} 
-                      className="btn text-white fw-bold py-2.5 rounded-3 w-100" style={{ backgroundColor: '#164e63' }}>
+                      className="vin-btn vin-btn--primary vin-btn--full rounded-3 py-2.5">
                       {isVip ? 'Đăng Ký Gói VIP' : 'Đăng Ký Ngay'}
                     </button>
                   </div>

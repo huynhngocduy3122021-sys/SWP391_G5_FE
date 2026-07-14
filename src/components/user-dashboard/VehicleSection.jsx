@@ -686,16 +686,9 @@ export default function VehicleSection() {
                         Vui lòng nhấp vào nút bên dưới để mở cổng thanh toán VNPay. Bạn có thể quét mã QR bằng ứng dụng ngân hàng tại trang thanh toán của VNPay.
                       </p>
                       {paymentUrl && (
-<<<<<<< Updated upstream
-                        <a
-                          href={paymentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-=======
                         <button
                           type="button"
                           onClick={() => { window.location.href = paymentUrl; }}
->>>>>>> Stashed changes
                           className="btn fw-bold px-5 py-3 rounded-pill text-white d-inline-flex align-items-center justify-content-center gap-3 w-100"
                           style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.4)', fontSize: '1.1rem', border: 'none' }}
                         >

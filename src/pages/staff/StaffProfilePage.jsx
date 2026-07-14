@@ -226,8 +226,8 @@ export default function StaffProfilePage() {
   };
 
   const getInputStyle = (editable) => ({
-    backgroundColor: editable ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-    color: editable ? '#ffffff' : 'var(--vin-text-muted)',
+    backgroundColor: editable ? '#ffffff' : 'var(--vin-bg-light)',
+    color: 'var(--vin-text-main)',
     border: editable ? '1px solid var(--vin-primary)' : '1px solid var(--vin-border)',
     borderRadius: '8px',
     padding: '0.6rem 0.75rem',
@@ -241,7 +241,7 @@ export default function StaffProfilePage() {
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.fullName || 'Staff')}&background=0284c7&color=fff&size=128`;
 
   return (
-    <div className="dark-theme" style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)', color: 'var(--vin-text-main)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--vin-bg-deep)', color: 'var(--vin-text-main)' }}>
       <StaffTopbar 
         mode="PROFILE" 
         onModeChange={(m) => navigate(m === 'ENTRY' ? '/staff/entry' : m === 'EXIT' ? '/staff/exit' : '/staff/profile')} 
@@ -284,7 +284,7 @@ export default function StaffProfilePage() {
                 </h6>
                 {isEditing ? (
                   <div className="d-flex gap-2">
-                    <button className="btn btn-sm btn-outline-secondary fw-semibold text-white border-secondary" onClick={handleCancel} disabled={saving}>Hủy</button>
+                    <button className="btn btn-sm btn-outline-secondary fw-semibold border-secondary" onClick={handleCancel} disabled={saving}>Hủy</button>
                     <button className="btn btn-sm btn-primary fw-semibold" onClick={handleSave} disabled={saving}>
                       {saving ? 'Đang lưu...' : 'Lưu'}
                     </button>
@@ -296,23 +296,23 @@ export default function StaffProfilePage() {
 
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label small text-light fw-bold">HỌ VÀ TÊN</label>
+                  <label className="form-label small text-muted fw-bold">HỌ VÀ TÊN</label>
                   <input type="text" name="fullName" style={getInputStyle(isEditing)} value={formData.fullName} onChange={handleChange} readOnly={!isEditing} />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label small text-light fw-bold">EMAIL</label>
+                  <label className="form-label small text-muted fw-bold">EMAIL</label>
                   <input type="email" name="email" style={getInputStyle(false)} value={formData.email} readOnly />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label small text-light fw-bold">SỐ ĐIỆN THOẠI</label>
+                  <label className="form-label small text-muted fw-bold">SỐ ĐIỆN THOẠI</label>
                   <input type="text" name="phone" style={getInputStyle(isEditing)} value={formData.phone} onChange={handleChange} readOnly={!isEditing} />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label small text-light fw-bold">VAI TRÒ HỆ THỐNG</label>
+                  <label className="form-label small text-muted fw-bold">VAI TRÒ HỆ THỐNG</label>
                   <input type="text" style={getInputStyle(false)} value={role === 'MANAGER' ? 'Manager' : 'Staff'} readOnly />
                 </div>
                 <div className="col-12">
-                  <label className="form-label small text-light fw-bold">ĐỊA CHỈ</label>
+                  <label className="form-label small text-muted fw-bold">ĐỊA CHỈ</label>
                   <textarea name="address" rows="2" style={{ ...getInputStyle(isEditing), resize: 'none' }} value={formData.address} onChange={handleChange} readOnly={!isEditing}></textarea>
                 </div>
               </div>
@@ -338,7 +338,7 @@ export default function StaffProfilePage() {
                 <div className="row g-3">
                   {vehicles.map((v) => (
                     <div className="col-md-6" key={v.vehicleId || v.id}>
-                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--vin-border)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ background: 'var(--vin-bg-deep)', border: '1px solid var(--vin-border)', borderRadius: '8px', padding: '1rem' }}>
                         <div className="d-flex justify-content-between align-items-start mb-2">
                           <span style={{ fontSize: '1.2rem' }}>
                             {v.vehicleTypeName?.toLowerCase().includes('máy') || v.vehicleTypeName?.toLowerCase().includes('moto') ? '🛵' : '🚙'}
@@ -377,7 +377,7 @@ export default function StaffProfilePage() {
                     <p style={{ color: 'var(--vin-text-muted)', fontSize: '0.8rem', margin: 0 }}>Cập nhật mật khẩu định kỳ để bảo vệ tài khoản</p>
                   </div>
                 </div>
-                <button className="btn btn-outline-secondary btn-sm fw-bold text-white border-secondary" onClick={() => setShowPwModal(true)}>Đổi mật khẩu</button>
+                <button className="btn btn-outline-secondary btn-sm fw-bold border-secondary" onClick={() => setShowPwModal(true)}>Đổi mật khẩu</button>
               </div>
             </div>
           </div>
@@ -392,34 +392,34 @@ export default function StaffProfilePage() {
               <h5 className="fw-bold m-0" style={{ color: 'var(--vin-text-main)' }}>
                 {vehModalMode === 'add' ? '🚘 Đăng ký phương tiện' : '⚙️ Chỉnh sửa phương tiện'}
               </h5>
-              <button type="button" className="btn-close btn-close-white" onClick={() => setShowVehModal(false)}></button>
+              <button type="button" className="btn-close" onClick={() => setShowVehModal(false)}></button>
             </div>
             <form onSubmit={handleVehSubmit}>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">BIỂN SỐ XE *</label>
+                <label className="form-label small text-muted fw-bold">BIỂN SỐ XE *</label>
                 <input type="text" required style={getInputStyle(true)} value={vehFormData.licensePlate} onChange={e => setVehFormData({...vehFormData, licensePlate: e.target.value})} placeholder="Ví dụ: 30G12345" />
                 <small className="text-muted" style={{ fontSize: '0.7rem' }}>Không chứa ký tự đặc biệt ngoài '-' hoặc '.'</small>
               </div>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">HÃNG XE / NHÃN HIỆU</label>
+                <label className="form-label small text-muted fw-bold">HÃNG XE / NHÃN HIỆU</label>
                 <input type="text" style={getInputStyle(true)} value={vehFormData.vehicleBrand} onChange={e => setVehFormData({...vehFormData, vehicleBrand: e.target.value})} placeholder="Ví dụ: VinFast, Honda" />
               </div>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">MÀU SẮC XE</label>
+                <label className="form-label small text-muted fw-bold">MÀU SẮC XE</label>
                 <input type="text" style={getInputStyle(true)} value={vehFormData.vehicleColor} onChange={e => setVehFormData({...vehFormData, vehicleColor: e.target.value})} placeholder="Ví dụ: Trắng, Đen, Đỏ" />
               </div>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">LOẠI PHƯƠNG TIỆN</label>
+                <label className="form-label small text-muted fw-bold">LOẠI PHƯƠNG TIỆN</label>
                 <select style={getInputStyle(true)} value={vehFormData.vehicleTypeId} onChange={e => setVehFormData({...vehFormData, vehicleTypeId: e.target.value})}>
                   {vehicleTypes.map(type => (
-                    <option key={type.vehicleTypeId} value={type.vehicleTypeId} className="bg-dark text-white">
+                    <option key={type.vehicleTypeId} value={type.vehicleTypeId}>
                       {type.typeName}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="d-flex gap-2 justify-content-end mt-4">
-                <button type="button" className="btn btn-outline-secondary fw-semibold text-white border-secondary" onClick={() => setShowVehModal(false)}>Hủy</button>
+                <button type="button" className="btn btn-outline-secondary fw-semibold border-secondary" onClick={() => setShowVehModal(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary fw-semibold" disabled={submittingVeh}>
                   {submittingVeh ? 'Đang lưu...' : 'Lưu thông tin'}
                 </button>
@@ -435,23 +435,23 @@ export default function StaffProfilePage() {
           <div style={{ background: 'var(--vin-bg-card)', border: '1px solid var(--vin-border)', borderRadius: '16px', width: '100%', maxWidth: '400px', padding: '1.5rem', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-bold m-0" style={{ color: 'var(--vin-text-main)' }}>🔒 Đổi mật khẩu</h5>
-              <button type="button" className="btn-close btn-close-white" onClick={() => setShowPwModal(false)}></button>
+              <button type="button" className="btn-close" onClick={() => setShowPwModal(false)}></button>
             </div>
             <form onSubmit={handleChangePassword}>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">MẬT KHẨU HIỆN TẠI</label>
+                <label className="form-label small text-muted fw-bold">MẬT KHẨU HIỆN TẠI</label>
                 <input type="password" required style={getInputStyle(true)} value={pwForm.oldPassword} onChange={e => setPwForm({ ...pwForm, oldPassword: e.target.value })} placeholder="Nhập mật khẩu cũ" />
               </div>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">MẬT KHẨU MỚI</label>
+                <label className="form-label small text-muted fw-bold">MẬT KHẨU MỚI</label>
                 <input type="password" required style={getInputStyle(true)} minLength={6} value={pwForm.newPassword} onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })} placeholder="Tối thiểu 6 ký tự" />
               </div>
               <div className="mb-3">
-                <label className="form-label small text-light fw-bold">XÁC NHẬN MẬT KHẨU MỚI</label>
+                <label className="form-label small text-muted fw-bold">XÁC NHẬN MẬT KHẨU MỚI</label>
                 <input type="password" required style={getInputStyle(true)} value={pwForm.confirmPassword} onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })} placeholder="Xác nhận mật khẩu mới" />
               </div>
               <div className="d-flex gap-2 justify-content-end mt-4">
-                <button type="button" className="btn btn-outline-secondary fw-semibold text-white border-secondary" onClick={() => setShowPwModal(false)}>Hủy</button>
+                <button type="button" className="btn btn-outline-secondary fw-semibold border-secondary" onClick={() => setShowPwModal(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary fw-semibold" disabled={submittingPw}>
                   {submittingPw ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
                 </button>

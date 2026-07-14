@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
-<<<<<<< Updated upstream
-import { useLocation } from 'react-router-dom';
-=======
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
->>>>>>> Stashed changes
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
 import VehicleSection from '../components/user-dashboard/VehicleSection';
@@ -13,11 +9,6 @@ import BookingsSection from '../components/user-dashboard/BookingsSection';
 
 export default function UserDashboardPage() {
   const location = useLocation();
-<<<<<<< Updated upstream
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
-
-  useEffect(() => {
-=======
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
 
@@ -42,7 +33,6 @@ export default function UserDashboardPage() {
   }, [location.state, searchParams]);
 
   useEffect(() => {
->>>>>>> Stashed changes
     const tabFromState = location.state?.activeTab || location.state?.tab;
     if (tabFromState) {
       setActiveTab(tabFromState);

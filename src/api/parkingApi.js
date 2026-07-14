@@ -32,7 +32,7 @@ const parkingApi = {
   getMyMonthlyTicketRequests: async () => (await API.get('/api/monthly-ticket-requests/my-requests')).data,
   updateMonthlyTicketRequestStatus: async (id, status) => (await API.put(`/api/monthly-ticket-requests/${id}/status`, null, { params: { status } })).data,
   // Payment for monthly ticket
-  createMonthlyTicketPayment: async (requestId) => (await API.post(`/api/payments/monthly-ticket/${requestId}/vnpay`)).data,
+  createMonthlyTicketPayment: async (requestId) => (await API.post(`/api/monthly-ticket-requests/${requestId}/payment`)).data,
   getVnpayReturnInfo: async (params) => (await API.get('/api/payments/vnpay-return', { params })).data,
 };
 
