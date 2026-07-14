@@ -42,6 +42,11 @@ const adminApi = {
     return (await API.get('/api/incidents')).data;
   },
 
+  // Get all payments for revenue report (includes paidAt for accurate timing)
+  getAllPayments: async () => {
+    return (await API.get('/api/payments/all')).data;
+  },
+
   // Resolve an incident
   resolveIncident: async (id, resolveData) => {
     return (await API.put(`/api/incidents/${id}/resolve`, resolveData)).data;

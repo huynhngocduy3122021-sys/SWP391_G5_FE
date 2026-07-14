@@ -13,6 +13,34 @@ const zoneCap  = (z) => Number(z?.capacity || z?.totalSlots || 0);
 const zoneUsed = (z) => Number(z?.usedSlots || z?.currentOccupancy || z?.used || 0);
 const zoneName = (z) => z?.zoneName || z?.name || `Zone ${z?.parkingZoneId || z?.id}`;
 
+const checkIsMonthlyOrVip = (s) => {
+  if (!s) return false;
+  const code = String(s.cardCode || s.parkingCard?.cardCode || '').toUpperCase();
+  const type = String(s.cardType || s.parkingCard?.cardType || '').toUpperCase();
+  return code.startsWith('MONTH-') || code.startsWith('MT-') || code.startsWith('MT') ||
+         code.startsWith('VIP-') || code.startsWith('VP-') || code.startsWith('VP') ||
+         type === 'MONTHLY' || type === 'VIP';
+};
+
+const calculateTicketRevenue = (t, VIP_PRICE, MONTHLY_PRICE) => {
+  const code = String(t.cardCode || t.parkingCard?.cardCode || '').toUpperCase();
+  const policyName = String(t.pricePolicy?.policyName || t.policyName || '').toUpperCase();
+  const isVip = code.startsWith('VIP-') || code.startsWith('VP-') || code.startsWith('VP') || policyName.includes('VIP');
+  const basePrice = t.pricePolicy?.basePrice || t.amount || (isVip ? VIP_PRICE : MONTHLY_PRICE);
+  
+  let months = 1;
+  if (t.startDate && t.endDate) {
+    const start = new Date(t.startDate);
+    const end = new Date(t.endDate);
+    const ticketDurationDays = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    const baseDurationDays = t.pricePolicy?.baseDurationMinutes ? (t.pricePolicy.baseDurationMinutes / (60 * 24)) : 30;
+    if (baseDurationDays > 0) {
+        months = Math.max(1, Math.round(ticketDurationDays / baseDurationDays));
+    }
+  }
+  return Number(basePrice) * months;
+};
+
 /* ── main component ──────────────────────── */
 export default function OverviewPanel({ onNavigate, branchId }) {
   const [zones,    setZones]    = useState([]);
@@ -141,9 +169,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
   // Doanh thu hôm nay (Tính trên các xe thực hiện thanh toán và đi ra hôm nay - checkOutTime)
   const walkInRevenueToday = sessions
     .filter(s => {
-      const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
-                     (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
-                     (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
+      const isMOrV = checkIsMonthlyOrVip(s) || (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
       return s.checkOutTime && new Date(s.checkOutTime).toDateString() === today && !isMOrV;
     })
     .reduce((sum, s) => sum + Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0), 0);
@@ -162,8 +188,7 @@ export default function OverviewPanel({ onNavigate, branchId }) {
     const dt = t.createdAt || t.startDate;
     return dt && new Date(dt).toDateString() === today;
   }).reduce((sum, t) => {
-    const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
-    return sum + (isVip ? VIP_PRICE : MONTHLY_PRICE);
+    return sum + calculateTicketRevenue(t, VIP_PRICE, MONTHLY_PRICE);
   }, 0);
 
   const revenueToday = walkInRevenueToday + ticketRevenueToday + lostCardRevenueToday;

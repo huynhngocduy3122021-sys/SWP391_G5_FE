@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import UserSidebar from '../components/user-dashboard/UserSidebar';
 import Navbar from '../components/layout/Navbar';
@@ -10,21 +10,27 @@ import BookingsSection from '../components/user-dashboard/BookingsSection';
 export default function UserDashboardPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || location.state?.tab || 'vehicles'); // 'profile', 'vehicles', 'bookings'
 
   useEffect(() => {
-    const success = searchParams.get('success');
-    const message = searchParams.get('message');
-    if (success === 'true') {
-      toast.success(message || 'Thanh toán thành công! Gói cước của bạn đang được duyệt.');
-      // Remove query params from URL so toast doesn't trigger again on reload safely
-      window.history.replaceState(null, '', window.location.pathname);
-    } else if (success === 'false') {
+    const paymentNotice = location.state?.paymentNotice;
+    const successParam = searchParams.get('success');
+    const message = paymentNotice?.message || searchParams.get('message') || '';
+    const isSuccess = paymentNotice?.success ?? successParam === 'true';
+    const isFailure = paymentNotice?.success === false || successParam === 'false';
+
+    if (isSuccess) {
+      setActiveTab('vehicles');
+      toast.success(message || '🎉 Thanh toán thành công! Gói cước của bạn đang được xử lý.', { autoClose: 6000 });
+    } else if (isFailure) {
+      setActiveTab('vehicles');
       toast.error(message || 'Thanh toán thất bại hoặc đã bị huỷ!');
+    }
+
+    if (successParam || paymentNotice) {
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, [searchParams]);
+  }, [location.state, searchParams]);
 
   useEffect(() => {
     const tabFromState = location.state?.activeTab || location.state?.tab;

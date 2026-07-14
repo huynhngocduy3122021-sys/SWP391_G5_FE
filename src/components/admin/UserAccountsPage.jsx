@@ -4,7 +4,7 @@ import { Modal, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import adminApi from '../../api/admin';
 import parkingApi from '../../api/parkingApi';
-import { MdAdd, MdPeople, MdPerson } from 'react-icons/md';
+import { MdAdd, MdPeople, MdPerson, MdEdit, MdDelete } from 'react-icons/md';
 
 const UserAccountsPage = () => {
   const [users, setUsers] = useState([]);
@@ -12,6 +12,7 @@ const UserAccountsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const location = useLocation();
 
   const [formData, setFormData] = useState({
@@ -55,7 +56,65 @@ const UserAccountsPage = () => {
     }
   };
 
-  const handleCreateUser = async (e) => {
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingUserId(null);
+    setFormData({
+      userFullName: '',
+      userEmail: '',
+      userPhone: '',
+      userPassword: '',
+      userRole: 'STAFF',
+      userAddress: 'System',
+      parkingBranchId: ''
+    });
+  };
+
+  const handleCreateClick = () => {
+    setEditingUserId(null);
+    setFormData({
+      userFullName: '',
+      userEmail: '',
+      userPhone: '',
+      userPassword: '',
+      userRole: 'STAFF',
+      userAddress: 'System',
+      parkingBranchId: ''
+    });
+    setShowModal(true);
+  };
+
+  const handleEditClick = (u) => {
+    setEditingUserId(u.userId);
+    setFormData({
+      userFullName: u.userFullName || '',
+      userEmail: u.userEmail || '',
+      userPhone: u.userPhone || '',
+      userPassword: '', // empty means no change
+      userRole: u.userRole || 'STAFF',
+      userAddress: u.userAddress || 'System',
+      parkingBranchId: u.parkingBranchId ? String(u.parkingBranchId) : ''
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteClick = async (u) => {
+    const confirmMsg = u.deleted 
+      ? `Bạn có chắc chắn muốn kích hoạt lại tài khoản ${u.userFullName}?`
+      : `Bạn có chắc chắn muốn vô hiệu hóa tài khoản ${u.userFullName}?`;
+    
+    if (window.confirm(confirmMsg)) {
+      try {
+        await adminApi.deleteUser(u.userId);
+        toast.success(u.deleted ? 'Đã kích hoạt lại tài khoản thành công' : 'Đã vô hiệu hóa tài khoản thành công');
+        fetchUsers();
+      } catch (err) {
+        toast.error('Không thể thực hiện thao tác xóa/vô hiệu hóa');
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if ((formData.userRole === 'STAFF' || formData.userRole === 'MANAGER') && !formData.parkingBranchId) {
       toast.error('Please select a branch for this role');
@@ -64,30 +123,32 @@ const UserAccountsPage = () => {
 
     setSubmitting(true);
     try {
-      // Create a payload, mapping empty string to null for branches if not applicable
       const payload = { ...formData };
+      
+      // Remove password if editing and left blank
+      if (editingUserId && !payload.userPassword) {
+        delete payload.userPassword;
+      }
+      
       if (payload.userRole !== 'STAFF' && payload.userRole !== 'MANAGER') {
         delete payload.parkingBranchId;
       } else {
         payload.parkingBranchId = parseInt(payload.parkingBranchId, 10);
       }
       
-      await adminApi.adminCreateUser(payload);
-      toast.success('Account created successfully');
-      setShowModal(false);
-      setFormData({
-        userFullName: '',
-        userEmail: '',
-        userPhone: '',
-        userPassword: '',
-        userRole: 'STAFF',
-        userAddress: 'System',
-        parkingBranchId: ''
-      });
+      if (editingUserId) {
+        await adminApi.updateUser(editingUserId, payload);
+        toast.success('Account updated successfully');
+      } else {
+        await adminApi.adminCreateUser(payload);
+        toast.success('Account created successfully');
+      }
+      
+      handleCloseModal();
       fetchUsers(); // Refresh list
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Failed to create user';
-      toast.error(typeof msg === 'string' ? msg : 'Error creating account');
+      const msg = err.response?.data?.message || err.response?.data || 'Operation failed';
+      toast.error(typeof msg === 'string' ? msg : 'Error updating account');
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +171,7 @@ const UserAccountsPage = () => {
           <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Quản lý tất cả vai trò và quyền hạn người dùng trong hệ thống.</p>
         </div>
         <button 
-          onClick={() => setShowModal(true)}
+          onClick={handleCreateClick}
           style={{ 
             display: 'flex', alignItems: 'center', gap: '8px',
             backgroundColor: 'var(--vin-primary)', color: 'var(--vin-text-main)', border: 'none', 
@@ -138,6 +199,7 @@ const UserAccountsPage = () => {
                   <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Thông tin liên hệ</th>
                   <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Vai trò</th>
                   <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Trạng thái</th>
+                  <th style={{ padding: '16px', fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', textAlign: 'center' }}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,11 +235,44 @@ const UserAccountsPage = () => {
                         <span style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 8px', borderRadius: '4px' }}>HOẠT ĐỘNG</span>
                       )}
                     </td>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleEditClick(u)}
+                          title="Chỉnh sửa"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '32px', height: '32px', borderRadius: '6px',
+                            backgroundColor: '#eff6ff', color: '#2563eb', border: 'none',
+                            cursor: 'pointer', transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={e => e.currentTarget.style.backgroundColor='#dbeafe'}
+                          onMouseOut={e => e.currentTarget.style.backgroundColor='#eff6ff'}
+                        >
+                          <MdEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(u)}
+                          title={u.deleted ? "Kích hoạt lại" : "Vô hiệu hóa"}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '32px', height: '32px', borderRadius: '6px',
+                            backgroundColor: u.deleted ? '#d1fae5' : '#fef2f2',
+                            color: u.deleted ? '#10b981' : '#dc2626', border: 'none',
+                            cursor: 'pointer', transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={e => e.currentTarget.style.backgroundColor = u.deleted ? '#a7f3d0' : '#fee2e2'}
+                          onMouseOut={e => e.currentTarget.style.backgroundColor = u.deleted ? '#d1fae5' : '#fef2f2'}
+                        >
+                          <MdDelete size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                       Không tìm thấy người dùng nào.
                     </td>
                   </tr>
@@ -188,13 +283,13 @@ const UserAccountsPage = () => {
         )}
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static">
+      <Modal show={showModal} onHide={handleCloseModal} centered backdrop="static">
         <Modal.Header closeButton style={{ borderBottom: '1px solid #eef0f3' }}>
           <Modal.Title style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
-            Tạo tài khoản Nhân viên/Quản lý
+            {editingUserId ? 'Chỉnh sửa tài khoản người dùng' : 'Tạo tài khoản Nhân viên/Quản lý'}
           </Modal.Title>
         </Modal.Header>
-        <Form onSubmit={handleCreateUser}>
+        <Form onSubmit={handleSubmit}>
           <Modal.Body style={{ padding: '24px' }}>
             <Form.Group className="mb-3">
               <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Full Name</Form.Label>
@@ -226,7 +321,8 @@ const UserAccountsPage = () => {
             <Form.Group className="mb-3">
               <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Password</Form.Label>
               <Form.Control 
-                type="password" required minLength="6" placeholder="Minimum 6 characters"
+                type="password" required={!editingUserId} minLength="6" 
+                placeholder={editingUserId ? "Bỏ trống nếu không muốn đổi" : "Tối thiểu 6 ký tự"}
                 value={formData.userPassword} onChange={e => setFormData({...formData, userPassword: e.target.value})}
                 style={{ fontSize: '14px', padding: '10px 12px' }}
               />
@@ -264,12 +360,12 @@ const UserAccountsPage = () => {
             )}
           </Modal.Body>
           <Modal.Footer style={{ borderTop: '1px solid #eef0f3' }}>
-            <Button variant="light" onClick={() => setShowModal(false)} style={{ fontSize: '14px', fontWeight: '500' }}>
+            <Button variant="light" onClick={handleCloseModal} style={{ fontSize: '14px', fontWeight: '500' }}>
               Hủy
             </Button>
             <Button variant="primary" type="submit" disabled={submitting} style={{ backgroundColor: 'var(--vin-primary)', border: 'none', fontSize: '14px', fontWeight: '500', padding: '8px 16px' }}>
               {submitting ? <Spinner size="sm" animation="border" className="me-2"/> : null}
-              {submitting ? 'Đang tạo...' : 'Tạo tài khoản'}
+              {submitting ? (editingUserId ? 'Đang lưu...' : 'Đang tạo...') : (editingUserId ? 'Lưu thay đổi' : 'Tạo tài khoản')}
             </Button>
           </Modal.Footer>
         </Form>

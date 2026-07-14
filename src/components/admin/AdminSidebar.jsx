@@ -4,11 +4,10 @@ import { MdDashboard, MdPeople, MdLock, MdSettings, MdComputer, MdListAlt } from
 export default function AdminSidebar() {
   const menuItems = [
     { path: '/admin/dashboard', name: 'Bảng điều khiển', icon: <MdDashboard size={20} /> },
+    { path: '/admin/revenue', name: 'Báo cáo doanh thu', icon: <MdListAlt size={20} /> },
     { path: '/admin/users', name: 'Tài khoản', icon: <MdPeople size={20} /> },
-    { path: '/admin/permissions', name: 'Phân quyền', icon: <MdLock size={20} /> },
     { path: '/admin/settings', name: 'Cài đặt hệ thống', icon: <MdSettings size={20} /> },
     { path: '/admin/ai-config', name: 'Quản lý thiết bị', icon: <MdComputer size={20} /> },
-    { path: '/admin/logs', name: 'Nhật ký hệ thống', icon: <MdListAlt size={20} /> },
   ];
 
   return (

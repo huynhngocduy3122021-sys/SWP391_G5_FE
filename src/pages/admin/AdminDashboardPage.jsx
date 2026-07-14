@@ -5,6 +5,34 @@ import { toast } from 'react-toastify';
 import { RefreshCw, Activity, CreditCard, DollarSign, Users } from 'lucide-react';
 import { Row, Col, Card, Badge, Button, ButtonGroup, Table, Modal, Form } from 'react-bootstrap';
 
+const checkIsMonthlyOrVip = (s) => {
+  if (!s) return false;
+  const code = String(s.cardCode || s.parkingCard?.cardCode || '').toUpperCase();
+  const type = String(s.cardType || s.parkingCard?.cardType || '').toUpperCase();
+  return code.startsWith('MONTH-') || code.startsWith('MT-') || code.startsWith('MT') ||
+         code.startsWith('VIP-') || code.startsWith('VP-') || code.startsWith('VP') ||
+         type === 'MONTHLY' || type === 'VIP';
+};
+
+const calculateTicketRevenue = (t, VIP_PRICE, MONTHLY_PRICE) => {
+  const code = String(t.cardCode || t.parkingCard?.cardCode || '').toUpperCase();
+  const policyName = String(t.pricePolicy?.policyName || t.policyName || '').toUpperCase();
+  const isVip = code.startsWith('VIP-') || code.startsWith('VP-') || code.startsWith('VP') || policyName.includes('VIP');
+  const basePrice = Number(t.pricePolicy?.basePrice || t.amount || (isVip ? VIP_PRICE : MONTHLY_PRICE)) || 0;
+  
+  let months = 1;
+  if (t.startDate && t.endDate) {
+    const start = new Date(t.startDate);
+    const end = new Date(t.endDate);
+    const ticketDurationDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) || 0;
+    const baseDurationDays = t.pricePolicy?.baseDurationMinutes ? (t.pricePolicy.baseDurationMinutes / (60 * 24)) : 30;
+    if (baseDurationDays > 0) {
+        months = Math.max(1, Math.round(ticketDurationDays / baseDurationDays)) || 1;
+    }
+  }
+  return basePrice * months;
+};
+
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('Tháng này');
@@ -19,6 +47,8 @@ export default function AdminDashboardPage() {
   const [tickets, setTickets] = useState([]);
   const [cards, setCards] = useState([]);
   const [pricePolicies, setPricePolicies] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [payments, setPayments] = useState([]);
 
   // Branch CRUD modal & form states
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -26,10 +56,10 @@ export default function AdminDashboardPage() {
   const [branchForm, setBranchForm] = useState({ branchName: '', address: '', phoneNumber: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
-      const [usersRes, sessionsRes, bookingsRes, branchesRes, zonesRes, ticketsRes, policiesRes, cardsRes] = await Promise.all([
+      const [usersRes, sessionsRes, bookingsRes, branchesRes, zonesRes, ticketsRes, policiesRes, cardsRes, reqsRes, paymentsRes] = await Promise.all([
         adminApi.getAllUsers().catch(() => []),
         adminApi.getAllSessions().catch(() => []),
         adminApi.getAllBookings().catch(() => []),
@@ -38,35 +68,48 @@ export default function AdminDashboardPage() {
         managerApi.getAllMonthlyTickets().catch(() => []),
         managerApi.getPricePolicies().catch(() => []),
         managerApi.getParkingCards().catch(() => []),
+        managerApi.getAllMonthlyTicketRequests?.().catch(() => []) || [],
+        adminApi.getAllPayments().catch(() => []),
       ]);
 
-      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.content || []));
-      setSessions(Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.content || []));
-      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.content || []));
-      setBranches(Array.isArray(branchesRes) ? branchesRes : (branchesRes?.content || []));
-      setZones(Array.isArray(zonesRes) ? zonesRes : (zonesRes?.content || []));
-      setTickets(Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || []));
-      setPricePolicies(Array.isArray(policiesRes) ? policiesRes : (policiesRes?.content || []));
-      setCards(Array.isArray(cardsRes) ? cardsRes : (cardsRes?.content || []));
+      const getArray = (res) => {
+        if (Array.isArray(res)) return res;
+        if (res && Array.isArray(res.data)) return res.data;
+        if (res && Array.isArray(res.content)) return res.content;
+        return [];
+      };
+
+      setUsers(getArray(usersRes));
+      setSessions(getArray(sessionsRes));
+      setBookings(getArray(bookingsRes));
+      setBranches(getArray(branchesRes));
+      setZones(getArray(zonesRes));
+      setTickets(getArray(ticketsRes));
+      setPricePolicies(getArray(policiesRes));
+      setCards(getArray(cardsRes));
+      setRequests(getArray(reqsRes));
+      setPayments(getArray(paymentsRes));
     } catch (err) {
       console.error(err);
-      toast.error('Không tải được dữ liệu Dashboard!');
+      if (!isSilent) toast.error('Không tải được dữ liệu Dashboard!');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
+
+    // Call API every 5 seconds for real-time update
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const getReferenceDate = () => {
-    if (sessions.length === 0) return new Date();
-    const dates = sessions
-      .map(s => s.checkOutTime ? new Date(s.checkOutTime) : null)
-      .filter(Boolean);
-    if (dates.length === 0) return new Date();
-    return new Date(Math.max(...dates));
+    return new Date();
   };
 
   const refDate = getReferenceDate();
@@ -111,29 +154,81 @@ export default function AdminDashboardPage() {
   const MONTHLY_PRICE = monthlyPolicy ? Number(monthlyPolicy.basePrice || 200000) : 200000;
   const VIP_PRICE = vipPolicy ? Number(vipPolicy.basePrice || 1000000) : 1000000;
 
-  const monthlyCardsCount = cards.filter(c => {
-    const code = c.cardCode || '';
-    const status = String(c.status || '').toUpperCase();
-    return code.startsWith('MONTH-') && (status === 'IN_USE' || status === 'AVAILABLE');
-  }).length;
-
-  const vipCardsCount = cards.filter(c => {
-    const code = c.cardCode || '';
-    const status = String(c.status || '').toUpperCase();
-    return code.startsWith('VIP-') && (status === 'IN_USE' || status === 'AVAILABLE');
-  }).length;
-
-  const monthlyCardRevenue = monthlyCardsCount * MONTHLY_PRICE;
-  const vipCardRevenue = vipCardsCount * VIP_PRICE;
-  const totalCardRevenue = monthlyCardRevenue + vipCardRevenue;
-
   const walkInSessions = filteredSessions.filter(s => {
-    const code = s.cardCode || s.parkingCard?.cardCode || '';
-    return !code.startsWith('MONTH-') && !code.startsWith('VIP-');
+    return !checkIsMonthlyOrVip(s);
   });
 
   const walkInRevenue = walkInSessions.reduce((sum, s) => sum + Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0), 0);
   const lostCardRevenue = filteredSessions.reduce((sum, s) => sum + Number(s.penaltyFee || 0), 0);
+
+  // Build unified ticket events based on actual payment dates
+  const paymentRequestIds = new Set(
+    payments.filter(p => p.monthlyTicketRequestId).map(p => String(p.monthlyTicketRequestId))
+  );
+
+  const allTicketEvents = [];
+
+  // From payments (preferred source - has paidAt)
+  payments.forEach(p => {
+    if (p.paymentStatus !== 'PAID') return;
+    if (!p.monthlyTicketRequestId) return;
+    const dt = p.paidAt || p.createdAt;
+    if (!dt) return;
+    
+    allTicketEvents.push({
+      id: `PAY-${p.paymentId}`,
+      time: dt,
+      policyName: p.policyName || '',
+      amount: Number(p.policyBasePrice || p.amount || 0),
+      source: 'payment'
+    });
+  });
+
+  // From approved requests that have NO matching payment (approved manually by manager)
+  requests.forEach(r => {
+    if (r.status !== 1) return; // Only approved
+    if (paymentRequestIds.has(String(r.id))) return; // Already counted via payment
+    const dt = r.createdAt;
+    if (!dt) return;
+    
+    const pName = r.pricePolicy?.policyName || '';
+    const isVip = pName.toUpperCase().includes('VIP');
+    const basePrice = Number(r.pricePolicy?.basePrice || (isVip ? VIP_PRICE : MONTHLY_PRICE)) || 0;
+
+    allTicketEvents.push({
+      id: `REQ-${r.id}`,
+      time: dt,
+      policyName: pName,
+      amount: basePrice,
+      source: 'request'
+    });
+  });
+
+  const filteredTicketEvents = allTicketEvents.filter(t => {
+    const dt = t.time;
+    if (!dt) return false;
+    const ticketDate = new Date(dt);
+    const now = refDate;
+    
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    
+    if (timeFilter === 'Hôm nay') {
+      return ticketDate >= todayStart && ticketDate <= todayEnd;
+    } else if (timeFilter === '7 ngày qua') {
+      const sevenDaysAgoStart = new Date(todayStart);
+      sevenDaysAgoStart.setDate(todayStart.getDate() - 6);
+      return ticketDate >= sevenDaysAgoStart && ticketDate <= todayEnd;
+    } else if (timeFilter === 'Tháng này') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      return ticketDate >= monthStart && ticketDate <= monthEnd;
+    }
+    return true;
+  });
+
+  const totalCardRevenue = filteredTicketEvents.reduce((sum, t) => sum + (t.amount || 0), 0);
+
   const totalRevenue = walkInRevenue + totalCardRevenue + lostCardRevenue;
   
   const totalTransactions = filteredSessions.length;
@@ -159,10 +254,8 @@ export default function AdminDashboardPage() {
     const now = refDate;
 
     if (timeFilter === 'Hôm nay') {
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now);
-        d.setHours(now.getHours() - i);
-        const hourStr = String(d.getHours()).padStart(2, '0') + 'h';
+      for (let h = 0; h < 24; h++) {
+        const hourStr = String(h).padStart(2, '0') + 'h';
         dates[hourStr] = { walkIn: 0, monthly: 0, vip: 0, lostCard: 0 };
       }
       
@@ -180,15 +273,17 @@ export default function AdminDashboardPage() {
         }
       });
 
-      tickets.forEach(t => {
-        if (!t.startDate) return;
-        const hourStr = getHourKey(t.startDate);
+      filteredTicketEvents.forEach(t => {
+        const dt = t.time;
+        if (!dt) return;
+        const hourStr = getHourKey(dt);
         if (dates[hourStr] !== undefined) {
-          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          const isVip = t.policyName.toUpperCase().includes('VIP') || t.policyName.toUpperCase().includes('PRESIDENT');
+          const amt = Number(t.amount) || 0;
           if (isVip) {
-            dates[hourStr].vip += VIP_PRICE;
+            dates[hourStr].vip += amt;
           } else {
-            dates[hourStr].monthly += MONTHLY_PRICE;
+            dates[hourStr].monthly += amt;
           }
         }
       });
@@ -216,15 +311,17 @@ export default function AdminDashboardPage() {
         }
       });
 
-      tickets.forEach(t => {
-        if (!t.startDate) return;
-        const key = getFormatKey(t.startDate);
+      filteredTicketEvents.forEach(t => {
+        const dt = t.time;
+        if (!dt) return;
+        const key = getFormatKey(dt);
         if (dates[key] !== undefined) {
-          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          const isVip = t.policyName.toUpperCase().includes('VIP') || t.policyName.toUpperCase().includes('PRESIDENT');
+          const amt = Number(t.amount) || 0;
           if (isVip) {
-            dates[key].vip += VIP_PRICE;
+            dates[key].vip += amt;
           } else {
-            dates[key].monthly += MONTHLY_PRICE;
+            dates[key].monthly += amt;
           }
         }
       });
@@ -249,15 +346,17 @@ export default function AdminDashboardPage() {
         }
       });
 
-      tickets.forEach(t => {
-        if (!t.startDate) return;
-        const key = getFormatKey(t.startDate);
+      filteredTicketEvents.forEach(t => {
+        const dt = t.time;
+        if (!dt) return;
+        const key = getFormatKey(dt);
         if (dates[key] !== undefined) {
-          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          const isVip = t.policyName.toUpperCase().includes('VIP') || t.policyName.toUpperCase().includes('PRESIDENT');
+          const amt = Number(t.amount) || 0;
           if (isVip) {
-            dates[key].vip += VIP_PRICE;
+            dates[key].vip += amt;
           } else {
-            dates[key].monthly += MONTHLY_PRICE;
+            dates[key].monthly += amt;
           }
         }
       });
@@ -282,15 +381,17 @@ export default function AdminDashboardPage() {
         }
       });
 
-      tickets.forEach(t => {
-        if (!t.startDate) return;
-        const key = getFormatKey(t.startDate);
+      filteredTicketEvents.forEach(t => {
+        const dt = t.time;
+        if (!dt) return;
+        const key = getFormatKey(dt);
         if (dates[key] !== undefined) {
-          const isVip = (t.cardCode || t.parkingCard?.cardCode || '').startsWith('VIP-');
+          const isVip = t.policyName.toUpperCase().includes('VIP') || t.policyName.toUpperCase().includes('PRESIDENT');
+          const amt = Number(t.amount) || 0;
           if (isVip) {
-            dates[key].vip += VIP_PRICE;
+            dates[key].vip += amt;
           } else {
-            dates[key].monthly += MONTHLY_PRICE;
+            dates[key].monthly += amt;
           }
         }
       });
@@ -403,7 +504,7 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="overflow-auto w-100 pb-2">
-              <div className="d-flex align-items-end border-bottom pb-2" style={{ height: 140, gap: timeFilter === 'Tháng này' ? 6 : 16, minWidth: timeFilter === 'Tháng này' ? 600 : 'auto' }}>
+              <div className="d-flex align-items-end border-bottom pb-2" style={{ height: 140, gap: (timeFilter === 'Tháng này' || timeFilter === 'Hôm nay') ? 6 : 16, minWidth: (timeFilter === 'Tháng này' || timeFilter === 'Hôm nay') ? 600 : 'auto' }}>
                 {chartData.map((d, index) => {
                   let showVal = d.total;
                   if (revenueChartType === 'WALK_IN') showVal = d.walkIn;
