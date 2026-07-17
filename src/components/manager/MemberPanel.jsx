@@ -26,6 +26,63 @@ const fmtDate = (d) => { if (!d) return '—'; try { return new Date(d).toLocale
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const thirtyDaysISO = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().slice(0, 10); };
 
+const extractList = (response, visited = new Set()) => {
+  if (Array.isArray(response)) return response;
+  if (!response || typeof response !== 'object') return [];
+  if (visited.has(response)) return [];
+  visited.add(response);
+
+  // Ưu tiên các wrapper phân trang/API phổ biến.
+  for (const key of ['content', 'data', 'items', 'results']) {
+    if (Array.isArray(response[key])) return response[key];
+    if (response[key] && typeof response[key] === 'object') {
+      const nested = extractList(response[key], visited);
+      if (nested.length > 0) return nested;
+    }
+  }
+
+  // Hỗ trợ wrapper tùy biến như requests, monthlyTicketRequests hoặc _embedded.
+  for (const value of Object.values(response)) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') {
+      const nested = extractList(value, visited);
+      if (nested.length > 0) return nested;
+    }
+  }
+
+  return [];
+};
+
+const isMonthlyTicketRequest = (value) => Boolean(
+  value &&
+  typeof value === 'object' &&
+  (value.id != null || value.requestId != null || value.monthlyTicketRequestId != null) &&
+  (value.vehicle || value.pricePolicy || value.payment || value.status != null)
+);
+
+const extractRequestList = (response) => {
+  const standardList = extractList(response);
+  if (standardList.length > 0) return standardList;
+  if (isMonthlyTicketRequest(response)) return [response];
+  if (!response || typeof response !== 'object') return [];
+
+  for (const key of ['monthlyTicketRequests', 'ticketRequests', 'requests', 'records', 'list']) {
+    if (Array.isArray(response[key])) return response[key];
+  }
+
+  // Support a backend envelope with a project-specific key without accidentally
+  // selecting unrelated nested arrays such as user authorities.
+  for (const value of Object.values(response)) {
+    if (Array.isArray(value) && value.some(isMonthlyTicketRequest)) return value;
+    if (value && typeof value === 'object') {
+      const nested = extractRequestList(value);
+      if (nested.length > 0) return nested;
+    }
+  }
+
+  return [];
+};
+
 export default function MemberPanel({ branchId }) {
   const [mainTab, setMainTab] = useState('monthly');
   const [loading, setLoading] = useState(false);
@@ -47,6 +104,7 @@ export default function MemberPanel({ branchId }) {
   const [submittingCard, setSubmittingCard] = useState(false);
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
+  const [reqStatusFilter, setReqStatusFilter] = useState('all');
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [submittingTicket, setSubmittingTicket] = useState(false);
   const EMPTY_FORM = { vehicleId: '', parkingCardId: '', guestName: '', guestPhone: '', startDate: todayISO(), endDate: thirtyDaysISO(), licensePlateSearch: '', vehicleSource: '', requestId: null, policyName: '' };
@@ -68,13 +126,16 @@ export default function MemberPanel({ branchId }) {
         managerApi.getParkingBranches(),
         managerApi.getAllVehicles().catch(() => []),
         managerApi.getAllMonthlyTickets().catch(() => []),
-        managerApi.getAllMonthlyTicketRequests?.().catch(() => []) || []
+        managerApi.getAllMonthlyTicketRequests()
       ]);
-      const parsedCards = Array.isArray(cardsRes) ? cardsRes : [];
-      const parsedBranches = Array.isArray(branchesRes) ? branchesRes : [];
-      const parsedVehicles = Array.isArray(vehiclesRes) ? vehiclesRes : (vehiclesRes?.content || []);
-      const parsedTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || []);
-      const parsedReqs = Array.isArray(reqRes) ? reqRes : (reqRes?.content || reqRes?.data || []);
+      const parsedCards = extractList(cardsRes);
+      const parsedBranches = extractList(branchesRes);
+      const parsedVehicles = extractList(vehiclesRes);
+      const parsedTickets = extractList(ticketsRes);
+      const parsedReqs = extractRequestList(reqRes).map(request => ({
+        ...request,
+        id: request.id ?? request.requestId ?? request.monthlyTicketRequestId,
+      }));
       const filteredCards = cleanBranchId ? parsedCards.filter(c => getBranchId(c) === cleanBranchId) : parsedCards;
       const filteredBranches = cleanBranchId ? parsedBranches.filter(b => getBranchId(b) === cleanBranchId) : parsedBranches;
       const branchCardIds = new Set(filteredCards.map(c => String(c.parkingCardId)));
@@ -83,16 +144,23 @@ export default function MemberPanel({ branchId }) {
         const reqBranchId = String(
           r.parkingBranch?.parkingBranchId || r.parkingBranch?.id ||
           r.branch?.parkingBranchId || r.branch?.id ||
+          r.renewalOfTicket?.parkingBranchId ||
+          r.renewalOfTicket?.branch?.parkingBranchId || r.renewalOfTicket?.branch?.id ||
           r.parkingBranchId || r.branchId || r.parking_branch_id || ''
         );
-        return reqBranchId === cleanBranchId;
+        // Một số DTO yêu cầu không trả thông tin chi nhánh. Không loại nhầm
+        // những bản ghi này; backend vẫn chịu trách nhiệm giới hạn quyền manager.
+        return !reqBranchId || reqBranchId === cleanBranchId;
       }) : parsedReqs;
       
       setAllCards(filteredCards);
       setBranches(filteredBranches);
       setVehicles(parsedVehicles);
       setTickets(filteredTickets);
-      setRequests(filteredReqs);
+      const sortedReqs = [...filteredReqs].sort(
+        (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      );
+      setRequests(sortedReqs);
       if (cleanBranchId) setCreateCardForm(prev => ({ ...prev, parkingBranchId: cleanBranchId }));
     } catch (err) { console.error(err); toast.error('Không tải được dữ liệu!'); }
     finally { setLoading(false); }
@@ -241,7 +309,7 @@ export default function MemberPanel({ branchId }) {
       }
       
       if (ticketForm.requestId && managerApi.updateMonthlyTicketRequestStatus) {
-        await managerApi.updateMonthlyTicketRequestStatus(ticketForm.requestId, 1).catch(e => console.error("Failed to update request status:", e));
+        await managerApi.updateMonthlyTicketRequestStatus(ticketForm.requestId, 2).catch(e => console.error("Failed to update request status:", e));
       }
       
       toast.success('Cấp vé tháng thành công!');
@@ -385,7 +453,7 @@ export default function MemberPanel({ branchId }) {
       try {
         // 1. Duyệt trạng thái yêu cầu
         if (managerApi.updateMonthlyTicketRequestStatus) {
-          await managerApi.updateMonthlyTicketRequestStatus(req.id, 1);
+          await managerApi.updateMonthlyTicketRequestStatus(req.id, 2);
         }
         
         // 2. Tính ngày hiệu lực mới
@@ -469,9 +537,9 @@ export default function MemberPanel({ branchId }) {
     if (!window.confirm('Từ chối yêu cầu đăng ký này?')) return;
     try {
       if (managerApi.updateMonthlyTicketRequestStatus) {
-        await managerApi.updateMonthlyTicketRequestStatus(req.id, 2);
+        await managerApi.updateMonthlyTicketRequestStatus(req.id, -1);
         toast.success("Đã từ chối yêu cầu!");
-        fetchAll();
+        await fetchAll();
       }
     } catch (err) {
       toast.error('Có lỗi xảy ra!');
@@ -538,7 +606,87 @@ export default function MemberPanel({ branchId }) {
     return (s === 'AVAILABLE' || s === '0' || s === '') && code.startsWith('EMP-');
   });
 
-  const pendingRequests = requests.filter(r => r.status === 0);
+  const checkReqProcessed = (r) => {
+    return Number(r.status) === 2 || processedReqIds.has(r.id) || tickets.some(t => {
+      const linkedRequestId = t.monthlyTicketRequestId
+        || t.requestId
+        || t.monthlyTicketRequest?.id;
+
+      if (linkedRequestId != null) {
+        return String(linkedRequestId) === String(r.id);
+      }
+
+      const tVehId = String(t.vehicleId || t.vehiclesId || t.vehicle?.vehicleId || t.vehicle?.vehiclesId);
+      const rVehId = String(r.vehicle?.vehicleId || r.vehicle?.vehiclesId || r.vehicle?.id);
+      if (tVehId !== rVehId) return false;
+      
+      // Compatibility for legacy tickets without requestId: only a ticket
+      // created after this request can prove that this request was processed.
+      // An existing older ticket is expected for renewals and must not hide
+      // the Approve/Reject actions.
+      if (t.createdAt) {
+        return new Date(t.createdAt).getTime() >= (new Date(r.createdAt).getTime() - 60000);
+      }
+
+      return false;
+    });
+  };
+
+  const normalizeReqStatus = (status) => {
+    const value = String(status ?? '').trim().toUpperCase();
+
+    if (['-1', 'REJECTED', 'CANCELLED', 'CANCELED'].includes(value)) return 'rejected';
+    if (['0', 'PENDING', 'PENDING_PAYMENT', 'WAITING_PAYMENT'].includes(value)) return 'pending_payment';
+    if (['1', 'PENDING_APPROVAL', 'WAITING_APPROVAL', 'PAID'].includes(value)) return 'pending_approval';
+    if (['2', 'APPROVED'].includes(value)) return 'approved';
+    return 'unknown';
+  };
+
+  const isReqRejected = (r) => normalizeReqStatus(r.status) === 'rejected';
+
+  // Payment data is the source of truth for whether a request was paid.
+  const checkReqPaid = (r) => {
+    if (isReqRejected(r)) return false;
+
+    const paymentStatus = String(r.payment?.paymentStatus || r.payment?.status || '').toUpperCase();
+    const hasSuccessfulVnpayResult =
+      String(r.payment?.responseCode || '') === '00' && Boolean(r.payment?.paidAt);
+
+    return paymentStatus === 'PAID' ||
+      paymentStatus === 'SUCCESS' ||
+      paymentStatus === 'COMPLETED' ||
+      hasSuccessfulVnpayResult ||
+      ([1, 2].includes(Number(r.status)) && !r.payment);
+  };
+
+  const processedRequestsData = requests.map(r => ({
+    ...r,
+    isProcessed: checkReqProcessed(r),
+    isPaid: checkReqPaid(r)
+  })).map(r => {
+    const normalizedStatus = normalizeReqStatus(r.status);
+    const paymentStatus = String(r.payment?.paymentStatus || r.payment?.status || '').toUpperCase();
+    let requestStage = 'unknown';
+
+    if (normalizedStatus === 'rejected') requestStage = 'rejected';
+    else if (r.isProcessed || String(r.status).toUpperCase() === 'APPROVED') requestStage = 'approved';
+    else if (r.isPaid) requestStage = 'pending_approval';
+    else if (normalizedStatus === 'pending_payment' || paymentStatus === 'PENDING') requestStage = 'pending_payment';
+    else if (normalizedStatus === 'pending_approval') requestStage = 'pending_approval';
+
+    return { ...r, requestStage };
+  });
+
+  const pendingRequests = processedRequestsData.filter(r => r.requestStage === 'pending_approval');
+
+  const filteredRequestsList = processedRequestsData.filter(r => {
+    if (reqStatusFilter === 'all') return true;
+    if (reqStatusFilter === 'pending_approval') return r.requestStage === 'pending_approval';
+    if (reqStatusFilter === 'pending_payment') return r.requestStage === 'pending_payment';
+    if (reqStatusFilter === 'approved') return r.requestStage === 'approved';
+    if (reqStatusFilter === 'rejected') return r.requestStage === 'rejected';
+    return true;
+  });
 
   const stats = {
     total: allCards.length,
@@ -668,31 +816,34 @@ export default function MemberPanel({ branchId }) {
 
         {mainTab === 'requests' && (
           <div className="p-3">
-            <h5 className="fw-bold text-primary mb-3">Yêu cầu đăng ký thẻ tháng trực tuyến</h5>
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <h5 className="fw-bold text-primary m-0">Yêu cầu đăng ký thẻ tháng</h5>
+              <div className="d-flex gap-1 flex-wrap">
+                {[{k:'all', l:'Tất cả'}, {k:'pending_approval', l:'Chờ duyệt'}, {k:'pending_payment', l:'Chờ thanh toán'}, {k:'approved', l:'Đã duyệt'}, {k:'rejected', l:'Hủy / Từ chối'}].map(t => (
+                  <Button key={t.k} size="sm" variant={reqStatusFilter === t.k ? 'primary' : 'light'} className={`text-decoration-none fw-semibold ${reqStatusFilter === t.k ? '' : 'text-muted'}`} onClick={() => setReqStatusFilter(t.k)}>{t.l}</Button>
+                ))}
+              </div>
+            </div>
             <div className="table-responsive">
               <Table hover className="align-middle border-top mb-0" style={{ fontSize: '0.85rem' }}>
                 <thead className="table-light text-muted small"><tr>{['THỜI GIAN', 'BIỂN SỐ', 'CHỦ XE', 'GÓI ĐĂNG KÝ', 'SỐ TIỀN', 'TRẠNG THÁI', 'THAO TÁC'].map(h => <th key={h} className="fw-bold">{h}</th>)}</tr></thead>
                 <tbody>
-                  {loading ? <tr><td colSpan={7} className="text-center py-4 text-muted">Đang tải yêu cầu...</td></tr> : requests.length === 0 ? <tr><td colSpan={7} className="text-center py-4 text-muted">Chưa có yêu cầu nào.</td></tr> : requests.map((r, i) => {
+                  {loading ? <tr><td colSpan={7} className="text-center py-4 text-muted">Đang tải yêu cầu...</td></tr> : filteredRequestsList.length === 0 ? <tr><td colSpan={7} className="text-center py-4 text-muted">Chưa có yêu cầu nào.</td></tr> : filteredRequestsList.map((r, i) => {
                     const plate = r.vehicle?.licensePlate || '—';
-                    const owner = r.user?.fullName || r.user?.username || '—';
+                    const owner = r.user?.userFullName || r.user?.fullName || r.user?.userEmail || r.user?.username || '—';
                     const policy = r.pricePolicy?.policyName || '—';
-                    const hasExisting = tickets.some(t => String(t.vehicleId || t.vehicle?.vehicleId) === String(r.vehicle?.vehicleId || r.vehicle?.id));
-                    const isProcessed = processedReqIds.has(r.id) || tickets.some(t => {
-                      const tVehId = String(t.vehicleId || t.vehicle?.vehicleId);
-                      const rVehId = String(r.vehicle?.vehicleId || r.vehicle?.id);
-                      if (tVehId !== rVehId) return false;
-                      
-                      if (t.createdAt) {
-                        return new Date(t.createdAt).getTime() >= (new Date(r.createdAt).getTime() - 60000);
-                      }
-                      
-                      // Fallback to startDate if createdAt is missing
-                      const tStart = t.startDate ? String(t.startDate).slice(0, 10) : '';
-                      const rStart = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : '';
-                      return tStart && rStart && tStart >= rStart;
-                    });
-                    const isPending = (r.status === 0 || r.status === 1) && !isProcessed;
+                    const hasExisting = tickets.some(t => String(t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.vehiclesId) === String(r.vehicle?.vehicleId || r.vehicle?.vehiclesId || r.vehicle?.id));
+                    const isProcessed = r.isProcessed;
+                    const isPaid = r.isPaid;
+                    const canApprove = r.requestStage === 'pending_approval' && !isProcessed;
+                    const canReject = !isProcessed && !['approved', 'rejected'].includes(r.requestStage);
+                    const statusView = {
+                      pending_payment: { label: 'Chờ thanh toán', bg: 'warning', text: 'dark' },
+                      pending_approval: { label: 'Đã thanh toán (Chờ duyệt)', bg: 'info', text: 'white' },
+                      approved: { label: 'Đã duyệt', bg: 'success', text: 'white' },
+                      rejected: { label: 'Từ chối', bg: 'danger', text: 'white' },
+                      unknown: { label: `Không xác định (${String(r.status ?? '—')})`, bg: 'secondary', text: 'white' },
+                    }[r.requestStage] || { label: 'Không xác định', bg: 'secondary', text: 'white' };
                     return (
                        <tr key={r.id || i}>
                         <td className="text-muted small">{new Date(r.createdAt).toLocaleString('vi-VN')}</td>
@@ -703,18 +854,20 @@ export default function MemberPanel({ branchId }) {
                           {r.pricePolicy?.basePrice ? `${Number(r.pricePolicy.basePrice).toLocaleString('vi-VN')} đ` : '—'}
                         </td>
                         <td>
-                          <Badge bg={r.status === 0 ? 'warning' : r.status === 1 ? (isProcessed ? 'success' : 'info') : 'danger'} text={r.status === 0 ? 'dark' : 'white'}>
-                            {r.status === 0 ? 'Chờ thanh toán' : r.status === 1 ? (isProcessed ? 'Đã duyệt' : 'Đã thanh toán (Chờ duyệt)') : 'Từ chối'}
+                          <Badge bg={statusView.bg} text={statusView.text}>
+                            {statusView.label}
                           </Badge>
                         </td>
                         <td>
-                          {isPending && (
-                            <>
-                              <Button variant="success" size="sm" className="fw-bold me-2 px-3" onClick={() => handleApproveRequest(r)}>
-                                {hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ'}
+                          {(canApprove || canReject) && (
+                            <div className="d-flex gap-2 flex-wrap">
+                              <Button variant="success" size="sm" className="fw-bold px-3" disabled={!canApprove} title={!isPaid ? 'Yêu cầu chưa thanh toán' : ''} onClick={() => handleApproveRequest(r)}>
+                                {canApprove ? (hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ') : 'Chưa thanh toán'}
                               </Button>
-                              <Button variant="danger" size="sm" className="fw-bold px-3" onClick={() => handleRejectRequest(r)}>Từ chối</Button>
-                            </>
+                              {canReject && (
+                                <Button variant="danger" size="sm" className="fw-bold px-3" onClick={() => handleRejectRequest(r)}>Từ chối</Button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>

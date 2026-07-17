@@ -5,6 +5,10 @@ import { Dropdown } from 'react-bootstrap';
 import { mapBranchToParkingLot } from '../utils/mapBranch';
 import parkingApi from '../api/parkingApi';
 import { CheckCircle2, ChevronLeft, MapPin, Car, Clock, ShieldCheck, Info } from 'lucide-react';
+import {
+  isVehicleCompatibleWithPolicy,
+  getPolicyVehicleTypeId,
+} from '../utils/vehiclePackageValidation';
 
 export default function PricingPage() {
   const navigate = useNavigate();
@@ -68,7 +72,21 @@ export default function PricingPage() {
   const handleConfirmPayment = async () => {
     if (!selectedLotId) return toast.warning('Vui lòng chọn bãi đỗ!');
     if (!activeSubPlan) return toast.warning('Vui lòng chọn gói dịch vụ!');
+
+    if (!activeSubPlan.policyId) {
+      return toast.error('Gói dịch vụ không hợp lệ hoặc đã ngừng hoạt động.');
+    }
     
+    if (selectedSubVehicleId !== 'new') {
+      const selectedVehicle = userVehicles.find(vehicle =>
+        String(vehicle.vehicleId || vehicle.id) === String(selectedSubVehicleId)
+      );
+
+      if (!isVehicleCompatibleWithPolicy(selectedVehicle, activeSubPlan)) {
+        return toast.error('Phương tiện không phù hợp với loại xe của gói dịch vụ.');
+      }
+    }
+
     setSubmitting(true);
     setPaymentUrl('');
     setPaymentQrData('');
@@ -80,10 +98,6 @@ export default function PricingPage() {
         policyId: activeSubPlan.policyId
       };
       
-      if (!payload.policyId) {
-        payload.policyId = activeSubPlan.type === 'Economic' ? (currentSelectedVehicle.type === 'Car' ? 1 : 2) : (currentSelectedVehicle.type === 'Car' ? 3 : 4);
-      }
-      
       let finalLicensePlate = currentSelectedVehicle.plate;
       if (selectedSubVehicleId === 'new') {
         if (!newVehicleData.licensePlate.trim()) {
@@ -91,11 +105,19 @@ export default function PricingPage() {
           setSubmitting(false);
           return;
         }
+
+        const policyVehicleTypeId = getPolicyVehicleTypeId(activeSubPlan);
+        if (!policyVehicleTypeId) {
+          toast.error('Gói dịch vụ chưa được cấu hình loại phương tiện.');
+          setSubmitting(false);
+          return;
+        }
+
         const created = await parkingApi.createVehicle({
           licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
           vehicleColor: newVehicleData.vehicleColor.trim(),
           vehicleBrand: newVehicleData.vehicleBrand.trim(),
-          vehicleTypeId: currentSelectedVehicle.type === 'Car' ? 1 : 2,
+          vehicleTypeId: Number(policyVehicleTypeId),
           userId: Number(userId)
         });
         payload.vehicleId = created.vehicleId || created.id;
@@ -229,6 +251,10 @@ export default function PricingPage() {
     }
   }
   if (!currentSelectedVehicle) currentSelectedVehicle = { type: 'Car', plate: '' };
+
+  const compatibleVehicles = activeSubPlan 
+    ? userVehicles.filter(vehicle => isVehicleCompatibleWithPolicy(vehicle, activeSubPlan))
+    : [];
 
   const activePlanPrice = activeSubPlan ? (
     activeSubPlan.price 
@@ -533,7 +559,7 @@ export default function PricingPage() {
                   <div className="border rounded-3 p-4 bg-white">
                     <h6 className="fw-bold mb-3">🚗 Chọn phương tiện</h6>
                     <div className="row g-3">
-                      {userVehicles.length > 0 && userVehicles.map(v => (
+                      {compatibleVehicles.length > 0 && compatibleVehicles.map(v => (
                         <div className="col-md-6" key={v.vehicleId || v.id}>
                           <div 
                             className="border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer shadow-sm"
@@ -555,6 +581,14 @@ export default function PricingPage() {
                         </div>
                       ))}
                       
+                      {compatibleVehicles.length === 0 && (
+                        <div className="col-12">
+                           <div className="alert alert-warning small mb-0">
+                             Bạn chưa có phương tiện phù hợp với gói này. Vui lòng thêm xe mới.
+                           </div>
+                        </div>
+                      )}
+
                       <div className="col-md-6">
                         <div 
                           className="border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer shadow-sm"
@@ -577,14 +611,7 @@ export default function PricingPage() {
                     {selectedSubVehicleId === 'new' && (
                       <div className="mt-3 p-3 bg-light rounded-3 border">
                         <div className="row g-3">
-                          <div className="col-md-6">
-                            <label className="form-label small fw-bold text-dark mb-1">Loại xe</label>
-                            <select className="form-select" value={newVehicleData.type} onChange={e => setNewVehicleData({...newVehicleData, type: e.target.value})}>
-                              <option value="Car">Ô tô</option>
-                              <option value="Motorcycle">Xe máy</option>
-                            </select>
-                          </div>
-                          <div className="col-md-6">
+                          <div className="col-md-12">
                             <label className="form-label small fw-bold text-dark mb-1">Biển số xe *</label>
                             <input type="text" className="form-control" value={newVehicleData.licensePlate} onChange={e => setNewVehicleData({...newVehicleData, licensePlate: e.target.value})} placeholder="VD: 30A-123.45" />
                           </div>
@@ -690,7 +717,9 @@ export default function PricingPage() {
                           </p>
                           <button
                             type="button"
-                            onClick={() => { window.location.href = paymentUrl; }}
+                            onClick={() => { 
+                              window.location.href = paymentUrl; 
+                            }}
                             className="btn fw-bold px-4 py-3 rounded-3 text-white d-inline-flex align-items-center justify-content-center gap-2 w-100"
                             style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.3)', border: 'none' }}
                           >

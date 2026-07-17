@@ -28,6 +28,7 @@ const parkingApi = {
   
   // Monthly Ticket Requests
   submitMonthlyTicketRequest: async (data) => (await API.post('/api/monthly-ticket-requests', data)).data,
+  submitRenewalRequest: async (ticketId, data) => (await API.post(`/api/monthly-tickets/${ticketId}/renewal-requests`, data)).data,
   getAllMonthlyTicketRequests: async () => (await API.get('/api/monthly-ticket-requests')).data,
   getMyMonthlyTicketRequests: async () => (await API.get('/api/monthly-ticket-requests/my-requests')).data,
   updateMonthlyTicketRequestStatus: async (id, status) => (await API.put(`/api/monthly-ticket-requests/${id}/status`, null, { params: { status } })).data,

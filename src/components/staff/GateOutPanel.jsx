@@ -130,27 +130,20 @@ export default function GateOutPanel() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.has('vnp_ResponseCode')) {
-      const verifyPayment = async () => {
-        try {
-          const params = Object.fromEntries(searchParams.entries());
-          const res = await staffApi.verifyVnPayReturn(params);
-          if (res.success) {
-            toast.success(`Thanh toán qua VNPay thành công! Phiên gửi xe đã kết thúc.`);
-          } else {
-            toast.error(`Thanh toán thất bại: ${res.message || 'Lỗi chưa xác định'}`);
-          }
-        } catch (err) {
-          console.error(err);
-          const msg = err.response?.data?.message || err.response?.data || 'Lỗi hệ thống khi xác thực thanh toán!';
-          toast.error(typeof msg === 'string' ? msg : 'Lỗi kết nối server!');
-        } finally {
-          // Clear query params to clean URL and prevent double callbacks
-          navigate('/staff/exit', { replace: true });
-        }
-      };
-      verifyPayment();
+    const paymentType = searchParams.get('paymentType');
+    if (paymentType !== 'PARKING_SESSION') return;
+
+    const success = searchParams.get('success') === 'true';
+    const message = searchParams.get('message') || (success ? 'Thanh toán thành công' : 'Thanh toán thất bại');
+
+    if (success) {
+      toast.success(`Thanh toán qua VNPay thành công! Phiên gửi xe đã kết thúc.`);
+    } else {
+      toast.error(`Thanh toán thất bại: ${message}`);
     }
+
+    // Clear query params to clean URL and prevent double callbacks
+    navigate('/staff/exit', { replace: true });
   }, [searchParams, navigate]);
 
   const handleSearch = async () => {
