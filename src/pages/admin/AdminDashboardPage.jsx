@@ -186,7 +186,7 @@ export default function AdminDashboardPage() {
 
   // From approved requests that have NO matching payment (approved manually by manager)
   requests.forEach(r => {
-    if (r.status !== 1) return; // Only approved
+    if (Number(r.status) !== 2) return; // APPROVED
     if (paymentRequestIds.has(String(r.id))) return; // Already counted via payment
     const dt = r.createdAt;
     if (!dt) return;

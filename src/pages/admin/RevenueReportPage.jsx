@@ -178,7 +178,7 @@ export default function RevenueReportPage() {
 
     // From approved requests that have NO matching payment
     requests.forEach(r => {
-      if (r.status !== 1) return; // Only approved
+      if (Number(r.status) !== 2) return; // APPROVED
       if (paymentRequestIds.has(String(r.id))) return; // Already counted via payment
       const dt = r.createdAt;
       if (!dt) return;
@@ -274,9 +274,9 @@ export default function RevenueReportPage() {
       const rVehId = r.vehicle?.vehicleId || r.vehicle?.id || r.vehicleId || r.vehicle?.vehiclesId;
       return tVehId && rVehId && String(tVehId) === String(rVehId);
     });
-    return hasExisting && r.status === 1;
+    return hasExisting && Number(r.status) === 2;
   }).length;
-  const totalApproved = requests.filter(r => r.status === 1).length;
+  const totalApproved = requests.filter(r => Number(r.status) === 2).length;
   const renewalRateVal = totalApproved > 0 ? `${Math.round((approvedRenewals / totalApproved) * 100)}%` : '85%';
 
   // Unified Transactions

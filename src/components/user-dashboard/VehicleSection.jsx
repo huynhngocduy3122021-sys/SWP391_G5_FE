@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import parkingApi from '../../api/parkingApi';
 import { formatDate } from '../../utils/format';
+import { isVehicleCompatibleWithPolicy, getPolicyVehicleTypeId } from '../../utils/vehiclePackageValidation';
 
 const getDaysLeft = (dateStr) => {
   if (!dateStr) return null;
@@ -130,8 +131,8 @@ export default function VehicleSection() {
     setSubscribeMode('new');
     setRenewTicket(null);
     setSelectedPackage(pkg);
-    const matching = vehicles.filter(v => String(v.vehicleTypeId) === String(pkg.vehicleType?.vehicleTypeId || pkg.vehicleType?.id));
-    setSubscribeVehicleId(matching.length > 0 ? String(matching[0].vehicleId || matching[0].id) : 'new');
+    const matching = vehicles.filter(v => isVehicleCompatibleWithPolicy(v, pkg));
+    setSubscribeVehicleId(matching.length > 0 ? String(matching[0].vehicleId || matching[0].vehiclesId || matching[0].id) : 'new');
     setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
     setModalStep(1);
     setPaymentUrl(''); setPaymentQrData(''); setPaymentError('');
@@ -139,15 +140,42 @@ export default function VehicleSection() {
   };
 
   const handleRenewClick = (ticket) => {
-    const policyId = ticket.pricePolicy?.pricePolicyId || ticket.pricePolicyId || ticket.policy?.pricePolicyId || ticket.policyId;
-    const pkg = packages.find(p => String(p.pricePolicyId || p.id) === String(policyId)) || (packages.length > 0 ? packages[0] : null);
+    const vehicleId = ticket.vehicle?.vehicleId
+      || ticket.vehicle?.vehiclesId
+      || ticket.vehicleId
+      || ticket.vehiclesId;
+    const vehicle = vehicles.find(v =>
+      String(v.vehicleId || v.vehiclesId || v.id) === String(vehicleId)
+    ) || ticket.vehicle;
+    const policyId = ticket.pricePolicy?.pricePolicyId
+      || ticket.pricePolicyId
+      || ticket.policy?.pricePolicyId
+      || ticket.policyId;
+    const policyName = ticket.pricePolicy?.policyName
+      || ticket.policy?.policyName
+      || ticket.policyName;
+    const pkg = packages.find(p =>
+      policyId != null && String(p.pricePolicyId || p.id) === String(policyId)
+    ) || packages.find(p =>
+      policyName && p.policyName === policyName && isVehicleCompatibleWithPolicy(vehicle, p)
+    );
+
+    if (!pkg) {
+      toast.error('Không tìm thấy đúng gói hiện tại của vé. Vui lòng liên hệ quản lý để kiểm tra dữ liệu gói.');
+      return;
+    }
+
+    if (!vehicle || !isVehicleCompatibleWithPolicy(vehicle, pkg)) {
+      toast.error('Gói hiện tại không phù hợp với loại phương tiện. Không thể gia hạn.');
+      return;
+    }
+
     setSubscribeMode('renew');
     setRenewTicket(ticket);
     setSelectedPackage(pkg);
     const branchId = ticket.branch?.parkingBranchId || ticket.branchId || ticket.parkingBranchId;
     setSelectedBranchId(branchId ? String(branchId) : (branches.length > 0 ? String(branches[0].parkingBranchId || branches[0].id) : ''));
-    const vehicleId = ticket.vehicle?.vehicleId || ticket.vehicleId;
-    setSubscribeVehicleId(vehicleId ? String(vehicleId) : 'new');
+    setSubscribeVehicleId(String(vehicleId));
     setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
     setModalStep(1);
     setPaymentUrl(''); setPaymentQrData(''); setPaymentError('');
@@ -165,6 +193,21 @@ export default function VehicleSection() {
     e.preventDefault();
     if (!selectedBranchId) return toast.warning('Vui lòng chọn chi nhánh đăng ký!');
     if (!selectedPackage) return toast.warning('Vui lòng chọn gói dịch vụ!');
+
+    if (subscribeVehicleId !== 'new') {
+      const selectedVehicle = vehicles.find(v =>
+        String(v.vehicleId || v.vehiclesId || v.id) === String(subscribeVehicleId)
+      );
+      if (!selectedVehicle) return toast.error('Không tìm thấy phương tiện đã chọn.');
+      if (!isVehicleCompatibleWithPolicy(selectedVehicle, selectedPackage)) {
+        return toast.error('Loại phương tiện không phù hợp với gói dịch vụ đã chọn.');
+      }
+    }
+
+    const renewalTicketId = renewTicket?.ticketId || renewTicket?.monthlyTicketId || renewTicket?.id;
+    if (subscribeMode === 'renew' && !renewalTicketId) {
+      return toast.error('Không tìm thấy mã vé hiện tại để gia hạn.');
+    }
     let finalLicensePlate = '';
     let createdRequestId = null;
     setSubmitting(true);
@@ -176,27 +219,40 @@ export default function VehicleSection() {
       let vehicleId;
       if (subscribeVehicleId === 'new') {
         if (!newVehicleData.licensePlate.trim()) { setSubmitting(false); return toast.warning('Vui lòng nhập biển số xe!'); }
+        const policyVehicleTypeId = getPolicyVehicleTypeId(selectedPackage);
+        if (!policyVehicleTypeId) { setSubmitting(false); return toast.error('Gói dịch vụ chưa được cấu hình loại phương tiện.'); }
         const created = await parkingApi.createVehicle({
           licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
           vehicleColor: newVehicleData.vehicleColor.trim(),
           vehicleBrand: newVehicleData.vehicleBrand.trim(),
-          vehicleTypeId: Number(selectedPackage.vehicleType?.vehicleTypeId || selectedPackage.vehicleType?.id),
+          vehicleTypeId: Number(policyVehicleTypeId),
           userId: Number(userId),
         });
-        vehicleId = created.vehicleId || created.id;
+        vehicleId = created.vehicleId || created.vehiclesId || created.id;
         finalLicensePlate = created.licensePlate;
       } else {
-        const vehicle = vehicles.find(v => String(v.vehicleId || v.id) === String(subscribeVehicleId));
-        vehicleId = vehicle?.vehicleId || vehicle?.id;
+        const vehicle = vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(subscribeVehicleId));
+        vehicleId = vehicle?.vehicleId || vehicle?.vehiclesId || vehicle?.id;
         finalLicensePlate = vehicle?.licensePlate;
       }
 
-      const reqResult = await parkingApi.submitMonthlyTicketRequest({
-        vehicleId,
+      const requestPayload = {
         policyId: selectedPackage.pricePolicyId || selectedPackage.id,
         branchId: Number(selectedBranchId),
-      });
-      createdRequestId = reqResult?.requestId || reqResult?.id || reqResult?.monthlyTicketRequestId;
+      };
+
+      // Gia hạn phải đi qua endpoint riêng. Nếu gửi vào endpoint đăng ký mới,
+      // backend sẽ chặn vì phương tiện vẫn đang có vé tháng còn hiệu lực.
+      const reqResult = subscribeMode === 'renew'
+        ? await parkingApi.submitRenewalRequest(renewalTicketId, requestPayload)
+        : await parkingApi.submitMonthlyTicketRequest({
+            ...requestPayload,
+            vehicleId,
+          });
+      createdRequestId = reqResult?.requestId
+        || reqResult?.monthlyTicketRequestId
+        || reqResult?.monthlyTicketRequest?.id
+        || reqResult?.id;
       setSubmittedRequestId(createdRequestId);
       setSubmittedLicensePlate(finalLicensePlate);
 
@@ -243,7 +299,7 @@ export default function VehicleSection() {
   const activeTickets = myTickets.filter(t => t.status === 1 || t.status === true || t.status === 'ACTIVE');
   const expiredTickets = myTickets.filter(t => t.status === 0 || t.status === false || t.status === 'EXPIRED' || t.status === 'INACTIVE');
   const matchingVehicles = selectedPackage
-    ? vehicles.filter(v => !selectedPackage.vehicleType || String(v.vehicleTypeId) === String(selectedPackage.vehicleType?.vehicleTypeId || selectedPackage.vehicleType?.id))
+    ? vehicles.filter(v => isVehicleCompatibleWithPolicy(v, selectedPackage))
     : vehicles;
 
   if (loading) {
@@ -422,7 +478,7 @@ export default function VehicleSection() {
                       <div>
                         <h6 className="fw-bold text-dark m-0">{pkg.policyName}</h6>
                         <small className="text-muted">
-                          Phương tiện áp dụng: <strong>{pkg.vehicleType?.typeName}</strong> • Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
+                          Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
                         </small>
                       </div>
                     </div>
@@ -514,8 +570,7 @@ export default function VehicleSection() {
             
             <div className="mb-4 bg-light p-3 rounded-3 border">
               <h6 className="fw-bold text-primary mb-1">{selectedPackage?.policyName}</h6>
-              <div className="text-muted small mb-2">Phương tiện áp dụng: {selectedPackage?.vehicleType?.typeName}</div>
-              <h4 className="fw-bold m-0" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
+              <h4 className="fw-bold m-0 mt-2" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
             </div>
 
             {/* Step indicator */}
@@ -585,19 +640,19 @@ export default function VehicleSection() {
                       {matchingVehicles.length > 0 && (
                         <div className="d-flex flex-wrap gap-2 mb-3">
                           {matchingVehicles.map(v => (
-                            <div key={v.vehicleId || v.id} className="card p-3 flex-grow-1 shadow-sm"
-                              style={{ cursor: 'pointer', borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : '#e2e8f0', backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#eff6ff' : '#fff', borderWidth: '2px', minWidth: '150px' }}
-                              onClick={() => setSubscribeVehicleId(String(v.vehicleId || v.id))}>
+                            <div key={v.vehicleId || v.vehiclesId || v.id} className="card p-3 flex-grow-1 shadow-sm"
+                              style={{ cursor: subscribeMode === 'renew' ? 'default' : 'pointer', borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) ? '#2563eb' : '#e2e8f0', backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) ? '#eff6ff' : '#fff', borderWidth: '2px', minWidth: '150px' }}
+                              onClick={() => subscribeMode !== 'renew' && setSubscribeVehicleId(String(v.vehicleId || v.vehiclesId || v.id))}>
                               <div className="d-flex justify-content-between align-items-center mb-1">
-                                <span className="fw-bold" style={{ color: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#1e3a8a' : '#334155' }}>{v.vehicleBrand || 'Xe cá nhân'}</span>
-                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : '#cbd5e1', backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.id) ? '#2563eb' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  {String(subscribeVehicleId) === String(v.vehicleId || v.id) && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#fff' }} />}
+                                <span className="fw-bold" style={{ color: String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) ? '#1e3a8a' : '#334155' }}>{v.vehicleBrand || 'Xe cá nhân'}</span>
+                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid', borderColor: String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) ? '#2563eb' : '#cbd5e1', backgroundColor: String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) ? '#2563eb' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {String(subscribeVehicleId) === String(v.vehicleId || v.vehiclesId || v.id) && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#fff' }} />}
                                 </div>
                               </div>
                               <span className="text-muted small">{v.licensePlate}</span>
                             </div>
                           ))}
-                          <div className="card p-3 flex-grow-1 shadow-sm"
+                          {subscribeMode !== 'renew' && <div className="card p-3 flex-grow-1 shadow-sm"
                             style={{ cursor: 'pointer', borderColor: subscribeVehicleId === 'new' ? '#2563eb' : '#e2e8f0', backgroundColor: subscribeVehicleId === 'new' ? '#eff6ff' : '#fff', borderWidth: '2px', minWidth: '150px' }}
                             onClick={() => setSubscribeVehicleId('new')}>
                             <div className="d-flex justify-content-between align-items-center mb-1">
@@ -607,7 +662,7 @@ export default function VehicleSection() {
                               </div>
                             </div>
                             <span className="text-muted small">Nhập thông tin mới</span>
-                          </div>
+                          </div>}
                         </div>
                       )}
 
