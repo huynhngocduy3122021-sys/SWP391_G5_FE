@@ -3,37 +3,37 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { AuthProvider } from './context/AuthContext';
-import { useAuth } from './hooks/useAuth';
-import { hasRole, ROLES } from './utils/roleGuard';
+import { AuthProvider } from './shared/context/AuthContext';
+import { useAuth } from './shared/hooks/useAuth';
+import { hasRole, ROLES } from "./shared/utils/roleGuard";
 
 // --- Layouts & Public Pages ---
-import Navbar from './components/layout/Navbar';
-import Footer from './components/landing/Footer';
-import LandingPage from './pages/LandingPage';
-import SearchPage from './pages/SearchPage';
-import AuthPage from './pages/AuthPage';
-import ContactPage from './pages/ContactPage';
-import PricingPage from './pages/PricingPage';
-import PaymentResultPage from './pages/PaymentResultPage';
-import NotFoundPage from './pages/NotFoundPage';
+import Navbar from './shared/components/Navbar';
+import Footer from './modules/landing/components/Footer';
+import LandingPage from './modules/landing/pages/LandingPage';
+import SearchPage from './modules/search/pages/SearchPage';
+import AuthPage from './modules/auth/pages/AuthPage';
+import ContactPage from './modules/contact/pages/ContactPage';
+import PricingPage from './modules/pricing/pages/PricingPage';
+import PaymentResultPage from './modules/payment/pages/PaymentResultPage';
+import NotFoundPage from './modules/not-found/pages/NotFoundPage';
 
 // --- User, Manager & Staff Pages ---
-import DashboardPage from './pages/DashboardPage';
-import UserDashboardPage from './pages/UserDashboardPage';
-import BookingPage from './pages/BookingPage';
-import StaffEntryGate from './pages/staff/StaffEntryGate';    
-import StaffExitGate from './pages/staff/StaffExitGate';
-import StaffProfilePage from './pages/staff/StaffProfilePage';
-import ManagerDashboardPage from './pages/manager/ManagerDashboardPage';
+import DashboardPage from './modules/user-dashboard/pages/DashboardPage';
+import UserDashboardPage from './modules/user-dashboard/pages/UserDashboardPage';
+import BookingPage from './modules/booking/pages/BookingPage';
+import StaffEntryGate from './modules/staff/pages/StaffEntryGate';    
+import StaffExitGate from './modules/staff/pages/StaffExitGate';
+import StaffProfilePage from './modules/staff/pages/StaffProfilePage';
+import ManagerDashboardPage from './modules/manager/pages/ManagerDashboardPage';
 
 // --- Admin Portal Pages (MỚI THÊM) ---
-import AdminLayout from './components/layout/AdminLayout';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import RevenueReportPage from './pages/admin/RevenueReportPage';
-import UserAccountsPage from './components/admin/UserAccountsPage';
-import SystemSettingsPage from './components/admin/SystemSettingsPage';
-import AIConfigPage from './components/admin/AIConfigPage';
+import AdminLayout from './modules/admin/layout/AdminLayout';
+import AdminDashboardPage from './modules/admin/pages/AdminDashboardPage';
+import RevenueReportPage from './modules/admin/pages/RevenueReportPage';
+import UserAccountsPage from './modules/admin/components/UserAccountsPage';
+import SystemSettingsPage from './modules/admin/components/SystemSettingsPage';
+import AIConfigPage from './modules/admin/components/AIConfigPage';
 
 // RouteGuard based on Authentication and Roles
 function RoleRoute({ children, allowedRoles }) {
