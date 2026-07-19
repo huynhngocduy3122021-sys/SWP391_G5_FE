@@ -22,6 +22,15 @@ const getTicketId = (t) => {
   if (t.monthly_ticket_id) return t.monthly_ticket_id;
   return null;
 };
+const getRenewalCardId = (request) => {
+  const renewal = request?.renewalOfTicket;
+  if (!renewal) return null;
+
+  return renewal.parkingCardId
+    || renewal.parkingCard?.parkingCardId
+    || renewal.parkingCard?.id
+    || null;
+};
 const fmtDate = (d) => { if (!d) return '—'; try { return new Date(d).toLocaleDateString('vi-VN'); } catch { return d; } };
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const thirtyDaysISO = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().slice(0, 10); };
@@ -99,6 +108,10 @@ export default function MemberPanel({ branchId }) {
   const [showEditCard, setShowEditCard] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [processedReqIds, setProcessedReqIds] = useState(new Set());
+  const [showApproveTicket, setShowApproveTicket] = useState(false);
+  const [approvingRequest, setApprovingRequest] = useState(null);
+  const [approveCardId, setApproveCardId] = useState('');
+  const [submittingApproval, setSubmittingApproval] = useState(false);
   const [createCardForm, setCreateCardForm] = useState({ cardCode: '', parkingBranchId: '', cardType: 'NORMAL' });
   const [editCardForm, setEditCardForm] = useState({ cardCode: '', parkingBranchId: '', status: '', cardType: 'NORMAL' });
   const [submittingCard, setSubmittingCard] = useState(false);
@@ -245,6 +258,12 @@ export default function MemberPanel({ branchId }) {
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
+    // Request-based tickets must only be issued atomically by the approve API.
+    if (ticketForm.requestId) {
+      setShowCreateTicket(false);
+      setTicketForm(EMPTY_FORM);
+      return toast.error('Yêu cầu này phải được xử lý bằng thao tác Duyệt. Không thể cấp vé thủ công.');
+    }
     if (!ticketForm.vehicleId) return toast.warn('Vui lòng tìm và chọn xe!');
     if (!ticketForm.parkingCardId) return toast.warn('Vui lòng chọn thẻ RFID!');
     if (ticketForm.parkingCardId === 'new' && !newCardCodeInput.trim()) return toast.warn('Vui lòng nhập mã thẻ RFID mới!');
@@ -308,12 +327,7 @@ export default function MemberPanel({ branchId }) {
         }).catch(err => console.error("Failed to update card status:", err));
       }
       
-      if (ticketForm.requestId && managerApi.updateMonthlyTicketRequestStatus) {
-        await managerApi.updateMonthlyTicketRequestStatus(ticketForm.requestId, 2).catch(e => console.error("Failed to update request status:", e));
-      }
-      
       toast.success('Cấp vé tháng thành công!');
-      if (ticketForm.requestId) setProcessedReqIds(prev => new Set(prev).add(ticketForm.requestId));
       setShowCreateTicket(false); setTicketForm(EMPTY_FORM); setNewCardCodeInput(''); fetchAll();
     } catch (err) { 
       toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi tạo vé!')); 
@@ -436,7 +450,17 @@ export default function MemberPanel({ branchId }) {
   };
 
   const handleApproveRequest = async (req) => {
-    const veh = req.vehicle;
+    if (managerApi.approveMonthlyTicketRequest) {
+      const isRenewal = Boolean(req.renewalOfTicket);
+      const renewalCardId = getRenewalCardId(req);
+      setApprovingRequest(req);
+      setApproveCardId(isRenewal && renewalCardId != null ? String(renewalCardId) : '');
+      setShowApproveTicket(true);
+      return;
+    }
+
+    /* Legacy client-side issuing flow intentionally disabled. Approval must not
+       call POST /api/monthly-tickets or mutate an existing ticket separately.
     const existingTicket = tickets.find(t => {
       const tVehId = t.vehicleId || t.vehicle?.vehicleId || t.vehicle?.id || t.vehicle?.vehiclesId;
       const rVehId = veh?.vehicleId || veh?.vehiclesId || veh?.id;
@@ -531,18 +555,17 @@ export default function MemberPanel({ branchId }) {
       }));
       setShowCreateTicket(true);
     }
+    */
   };
 
   const handleRejectRequest = async (req) => {
     if (!window.confirm('Từ chối yêu cầu đăng ký này?')) return;
     try {
-      if (managerApi.updateMonthlyTicketRequestStatus) {
-        await managerApi.updateMonthlyTicketRequestStatus(req.id, -1);
-        toast.success("Đã từ chối yêu cầu!");
-        await fetchAll();
-      }
+      await managerApi.rejectMonthlyTicketRequest(req.id);
+      toast.success("Đã từ chối yêu cầu!");
+      await fetchAll();
     } catch (err) {
-      toast.error('Có lỗi xảy ra!');
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Có lỗi xảy ra!'));
     }
   };
 
@@ -606,6 +629,37 @@ export default function MemberPanel({ branchId }) {
     return (s === 'AVAILABLE' || s === '0' || s === '') && code.startsWith('EMP-');
   });
 
+  const approvalCards = (() => {
+    if (!approvingRequest) return [];
+
+    const isRenewal = Boolean(approvingRequest.renewalOfTicket);
+    const renewalCardId = getRenewalCardId(approvingRequest);
+    const requestBranchId = getBranchId(approvingRequest)
+      || getBranchId(approvingRequest.parkingBranch)
+      || String(approvingRequest.parkingBranchId || approvingRequest.branchId || '');
+
+    return allCards.filter(card => {
+      const cardId = card.parkingCardId || card.id;
+      if (renewalCardId != null && String(cardId) !== String(renewalCardId)) return false;
+      if (requestBranchId && getBranchId(card) !== requestBranchId) return false;
+      if (String(card.type || card.cardType || '').toUpperCase() !== 'MONTHLY') return false;
+      if (String(card.status || '').toUpperCase() !== 'AVAILABLE') return false;
+
+      if (renewalCardId != null) return true;
+      if (isRenewal) return false;
+      return !tickets.some(ticket => {
+        const ticketCardId = ticket.parkingCardId
+          || ticket.parkingCard?.parkingCardId
+          || ticket.parkingCard?.id;
+        const active = ticket.status === 1
+          || ticket.status === true
+          || String(ticket.status || '').toUpperCase() === 'ACTIVE';
+        const notExpired = !ticket.endDate || new Date(ticket.endDate) >= new Date();
+        return String(ticketCardId) === String(cardId) && active && notExpired;
+      });
+    });
+  })();
+
   const checkReqProcessed = (r) => {
     return Number(r.status) === 2 || processedReqIds.has(r.id) || tickets.some(t => {
       const linkedRequestId = t.monthlyTicketRequestId
@@ -630,6 +684,32 @@ export default function MemberPanel({ branchId }) {
 
       return false;
     });
+  };
+
+  const handleConfirmApproveRequest = async () => {
+    if (!approvingRequest || !approveCardId) return toast.warn('Vui lòng chọn thẻ tháng!');
+
+    const isRenewal = Boolean(approvingRequest.renewalOfTicket);
+    const renewalCardId = getRenewalCardId(approvingRequest);
+    if (isRenewal && String(approveCardId) !== String(renewalCardId)) {
+      return toast.error('Gia hạn phải sử dụng đúng thẻ hiện tại của vé.');
+    }
+    setSubmittingApproval(true);
+    try {
+      await managerApi.approveMonthlyTicketRequest(approvingRequest.id, approveCardId);
+      toast.success(isRenewal ? 'Đã duyệt gia hạn vé tháng!' : 'Đã duyệt và cấp vé tháng!');
+      setProcessedReqIds(prev => new Set(prev).add(approvingRequest.id));
+      setShowApproveTicket(false);
+      setApprovingRequest(null);
+      setApproveCardId('');
+      await fetchAll();
+    } catch (err) {
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi duyệt yêu cầu vé tháng!'));
+      // Refresh card availability after a conflict with another manager.
+      await fetchAll();
+    } finally {
+      setSubmittingApproval(false);
+    }
   };
 
   const normalizeReqStatus = (status) => {
@@ -791,7 +871,31 @@ export default function MemberPanel({ branchId }) {
                 <tbody>
                   {loading ? <tr><td colSpan={8} className="text-center py-4 text-muted">Đang tải vé tháng...</td></tr> : filteredTickets.length === 0 ? <tr><td colSpan={8} className="text-center py-4 text-muted">Chưa có vé tháng nào.</td></tr> : filteredTickets.map((t, i) => {
                     const veh = vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(t.vehicleId)) || t.vehicle || {};
-                    const isGuest = !!t.guestName, owner = t.guestName || t.userFullName || veh.userFullName || '—', phone = t.guestPhone || '', plate = t.licensePlate || veh.licensePlate || '—', vtName = t.vehicleTypeName || veh.vehicleTypeName || '—', cardCode = t.cardCode || t.parkingCard?.cardCode || ('#' + t.parkingCardId), isActive = t.status === 1 || t.status === true, tid = getTicketId(t) || i;
+                    const linkedRequestId = t.monthlyTicketRequestId || t.requestId || t.monthlyTicketRequest?.id;
+                    const sourceRequest = requests.find(r => String(r.id) === String(linkedRequestId));
+                    const hasAccount = Boolean(
+                      sourceRequest?.user
+                      || t.userId
+                      || t.userFullName
+                      || t.user
+                      || veh.userId
+                      || veh.userFullName
+                      || veh.user
+                      || (veh.vehicleSource && String(veh.vehicleSource).toUpperCase() !== 'GUEST')
+                    );
+                    const isGuest = !hasAccount;
+                    const owner = sourceRequest?.user?.userFullName
+                      || sourceRequest?.user?.fullName
+                      || t.userFullName
+                      || veh.userFullName
+                      || t.guestName
+                      || '—';
+                    const phone = sourceRequest?.user?.userPhone || t.guestPhone || '';
+                    const plate = t.licensePlate || veh.licensePlate || '—';
+                    const vtName = t.vehicleTypeName || veh.vehicleTypeName || '—';
+                    const cardCode = t.cardCode || t.parkingCard?.cardCode || ('#' + t.parkingCardId);
+                    const isActive = t.status === 1 || t.status === true;
+                    const tid = getTicketId(t) || i;
                     return (
                       <tr key={tid}>
                         <td className="fw-bold text-primary">{plate}</td>
@@ -879,6 +983,79 @@ export default function MemberPanel({ branchId }) {
           </div>
         )}
       </Card>
+
+      <Modal
+        show={showApproveTicket}
+        onHide={() => {
+          if (submittingApproval) return;
+          setShowApproveTicket(false);
+          setApprovingRequest(null);
+          setApproveCardId('');
+        }}
+        centered
+      >
+        <Modal.Header closeButton={!submittingApproval}>
+          <Modal.Title className="fs-6 fw-bold">
+            {approvingRequest?.renewalOfTicket ? 'Duyệt gia hạn vé tháng' : 'Chọn thẻ và duyệt yêu cầu'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="d-flex flex-column gap-3">
+          <div className="border rounded bg-light p-3">
+            <div className="small text-muted">Phương tiện</div>
+            <div className="fw-bold text-primary">{approvingRequest?.vehicle?.licensePlate || '—'}</div>
+            <div className="small text-muted mt-1">
+              {approvingRequest?.pricePolicy?.policyName || 'Gói vé tháng'}
+            </div>
+          </div>
+
+          <Form.Group>
+            <Form.Label className="small fw-bold text-muted">THẺ THÁNG</Form.Label>
+            <Form.Select
+              value={approveCardId}
+              onChange={event => setApproveCardId(event.target.value)}
+              disabled={submittingApproval || Boolean(approvingRequest?.renewalOfTicket)}
+            >
+              <option value="">-- Chọn thẻ MONTHLY khả dụng --</option>
+              {approvalCards.map(card => (
+                <option key={card.parkingCardId || card.id} value={String(card.parkingCardId || card.id)}>
+                  {card.cardCode || `#${card.parkingCardId || card.id}`}
+                </option>
+              ))}
+            </Form.Select>
+            {approvingRequest?.renewalOfTicket && !getRenewalCardId(approvingRequest) ? (
+              <Form.Text className="text-danger">Dữ liệu gia hạn không có parkingCardId hiện tại.</Form.Text>
+            ) : approvingRequest?.renewalOfTicket ? (
+              <Form.Text className="text-muted">
+                Gia hạn tiếp tục dùng thẻ {approvingRequest.renewalOfTicket.cardCode || 'hiện tại'}.
+              </Form.Text>
+            ) : approvalCards.length === 0 ? (
+              <Form.Text className="text-danger">Không có thẻ MONTHLY khả dụng tại chi nhánh này.</Form.Text>
+            ) : (
+              <Form.Text className="text-muted">Backend sẽ kiểm tra lại thẻ khi duyệt.</Form.Text>
+            )}
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            disabled={submittingApproval}
+            onClick={() => {
+              setShowApproveTicket(false);
+              setApprovingRequest(null);
+              setApproveCardId('');
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="success"
+            disabled={submittingApproval || !approveCardId || approvalCards.length === 0}
+            onClick={handleConfirmApproveRequest}
+          >
+            {submittingApproval ? 'Đang duyệt...' : 'Xác nhận duyệt'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Modal show={showCreateCard} onHide={() => setShowCreateCard(false)} centered>
         <Form onSubmit={handleCreateCard}>
