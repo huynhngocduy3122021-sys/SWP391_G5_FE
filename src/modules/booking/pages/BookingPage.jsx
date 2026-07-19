@@ -414,36 +414,6 @@ export default function BookingPage() {
               </Row>
             </Card>
 
-            {/* Thông tin người đặt Form */}
-            <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
-              <h6 className="text-muted fw-bold mb-3 d-flex align-items-center gap-1.5" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>
-                <span>👤</span> THÔNG TIN NGƯỜI ĐẶT
-              </h6>
-              
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label text-muted small fw-bold">Họ và Tên</label>
-                  <input
-                    type="text"
-                    required
-                    className="form-control text-dark fw-medium"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label text-muted small fw-bold">Số điện thoại</label>
-                  <input
-                    type="text"
-                    required
-                    className="form-control text-dark fw-medium"
-                    value={phoneNumber}
-                    onChange={e => setPhoneNumber(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Estimated breakdown cost details */}
             <div className="card border-0 shadow-sm p-4 rounded-4 bg-white">
               <h6 className="text-muted fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>CHI TIẾT TẠM TÍNH</h6>
