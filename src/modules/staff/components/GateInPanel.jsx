@@ -12,20 +12,24 @@ const GATE_ID = 'GATE-04';
 export default function GateInPanel() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
-  
-  const [detected] = useState({ plateNumber: '', entryTime: '' });
+
   const [licensePlate, setLicensePlate] = useState('');
   const [cardCode, setCardCode] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
   const [vehicleBrand, setVehicleBrand] = useState('');
   const [vehicleTypeId, setVehicleTypeId] = useState('');
-  const [vehicleTypes, setVehicleTypes] = useState([]);
+
+  // Nhận diện file/ Upload ảnh
+  const [detected] = useState({ plateNumber: '', entryTime: '' });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
-  const [suggestion, setSuggestion] = useState(null);
+
   const [submitting, setSubmitting] = useState(false);
+  //Fetch từ api
+  const [vehicleTypes, setVehicleTypes] = useState([]);
   const [zones, setZones] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
+
   const [vehiclesList, setVehiclesList] = useState([]);
   const [isAutoPopulated, setIsAutoPopulated] = useState(false);
   const [vipVehicles, setVipVehicles] = useState([]);
@@ -33,6 +37,7 @@ export default function GateInPanel() {
   const [selectedVipVehicleId, setSelectedVipVehicleId] = useState('');
   const [isMonthlyOrVipCard, setIsMonthlyOrVipCard] = useState(false);
 
+  //lấy dữ liệu từ những xe gần đây ở bên dưới và 6 xe gần nhất ở bên phải
   const fetchStatsData = async () => {
     try {
       const data = await managerApi.getAllZones();
@@ -52,12 +57,14 @@ export default function GateInPanel() {
     } catch (err) { console.error("Failed to fetch recent sessions:", err); }
   };
 
+  //Cập nhật mỗi 10s
   useEffect(() => {
     fetchStatsData();
     const interval = setInterval(fetchStatsData, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  //lấy danh sách loại xe 
   useEffect(() => {
     const fetchVehicleTypes = async () => {
       try {
@@ -69,8 +76,10 @@ export default function GateInPanel() {
     fetchVehicleTypes();
   }, []);
 
+  //tự động điền biển số xe từ ảnh
   useEffect(() => { if (detected.plateNumber) setLicensePlate(detected.plateNumber); }, [detected.plateNumber]);
 
+  //lấy danh sách tất cả xe để check 
   useEffect(() => {
     const fetchVehiclesList = async () => {
       try {
@@ -81,40 +90,42 @@ export default function GateInPanel() {
     fetchVehiclesList();
   }, []);
 
+  //check xem có phải vé tháng hoặc vé vip không 
   const checkIsMonthlyOrVip = (code) => {
     const cleanCode = (code || '').trim().toUpperCase();
     if (!cleanCode) return false;
     return cleanCode.startsWith('MONTH-') || cleanCode.startsWith('VIP-') || cleanCode.startsWith('EMP-') || isMonthlyOrVipCard;
   };
 
+
   const lookupCardCode = async (cleanCode) => {
     try {
       const ticketsData = await managerApi.getAllMonthlyTickets();
       const tickets = Array.isArray(ticketsData) ? ticketsData : (ticketsData?.content || []);
-      
+
       const matchTicket = tickets.find(t => {
         const tCode = (t.cardCode || t.parkingCard?.cardCode || '').trim().toUpperCase();
         return tCode === cleanCode || tCode === `MONTH-${cleanCode}` || tCode === `VIP-${cleanCode}` || tCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${tCode}` || cleanCode === `VIP-${tCode}` || cleanCode === `EMP-${tCode}`;
       });
-      
+
       if (matchTicket) {
         let v = matchTicket.vehicle || {};
         const ticketVehicleId = matchTicket.vehicleId || v.vehicleId;
-        
+
         if (ticketVehicleId) {
           try {
             const fetched = await managerApi.getVehicleById(ticketVehicleId);
             if (fetched) v = fetched;
-          } catch (err) {}
+          } catch (err) { }
         }
-        
+
         if (!v.vehicleColor || !v.vehicleBrand) {
           const localMatch = vehiclesList.find(x => String(x.vehicleId) === String(ticketVehicleId) || (x.licensePlate && v.licensePlate && x.licensePlate.toUpperCase().replace(/\s/g, '') === v.licensePlate.toUpperCase().replace(/\s/g, '')));
           if (localMatch) v = { ...localMatch, ...v };
         }
 
         const isVip = cleanCode.startsWith('VIP-') || (matchTicket.cardCode || '').startsWith('VIP-') || (matchTicket.parkingCard?.cardCode || '').startsWith('VIP-');
-        
+
         if (isVip) {
           const ownerId = matchTicket.userId || matchTicket.user?.id || matchTicket.user?.userId || v.userId || v.user?.id || v.user?.userId;
           const ownerName = matchTicket.userFullName || matchTicket.user?.fullName || v.userFullName || v.user?.fullName || 'VIP Member';
@@ -129,14 +140,14 @@ export default function GateInPanel() {
         } else {
           setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
         }
-
+        // Tìm thông tin biển số xe 
         const plate = v.licensePlate || matchTicket.licensePlate || '';
         setLicensePlate(plate);
         setVehicleColor(v.vehicleColor || '');
         setVehicleBrand(v.vehicleBrand || '');
         setIsAutoPopulated(true);
         setIsMonthlyOrVipCard(true);
-        
+
         const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id || matchTicket.vehicleTypeId;
         if (vTypeId) {
           setVehicleTypeId(vTypeId);
@@ -150,22 +161,22 @@ export default function GateInPanel() {
         toast.success(`Tìm thấy vé tháng/VIP hoạt động cho xe: ${plate}!`);
         return true;
       }
-
+      // Tìm biển số xe 
       const matchVehicle = vehiclesList.find(v => {
         const vCode = (v.cardCode || v.parkingCard?.cardCode || v.rfidCard?.cardCode || '').trim().toUpperCase();
         return vCode === cleanCode || vCode === `MONTH-${cleanCode}` || vCode === `VIP-${cleanCode}` || vCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${vCode}` || cleanCode === `VIP-${vCode}` || cleanCode === `EMP-${vCode}`;
       });
-      
+
       if (matchVehicle) {
         let v = matchVehicle;
         if (v.vehicleId) {
           try {
             const fetched = await managerApi.getVehicleById(v.vehicleId);
             if (fetched) v = fetched;
-          } catch (err) {}
+          } catch (err) { }
         }
         const isVip = cleanCode.startsWith('VIP-') || (v.cardCode || '').startsWith('VIP-') || (v.parkingCard?.cardCode || '').startsWith('VIP-') || (v.rfidCard?.cardCode || '').startsWith('VIP-');
-        
+
         if (isVip) {
           const ownerId = v.userId || v.user?.id || v.user?.userId;
           const ownerName = v.userFullName || v.user?.fullName || 'VIP Member';
@@ -187,7 +198,7 @@ export default function GateInPanel() {
         setVehicleBrand(v.vehicleBrand || '');
         setIsAutoPopulated(true);
         setIsMonthlyOrVipCard(isVip);
-        
+
         const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id;
         if (vTypeId) {
           setVehicleTypeId(vTypeId);
@@ -249,6 +260,7 @@ export default function GateInPanel() {
     }
   };
 
+  //Upload ảnh
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
     setPreviewUrls(urls);
@@ -429,14 +441,12 @@ export default function GateInPanel() {
               {submitting ? <Spinner animation="border" size="sm" /> : '⚡'} PHÁT THẺ & MỞ BARIE
             </Button>
           </Card>
-          
+
           <ZoneOccupancyTable zones={zones} />
         </Col>
 
-        {/* R/H Column */}
         <Col lg={4} className="d-flex flex-column gap-3">
           <SupportPanel plateNumber={detected.plateNumber || licensePlate} gateId={GATE_ID} />
-
           <Card className="bg-white border-0 shadow-sm p-3 text-dark h-100" style={{ borderRadius: '12px' }}>
             <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
               <span className="fw-bold small">🚗 LƯỢT XE GỬI GẦN ĐÂY</span>
@@ -465,7 +475,9 @@ export default function GateInPanel() {
     </div>
   );
 }
+//Bảng lượt gửi xe gần đây
 
+//Hình ảnh, camera.
 export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrl }) {
   return (
     <Card className="bg-white border-0 overflow-hidden text-dark shadow-sm" style={{ borderRadius: '12px' }}>

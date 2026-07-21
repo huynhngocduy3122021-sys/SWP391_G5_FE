@@ -11,7 +11,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [timeOffset, setTimeOffset] = useState(() => Number(localStorage.getItem('demoTimeOffset') || 0));
   const dropdownRef = useRef(null);
-  
+
   // Real stats state
   const [realStats, setRealStats] = useState({
     totalVehicles: 0,
@@ -31,7 +31,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
       ]);
 
       const branchId = localStorage.getItem('branchId');
-      
+
       let sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData?.content || []);
       let bookings = Array.isArray(bookingsData) ? bookingsData : (bookingsData?.content || []);
       let zones = Array.isArray(zonesData) ? zonesData : (zonesData?.content || []);
@@ -43,7 +43,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
       // Calculate total capacity
       const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || z.totalSlots || 0), 0);
-      
+
       // Calculate total active vehicles (status is ACTIVE or check-out is missing)
       const activeSessions = sessions.filter(s => s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime));
       const totalVehiclesCount = activeSessions.length;
@@ -58,9 +58,9 @@ export default function StaffTopbar({ mode, onModeChange }) {
       // Today's revenue (sum of totalAmount for checkout sessions today, excluding monthly/VIP)
       const todayRevenue = sessions
         .filter(s => {
-          const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') || 
-                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
-                         (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
+          const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') ||
+            (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
+            (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
           return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
         })
         .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
@@ -87,7 +87,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date(Date.now() + timeOffset)), 1000);
-    
+
     // Poll API stats every 10 seconds
     fetchStats();
     const statsId = setInterval(fetchStats, 10000);
@@ -160,7 +160,9 @@ export default function StaffTopbar({ mode, onModeChange }) {
         </div>
 
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button 
+
+          {/* Thời gian +- 1 giờ */}
+          <button
             onClick={() => {
               setTimeOffset(prev => {
                 const newVal = prev - 3600 * 1000;
@@ -174,7 +176,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
           >
             -1 Giờ
           </button>
-          <button 
+          <button
             onClick={() => {
               setTimeOffset(prev => {
                 const newVal = prev + 3600 * 1000;

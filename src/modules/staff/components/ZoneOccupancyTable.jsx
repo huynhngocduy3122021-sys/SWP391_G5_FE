@@ -7,13 +7,15 @@ export default function ZoneOccupancyTable() {
   const branchIdStr = localStorage.getItem('parkingBranchId');
   const branchId = branchIdStr ? Number(branchIdStr) : null;
 
+  //Bảng hoạt động vào, Ra gần đây
+
   const fetchRecentSessions = async () => {
     try {
       const res = await API.get('/api/parking-sessions');
       const list = Array.isArray(res.data) ? res.data : [];
-      
+
       // Lọc các phiên thuộc chi nhánh của Staff hiện tại đang đăng nhập
-      const branchSessions = branchId 
+      const branchSessions = branchId
         ? list.filter(s => s.parkingBranchId === branchId)
         : list;
 
@@ -58,8 +60,8 @@ export default function ZoneOccupancyTable() {
         <span style={{ fontWeight: 700, color: 'var(--vin-text-main)', fontSize: '0.85rem', letterSpacing: '0.05em' }}>
           🕒 HOẠT ĐỘNG VÀO / RA GẦN ĐÂY
         </span>
-        <button 
-          onClick={fetchRecentSessions} 
+        <button
+          onClick={fetchRecentSessions}
           style={{ background: 'transparent', border: 'none', color: 'var(--vin-primary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600, padding: 0 }}
         >
           🔄 Cập nhật
