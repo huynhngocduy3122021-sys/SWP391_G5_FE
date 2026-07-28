@@ -69,6 +69,8 @@ const managerApi = {
   resolveIncident:          async (id, data)    => (await API.put(`/api/incidents/${id}/resolve`, data)).data,
   cancelIncident:           async (id, data)    => (await API.put(`/api/incidents/${id}/cancel`, data)).data,
   assignIncident:           async (id, staffId) => (await API.put(`/api/incidents/${id}/assign`, { staffId: Number(staffId), assignedStaffId: Number(staffId), id: Number(staffId), userId: Number(staffId) })).data,
+  getIncidentImages:        async (id)          => (await API.get(`/api/incidents/${id}/images`)).data,
+  deleteIncidentImage:      async (incidentId, imageId) => (await API.delete(`/api/incidents/${incidentId}/images/${imageId}`)).data,
 
   // ── Parking Sessions (dùng cho Overview) ──────────────────
   getAllSessions:            async (params = {}) => (await API.get('/api/parking-sessions', { params })).data,

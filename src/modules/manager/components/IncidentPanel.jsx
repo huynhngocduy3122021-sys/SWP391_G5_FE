@@ -58,6 +58,22 @@ export default function IncidentPanel({ branchId }) {
 
   // Modal chi tiết
   const [detailTarget, setDetailTarget] = useState(null);
+  const [incidentImages, setIncidentImages] = useState(null);
+  const [loadingImages, setLoadingImages] = useState(false);
+
+  useEffect(() => {
+    if (detailTarget) {
+      setIncidentImages(null);
+      setLoadingImages(true);
+      managerApi.getIncidentImages(detailTarget.incidentId)
+        .then(res => setIncidentImages(res))
+        .catch(err => {
+          console.error("Failed to fetch incident images", err);
+          setIncidentImages([]);
+        })
+        .finally(() => setLoadingImages(false));
+    }
+  }, [detailTarget]);
 
   /* ── fetch ── */
   const fetchIncidents = async () => {
@@ -325,6 +341,25 @@ export default function IncidentPanel({ branchId }) {
                   <div style={{ color: mt.danger, lineHeight: 1.6 }}>{detailTarget.cancellationReason}</div>
                 </div>
               )}
+              
+              <div style={{ borderBottom: `1px solid ${mt.border}`, paddingBottom: '0.5rem' }}>
+                <div style={{ color: mt.textMuted, fontWeight: 600, marginBottom: 8 }}>Ảnh bằng chứng</div>
+                {loadingImages ? (
+                  <div style={{ fontSize: '0.85rem', color: mt.textMuted }}>Đang tải ảnh...</div>
+                ) : incidentImages && incidentImages.length > 0 ? (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {incidentImages.map(img => (
+                      <div key={img.incidentImageId || img.id} style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${mt.border}`, position: 'relative' }}>
+                        <a href={img.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                          <img src={img.imageUrl} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.85rem', color: mt.textMuted }}>Không có ảnh đính kèm</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
