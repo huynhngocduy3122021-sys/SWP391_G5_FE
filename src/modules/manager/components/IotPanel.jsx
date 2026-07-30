@@ -2,6 +2,60 @@ import { useState, useEffect } from 'react';
 import managerApi from '../api/manager';
 import { toast } from 'react-toastify';
 
+const getSessionImages = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.content)) return response.content;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.images)) return response.images;
+  return [];
+};
+
+const getImageType = (image) => String(image?.imageType || image?.image_type || '').toUpperCase();
+const getImageUrl = (image) => image?.imageUrl || image?.image_url || '';
+const getImageId = (image) => image?.vehicleImageId || image?.vehicle_image_id || image?.imageId || image?.id;
+
+const SessionImageGallery = ({ label, icon, images, emptyText }) => (
+  <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
+    <div style={{ backgroundColor: '#f1f5f9', padding: '6px 12px', borderBottom: '1px solid #cbd5e1', fontSize: '11px', fontWeight: '700', color: '#475569', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+      <span>{icon} {label}</span>
+      <span>{images.length} ảnh</span>
+    </div>
+    {images.length === 0 ? (
+      <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>
+        {emptyText}
+      </div>
+    ) : (
+      <div style={{ display: 'grid', gridTemplateColumns: images.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '8px', padding: '8px' }}>
+        {images.map((image, index) => {
+          const imageUrl = getImageUrl(image);
+          return (
+            <a
+              key={getImageId(image) || `${imageUrl}-${index}`}
+              href={imageUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={`Mở ảnh ${index + 1}`}
+              style={{ display: 'block', minWidth: 0, overflow: 'hidden', borderRadius: '6px', backgroundColor: '#e2e8f0' }}
+            >
+              <img
+                src={imageUrl}
+                alt={`${label} ${index + 1}`}
+                style={{ width: '100%', height: images.length > 1 ? '130px' : 'auto', minHeight: '120px', maxHeight: '300px', display: 'block', objectFit: 'contain' }}
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none';
+                  event.currentTarget.parentElement.removeAttribute('href');
+                  event.currentTarget.parentElement.textContent = 'Ảnh không truy cập được';
+                  event.currentTarget.parentElement.style.cssText += ';height:120px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:12px;text-decoration:none;';
+                }}
+              />
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
+
 export default function IotPanel({ branchId }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,7 +125,7 @@ export default function IotPanel({ branchId }) {
       try {
         const data = await managerApi.getSessionImages(selectedSession.parkingSessionId);
         if (isMounted) {
-          setImages(data || []);
+          setImages(getSessionImages(data));
         }
       } catch (err) {
         console.error('Không lấy được ảnh của phiên gửi xe:', err);
@@ -251,63 +305,25 @@ export default function IotPanel({ branchId }) {
                   ⏳ Đang tải ảnh từ server...
                 </div>
               ) : (() => {
-                let inImg = images.find(img => img.imageType === 'IN' || img.imageType === 'PLATE_IN' || String(img.imageType).toUpperCase().includes('IN'));
-                let outImg = images.find(img => img.imageType === 'OUT' || img.imageType === 'PLATE_OUT' || String(img.imageType).toUpperCase().includes('OUT'));
-                
-                if (!inImg && images.length > 0) inImg = images[0];
-                if (!outImg && images.length > 1) outImg = images[1];
+                const inImages = images.filter(image => ['CHECK_IN', 'IN', 'PLATE_IN'].includes(getImageType(image)));
+                const outImages = images.filter(image => ['CHECK_OUT', 'OUT', 'PLATE_OUT'].includes(getImageType(image)));
+                const otherImages = images.filter(image => !inImages.includes(image) && !outImages.includes(image));
+                const allInImages = [...inImages, ...otherImages];
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* IN GATE IMAGE BOX */}
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
-                      <div style={{ backgroundColor: '#f1f5f9', padding: '6px 12px', borderBottom: '1px solid #cbd5e1', fontSize: '11px', fontWeight: '700', color: '#475569' }}>
-                        📥 ẢNH CAMERA CỔNG VÀO (IN GATE)
-                      </div>
-                      {inImg ? (
-                        <div style={{ position: 'relative' }}>
-                          <img 
-                            src={inImg.imageUrl} 
-                            alt="Gate In" 
-                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '300px', objectFit: 'contain' }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.style.display = 'none';
-                              e.target.parentNode.innerHTML = `<div style="height: 120px; background: #e2e8f0; display:flex; align-items:center; justify-content:center; color:#475569; font-size:12px;">[Link ảnh lỗi hoặc không truy cập được]</div>`;
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>
-                          Không có ảnh cổng vào
-                        </div>
-                      )}
-                    </div>
-
-                    {/* OUT GATE IMAGE BOX */}
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
-                      <div style={{ backgroundColor: '#f1f5f9', padding: '6px 12px', borderBottom: '1px solid #cbd5e1', fontSize: '11px', fontWeight: '700', color: '#475569' }}>
-                        📤 ẢNH CAMERA CỔNG RA (OUT GATE)
-                      </div>
-                      {outImg ? (
-                        <div style={{ position: 'relative' }}>
-                          <img 
-                            src={outImg.imageUrl} 
-                            alt="Gate Out" 
-                            style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '300px', objectFit: 'contain' }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.style.display = 'none';
-                              e.target.parentNode.innerHTML = `<div style="height: 120px; background: #e2e8f0; display:flex; align-items:center; justify-content:center; color:#475569; font-size:12px;">[Link ảnh lỗi hoặc không truy cập được]</div>`;
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>
-                          {selectedSession.sessionStatus === 'ACTIVE' ? 'Xe đang đỗ (Chưa có ảnh cổng ra)' : 'Không có ảnh cổng ra'}
-                        </div>
-                      )}
-                    </div>
+                    <SessionImageGallery
+                      label="ẢNH CAMERA CỔNG VÀO (IN GATE)"
+                      icon="📥"
+                      images={allInImages}
+                      emptyText="Không có ảnh cổng vào"
+                    />
+                    <SessionImageGallery
+                      label="ẢNH CAMERA CỔNG RA (OUT GATE)"
+                      icon="📤"
+                      images={outImages}
+                      emptyText={selectedSession.sessionStatus === 'ACTIVE' ? 'Xe đang đỗ (Chưa có ảnh cổng ra)' : 'Không có ảnh cổng ra'}
+                    />
                   </div>
                 );
               })()}

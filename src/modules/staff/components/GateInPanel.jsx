@@ -335,7 +335,7 @@ export default function GateInPanel() {
       <Row className="g-4">
         {/* L/H Column */}
         <Col lg={8} className="d-flex flex-column gap-3">
-          <CameraFeed label={`LÀN VÀO - ${GATE_ID}`} sub="CAM 01: NHẬN DIỆN BIỂN SỐ" status="SẴN SÀNG" tone="success" imageUrl={previewUrls.length > 0 ? previewUrls[0] : null} />
+          <CameraFeed label={`LÀN VÀO - ${GATE_ID}`} sub="CAM 01: NHẬN DIỆN BIỂN SỐ" status="SẴN SÀNG" tone="success" imageUrls={previewUrls} />
 
           <Card className="bg-white border-0 shadow-sm p-3 text-dark" style={{ borderRadius: '12px' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -482,15 +482,39 @@ export default function GateInPanel() {
 //Bảng lượt gửi xe gần đây
 
 //Hình ảnh, camera.
-export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrl }) {
+export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrls = [] }) {
+  const hasImages = imageUrls.length > 0;
+
   return (
     <Card className="bg-white border-0 overflow-hidden text-dark shadow-sm" style={{ borderRadius: '12px' }}>
       <div className="d-flex justify-content-between align-items-center p-2 px-3 border-bottom small">
         <span className="text-muted fw-bold">📷 {label}</span>
-        <Badge bg={tone}>{status}</Badge>
+        <div className="d-flex align-items-center gap-2">
+          {hasImages && <span className="text-muted">{imageUrls.length} ảnh</span>}
+          <Badge bg={tone}>{status}</Badge>
+        </div>
       </div>
-      <div className="position-relative d-flex align-items-center justify-content-center bg-black" style={{ height: 220, background: imageUrl ? `url(${imageUrl}) center/contain no-repeat #000` : 'linear-gradient(135deg, #0b1120, #111827)' }}>
-        {!imageUrl && <span className="text-muted small">{sub}</span>}
+      <div
+        className="position-relative bg-black"
+        style={{
+          minHeight: 220,
+          display: 'grid',
+          gridTemplateColumns: imageUrls.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr',
+          gap: hasImages ? 6 : 0,
+          padding: hasImages ? 6 : 0,
+          background: hasImages ? '#000' : 'linear-gradient(135deg, #0b1120, #111827)'
+        }}
+      >
+        {hasImages ? imageUrls.map((url, index) => (
+          <img
+            key={`${url}-${index}`}
+            src={url}
+            alt={`Ảnh phương tiện ${index + 1}`}
+            style={{ width: '100%', height: 220, display: 'block', objectFit: 'contain', backgroundColor: '#000', borderRadius: 6 }}
+          />
+        )) : (
+          <span className="text-muted small d-flex align-items-center justify-content-center">{sub}</span>
+        )}
         <Badge bg="success" className="bg-opacity-25 text-success border border-success position-absolute bottom-0 start-0 m-2 px-2 py-1">● ĐANG NHẬN DIỆN...</Badge>
       </div>
     </Card>
