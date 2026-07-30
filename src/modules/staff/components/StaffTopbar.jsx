@@ -24,21 +24,40 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
   const fetchStats = async () => {
     try {
+      const branchId = localStorage.getItem('branchId');
+
       const [sessionsData, bookingsData, zonesData] = await Promise.all([
-        managerApi.getAllSessions(),
+        managerApi.getAllSessions(branchId ? { parkingBranchId: Number(branchId), branchId: Number(branchId), size: 10000 } : { size: 10000 }),
         bookingApi.getAllBookings(),
         managerApi.getAllZones()
       ]);
-
-      const branchId = localStorage.getItem('branchId');
 
       let sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData?.content || []);
       let bookings = Array.isArray(bookingsData) ? bookingsData : (bookingsData?.content || []);
       let zones = Array.isArray(zonesData) ? zonesData : (zonesData?.content || []);
 
+      const getBranchId = (obj) => {
+        if (!obj) return '';
+        if (obj.parkingBranchId) return String(obj.parkingBranchId);
+        if (obj.branchId) return String(obj.branchId);
+        if (obj.parkingBranch?.parkingBranchId) return String(obj.parkingBranch.parkingBranchId);
+        if (obj.parkingBranch?.id) return String(obj.parkingBranch.id);
+        if (obj.branch?.id) return String(obj.branch.id);
+        if (obj.parkingBranch && (typeof obj.parkingBranch === 'number' || typeof obj.parkingBranch === 'string')) {
+          return String(obj.parkingBranch);
+        }
+        if (obj.branch && (typeof obj.branch === 'number' || typeof obj.branch === 'string')) {
+          return String(obj.branch);
+        }
+        return '';
+      };
+
       if (branchId) {
-        sessions = sessions.filter(s => String(s.parkingBranchId) === String(branchId));
-        zones = zones.filter(z => String(z.parkingFloor?.parkingBranch?.parkingBranchId) === String(branchId) || String(z.branchId) === String(branchId));
+        sessions = sessions.filter(s => getBranchId(s) === String(branchId));
+        zones = zones.filter(z => {
+          const bId = getBranchId(z) || getBranchId(z.parkingFloor);
+          return bId === String(branchId);
+        });
       }
 
       // Calculate total capacity
@@ -49,21 +68,59 @@ export default function StaffTopbar({ mode, onModeChange }) {
       const totalVehiclesCount = activeSessions.length;
 
       // Exited today (sessions checked out today)
-      const todayStr = new Date().toDateString();
+      const offset = Number(localStorage.getItem('demoTimeOffset') || 0);
+      const todayStr = new Date(Date.now() + offset).toDateString();
       const exitedToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr).length;
 
       // Bookings count
       const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
 
       // Today's revenue (sum of totalAmount for checkout sessions today, excluding monthly/VIP)
+      console.log('sessionsData direct:', sessionsData);
+      console.log('Staff stats debug:', {
+        totalSessionsFetched: sessionsData?.length || sessionsData?.content?.length || 0,
+        rawSessions: sessionsData,
+        branchId,
+        filteredSessionsLength: sessions.length,
+        todayStr,
+        offset
+      });
+
+      const storageKey = `todayRevenue_branch_${branchId || '1'}`;
+      let localRevenue = 0;
+      try {
+        const stored = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (stored.date === todayStr) {
+          localRevenue = Number(stored.amount || 0);
+        }
+      } catch (e) {}
+
       const todayRevenue = sessions
         .filter(s => {
           const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') ||
             (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
             (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
-          return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
+          const checkOutMatch = s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr;
+          if (s.checkOutTime) {
+            console.log('Checking session checkout:', {
+              id: s.sessionId || s.id,
+              checkOutTime: s.checkOutTime,
+              parsedDateString: new Date(s.checkOutTime).toDateString(),
+              checkOutMatch,
+              isMOrV,
+              parkingFee: s.parkingFee,
+              totalAmount: s.totalAmount
+            });
+          }
+          return checkOutMatch && !isMOrV;
         })
-        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+        .reduce((sum, s) => {
+          const walkInFee = Number(s.parkingFee ?? (s.totalAmount - (s.penaltyFee || 0)) ?? 0);
+          const penaltyFee = Number(s.penaltyFee || 0);
+          return sum + walkInFee + penaltyFee;
+        }, localRevenue);
+
+      console.log('Calculated todayRevenue (including local):', todayRevenue);
 
       // Slots left
       const slotsLeft = Math.max(0, totalCapacity - totalVehiclesCount);
@@ -98,11 +155,13 @@ export default function StaffTopbar({ mode, onModeChange }) {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('timeOffsetChanged', fetchStats);
 
     return () => {
       clearInterval(id);
       clearInterval(statsId);
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('timeOffsetChanged', fetchStats);
     };
   }, []);
 

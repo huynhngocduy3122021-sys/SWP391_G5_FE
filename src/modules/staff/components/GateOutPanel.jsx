@@ -138,8 +138,30 @@ export default function GateOutPanel() {
 
     if (success) {
       toast.success(`Thanh toán qua VNPay thành công! Phiên gửi xe đã kết thúc.`);
+      
+      // Xử lý cộng dồn doanh thu VNPay từ giao dịch chờ (pending)
+      try {
+        const pending = JSON.parse(localStorage.getItem('pending_vnpay_payment') || '{}');
+        if (pending.amount && pending.branchId && pending.date) {
+          const storageKey = `todayRevenue_branch_${pending.branchId}`;
+          const stored = JSON.parse(localStorage.getItem(storageKey) || '{}');
+          if (stored.date === pending.date) {
+            stored.amount = (stored.amount || 0) + pending.amount;
+          } else {
+            stored.date = pending.date;
+            stored.amount = pending.amount;
+          }
+          localStorage.setItem(storageKey, JSON.stringify(stored));
+          window.dispatchEvent(new Event('timeOffsetChanged')); // Yêu cầu Topbar reload lại thống kê
+        }
+      } catch (e) {
+        console.error("Lỗi khi xử lý doanh thu VNPay:", e);
+      } finally {
+        localStorage.removeItem('pending_vnpay_payment');
+      }
     } else {
       toast.error(`Thanh toán thất bại: ${message}`);
+      localStorage.removeItem('pending_vnpay_payment');
     }
 
     // Clear query params to clean URL and prevent double callbacks
@@ -276,6 +298,26 @@ export default function GateOutPanel() {
         const msg = isFree
           ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : cardCode.startsWith('EMP-') ? 'Nhân viên' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
           : `Thanh toán tiền mặt ${fmtMoney(paidAmount)}đ thành công! Đã mở barie cho xe ${exitPlate} ra.`;
+        
+        // Tích lũy doanh thu tiền mặt vào localStorage
+        const branchId = localStorage.getItem('branchId') || '1';
+        const offset = Number(localStorage.getItem('demoTimeOffset') || 0);
+        const todayStr = new Date(Date.now() + offset).toDateString();
+        const storageKey = `todayRevenue_branch_${branchId}`;
+        try {
+          const stored = JSON.parse(localStorage.getItem(storageKey) || '{}');
+          if (stored.date === todayStr) {
+            stored.amount = (stored.amount || 0) + paidAmount;
+          } else {
+            stored.date = todayStr;
+            stored.amount = paidAmount;
+          }
+          localStorage.setItem(storageKey, JSON.stringify(stored));
+          window.dispatchEvent(new Event('timeOffsetChanged'));
+        } catch (e) {
+          console.error("Lỗi lưu doanh thu local:", e);
+        }
+
         toast.success(msg);
         setActiveSession(null);
         setCardCode('');
@@ -286,6 +328,16 @@ export default function GateOutPanel() {
       } else if (selectedMethod === 'VNPAY') {
         const pUrl = res?.paymentUrl || res?.url || res?.redirectUrl || (typeof res === 'string' && res.startsWith('http') ? res : res?.data?.paymentUrl || res?.data?.url);
         if (pUrl) {
+          // Lưu trạng thái thanh toán VNPay chờ xử lý trước khi redirect
+          const branchId = localStorage.getItem('branchId') || '1';
+          const offset = Number(localStorage.getItem('demoTimeOffset') || 0);
+          const todayStr = new Date(Date.now() + offset).toDateString();
+          localStorage.setItem('pending_vnpay_payment', JSON.stringify({
+            branchId,
+            amount: paidAmount,
+            date: todayStr
+          }));
+
           toast.info('Đang mở trang thanh toán VNPay...');
           // Mở trực tiếp trong tab hiện tại hoặc tab mới. Để tránh popup blocker, ta có thể dùng window.location.href 
           // nhưng nhân viên thường muốn giữ nguyên trang trực và quét QR trên tab mới. 
