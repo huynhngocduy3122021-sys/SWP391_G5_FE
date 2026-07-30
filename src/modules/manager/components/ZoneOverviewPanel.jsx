@@ -618,7 +618,6 @@ export default function ZoneOverviewPanel({ branchId }) {
               { label: 'Tên tầng *', icon: 'bi-building', field: 'name', placeholder: 'Ví dụ: Tầng 1, Tầng trệt...' },
               { label: 'Số tầng (floor number)', icon: 'bi-sort-numeric-down', field: 'floorNumber', placeholder: 'Ví dụ: 1, 2, -1...', type: 'number' },
               { label: 'Mã tầng (tuỳ chọn)', icon: 'bi-tag', field: 'code', placeholder: 'Ví dụ: F1, G0, B1...' },
-              { label: 'Sức chứa của tầng (slots)', icon: 'bi-grid-3x3-gap', field: 'capacity', placeholder: 'Ví dụ: 50, 100...', type: 'number' },
             ].map(({ label, icon, field, placeholder, type }) => (
               <Form.Group key={field}>
                 <Form.Label className="fw-bold small text-uppercase text-secondary mb-1">{label}</Form.Label>

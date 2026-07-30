@@ -5,15 +5,35 @@ import managerApi from '../../manager/api/manager';
 import { toast } from 'react-toastify';
 
 export default function LoginForm({ onSuccess, onForgot }) {
+  const [step, setStep] = useState('login'); // 'login' | 'otp'
   const [form, setForm] = useState({ identifier: '', password: '' });
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loginData, setLoginData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) value = value.slice(value.length - 1);
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-input-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      if (prevInput) prevInput.focus();
+    }
+  };
+
+  const processLoginSuccess = async (data) => {
     try {
-      const data = await authApi.login({ identifier: form.identifier, userPassword: form.password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', data.userEmail);
       localStorage.setItem('role', data.userRole);
@@ -45,7 +65,6 @@ export default function LoginForm({ onSuccess, onForgot }) {
             data.parkingBranchName ||
             '';
 
-          // Lấy thêm branch info đầy đủ nếu có branchId
           let finalBranchName = branchName;
           if (branchId && !finalBranchName) {
             try {
@@ -74,12 +93,89 @@ export default function LoginForm({ onSuccess, onForgot }) {
       toast.success('Đăng nhập thành công!');
       onSuccess(data);
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại!';
-      toast.error(typeof errorMessage === 'string' ? errorMessage : 'Đăng nhập thất bại!');
+      toast.error('Có lỗi trong quá trình xử lý dữ liệu đăng nhập!');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (step === 'login') {
+      setLoading(true);
+      try {
+        const data = await authApi.login({ identifier: form.identifier, userPassword: form.password });
+        // NOTE: Lúc này thông tin user đúng, ta lưu lại và chuyển sang bước nhập OTP
+        setLoginData(data);
+        setStep('otp');
+        toast.info('Vui lòng nhập mã OTP để tiếp tục (Mặc định: 123456)');
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại!';
+        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Đăng nhập thất bại!');
+      } finally {
+        setLoading(false);
+      }
+    } else if (step === 'otp') {
+      const otpCode = otp.join('');
+      if (otpCode.length < 6) {
+        return toast.warning('Vui lòng nhập đủ 6 số OTP!');
+      }
+      setLoading(true);
+      // TODO: Nếu backend có API verify OTP thì gọi ở đây. Tạm thời mock logic verify
+      setTimeout(() => {
+        if (otpCode === '123456') { // Mock OTP correct
+          processLoginSuccess(loginData);
+        } else {
+          setLoading(false);
+          toast.error('Mã OTP không chính xác!');
+        }
+      }, 1000);
+    }
+  };
+
+  if (step === 'otp') {
+    return (
+      <form onSubmit={handleSubmit}>
+        <div className="text-center mb-4">
+          <div className="mb-3">
+            <div className="d-inline-flex align-items-center justify-content-center bg-light text-primary rounded-circle" style={{ width: 64, height: 64 }}>
+              <i className="bi bi-shield-lock fs-1" style={{ color: '#1f6a85' }} />
+            </div>
+          </div>
+          <h4 className="fw-bold" style={{ color: '#164e63' }}>Xác thực bảo mật 2 lớp</h4>
+          <p className="text-muted small">Vui lòng nhập mã OTP gồm 6 chữ số đã được gửi đến thiết bị của bạn.</p>
+        </div>
+
+        <div className="d-flex justify-content-center gap-2 mb-4">
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              id={`otp-input-${index}`}
+              type="text"
+              inputMode="numeric"
+              className="form-control text-center fw-bold fs-4 p-0"
+              style={{ width: '45px', height: '55px', borderRadius: '8px' }}
+              value={digit}
+              onChange={(e) => handleOtpChange(index, e.target.value.replace(/[^0-9]/g, ''))}
+              onKeyDown={(e) => handleOtpKeyDown(index, e)}
+              required
+            />
+          ))}
+        </div>
+
+        <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
+          {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
+          {loading ? 'ĐANG XÁC THỰC...' : 'XÁC THỰC OTP'}
+        </button>
+
+        <div className="text-center">
+          <button type="button" className="btn btn-link p-0 text-decoration-none small" style={{ color: '#64748b' }} onClick={() => setStep('login')} disabled={loading}>
+            Quay lại trang đăng nhập
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit}>
@@ -110,12 +206,10 @@ export default function LoginForm({ onSuccess, onForgot }) {
           Quên mật khẩu?
         </button>
       </div>
-<button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
+      <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
         {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
-        {loading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
+        {loading ? 'ĐANG XỬ LÝ...' : 'ĐĂNG NHẬP'}
       </button>
-
-
     </form>
   );
 }
