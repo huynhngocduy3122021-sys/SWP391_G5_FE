@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import staffApi from '../api/staffApi';
 import parkingApi from '../../search/api/parkingApi';
 import managerApi from '../../manager/api/manager';
-import { CameraFeed } from './GateInPanel';
 import ZoneOccupancyTable from './ZoneOccupancyTable';
 import SupportPanel from './SupportPanel';
 
@@ -41,7 +40,7 @@ const calculateParkingFee = (policy, durationMinutes) => {
   const extraBlockMinutes = Number(policy.extraDurationMinutes || 60);
 
   if (!basePrice || !durationMinutes) return 0;
-  
+
   let fee = basePrice;
   if (durationMinutes > baseDuration) {
     const extraMinutes = durationMinutes - baseDuration;
@@ -158,7 +157,7 @@ export default function GateOutPanel() {
       const session = await staffApi.getActiveSessionByCardCode(cardCode.trim(), simulatedTime);
       setActiveSession(session);
       setExitPlate(session.licensePlate); // Tự động điền biển số lúc ra khớp lúc vào để đỡ gõ
-      
+
       toast.success('Tìm thấy phiên gửi xe hoạt động!');
     } catch (err) {
       console.error(err);
@@ -182,8 +181,8 @@ export default function GateOutPanel() {
       const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1);
       const session = await staffApi.getActiveSessionByLicensePlate(exitPlate.trim(), simulatedTime);
       setActiveSession(session);
-      setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ'); 
-      
+      setCardCode(session.cardCode || session.parkingCard?.cardCode || 'Không rõ');
+
       toast.success('Tìm thấy phiên gửi xe bằng biển số!');
     } catch (err) {
       console.error(err);
@@ -205,7 +204,7 @@ export default function GateOutPanel() {
       toast.error('Vui lòng nhập biển số xe thực tế lúc ra!');
       return;
     }
-    
+
     if (selectedFiles.length === 0) {
       toast.error('Vui lòng chụp/tải lên ít nhất 1 ảnh phương tiện lúc ra để AI kiểm tra!');
       return;
@@ -359,17 +358,17 @@ export default function GateOutPanel() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <CapturedShot 
-            title="CAPTURED ENTRY (REFERENCE - LÚC VÀO)" 
-            plate={activeSession ? activeSession.licensePlate : 'CHƯA CÓ DỮ LIỆU'} 
-            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor || 'Không rõ'} (${activeSession.vehicleBrand || 'Không rõ'})` : 'Vui lòng nhập mã thẻ để tìm kiếm'} 
+          <CapturedShot
+            title="CAPTURED ENTRY (REFERENCE - LÚC VÀO)"
+            plate={activeSession ? activeSession.licensePlate : 'CHƯA CÓ DỮ LIỆU'}
+            vehicleType={activeSession ? `${activeSession.vehicleTypeName} - ${activeSession.vehicleColor || 'Không rõ'} (${activeSession.vehicleBrand || 'Không rõ'})` : 'Vui lòng nhập mã thẻ để tìm kiếm'}
             imageUrls={activeSession ? activeSession.imageUrls : []}
           />
-          <CapturedShot 
-            title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)" 
-            plate={exitPlate || 'CHƯA NHẬP'} 
+          <CapturedShot
+            title="CAPTURED EXIT (CURRENT - THỰC TẾ LÚC RA)"
+            plate={exitPlate || 'CHƯA NHẬP'}
             vehicleType={selectedFiles.length > 0 ? "Hình ảnh đã upload" : "Hình ảnh upload lên"}
-            imageUrls={exitImages} 
+            imageUrls={exitImages}
           />
         </div>
 
@@ -392,7 +391,7 @@ export default function GateOutPanel() {
                 placeholder="Nhập mã thẻ..."
                 style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: 'var(--vin-bg-light)', color: 'var(--vin-text-main)', border: '1px solid var(--vin-border)', borderRadius: '8px', padding: '0.5rem' }}
               />
-              <button 
+              <button
                 type="button"
                 className="vin-btn vin-btn--primary"
                 onClick={handleSearch}
@@ -441,7 +440,7 @@ export default function GateOutPanel() {
                 placeholder="Nhập biển số xe thực tế..."
                 style={{ flex: 1, fontSize: '1.2rem', fontWeight: 700, background: '#ffffff', color: '#1e293b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem' }}
               />
-              <button 
+              <button
                 type="button"
                 className="vin-btn vin-btn--primary"
                 onClick={handleSearchByPlate}
@@ -484,8 +483,8 @@ export default function GateOutPanel() {
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
                         📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)
                       </span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
                         style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', padding: '0 4px', fontSize: '0.85rem', fontWeight: 'bold' }}
                       >
@@ -557,7 +556,7 @@ export default function GateOutPanel() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
                 {PAY_METHODS.map((m) => (
-                  <button key={m} 
+                  <button key={m}
                     className={`vin-btn vin-btn--sm ${selectedMethod === m ? 'vin-btn--primary' : 'vin-btn--secondary'}`}
                     onClick={() => setSelectedMethod(m)}
                     style={{ py: '0.75rem', fontWeight: 600 }}
@@ -588,11 +587,11 @@ function CapturedShot({ title, plate, vehicleType, matchAccuracy, imageUrls }) {
       {imageUrls && imageUrls.length > 0 ? (
         <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', marginBottom: '0.5rem', height: 240 }}>
           {imageUrls.map((url, i) => (
-            <img 
-              key={i} 
-              src={url} 
-              alt={`captured-${i}`} 
-              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'contain', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0' }} 
+            <img
+              key={i}
+              src={url}
+              alt={`captured-${i}`}
+              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'contain', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0' }}
             />
           ))}
         </div>
