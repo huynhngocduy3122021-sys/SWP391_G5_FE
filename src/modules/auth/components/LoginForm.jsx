@@ -121,15 +121,16 @@ export default function LoginForm({ onSuccess, onForgot }) {
         return toast.warning('Vui lòng nhập đủ 6 số OTP!');
       }
       setLoading(true);
-      // TODO: Nếu backend có API verify OTP thì gọi ở đây. Tạm thời mock logic verify
-      setTimeout(() => {
-        if (otpCode === '123456') { // Mock OTP correct
-          processLoginSuccess(loginData);
-        } else {
-          setLoading(false);
-          toast.error('Mã OTP không chính xác!');
-        }
-      }, 1000);
+      try {
+        const verifyResult = await authApi.verifyOtp({ 
+          identifier: form.identifier, 
+          otp: otpCode 
+        });
+        processLoginSuccess(verifyResult);
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.response?.data || 'Mã OTP không chính xác hoặc đã hết hạn!');
+        setLoading(false);
+      }
     }
   };
 
