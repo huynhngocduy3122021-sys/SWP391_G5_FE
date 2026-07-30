@@ -95,23 +95,7 @@ export default function RegisterForm({ onSuccess }) {
         </small>
       </div>
 
-      <div className="position-relative mb-4 text-center">
-        <hr className="text-muted" />
-        <span className="position-absolute top-50 start-50 translate-middle px-2 text-muted small" style={{ backgroundColor: '#fff', fontSize: '0.8rem' }}>
-          Hoặc đăng ký bằng:
-        </span>
-      </div>
 
-      <div className="d-flex gap-3">
-        <button type="button" className="btn btn-outline-secondary w-50 d-flex align-items-center justify-content-center gap-2">
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="18" height="18" />
-          <span className="small text-dark fw-medium">Google</span>
-        </button>
-        <button type="button" className="btn btn-outline-secondary w-50 d-flex align-items-center justify-content-center gap-2">
-          <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" width="18" height="18" />
-          <span className="small text-dark fw-medium">Facebook</span>
-        </button>
-      </div>
     </form>
   );
 }
