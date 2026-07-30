@@ -1,5 +1,5 @@
 // AppSection - Phần giới thiệu ứng dụng mobile trên trang chủ
-import appMockup from '../../../shared/assets/image/app_mockup.png';
+import appMockup from '../../../shared/assets/image/parking_lots_design.jpg';
 
 export default function AppSection() {
   return (
@@ -34,7 +34,7 @@ export default function AppSection() {
 
           <div className="app-image-wrap">
             <div className="app-glow" />
-            <img src={appMockup} alt="Vinparking Mobile Web Interface" className="app-mockup" />
+            <img src={appMockup} alt="Vinparking Parking Design" className="app-mockup rounded-4 shadow-lg" style={{ borderRadius: '16px', maxWidth: '100%', objectFit: 'cover' }} />
           </div>
         </div>
       </div>

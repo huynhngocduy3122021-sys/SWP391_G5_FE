@@ -10,6 +10,7 @@ const faqData = [
 
 export default function ContactPage() {
   const [openFaq, setOpenFaq] = useState(null);
+  const [showMap, setShowMap] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '', email: '', phone: '', topic: 'Hỗ trợ kỹ thuật', message: ''
   });
@@ -35,35 +36,60 @@ export default function ContactPage() {
           
           {/* Cột trái */}
           <div className="col-12 col-md-5">
-            <div className="bg-white p-4 h-100 shadow-sm border border-light rounded-4">
-              <h5 className="fw-bold mb-4 vin-text-primary">Thông tin liên hệ</h5>
-              
-              <div className="d-flex gap-3 mb-4">
-                <div className="fs-4 text-primary">📍</div>
-                <div>
-                  <h6 className="fw-bold text-dark mb-1 small">TRỤ SỞ CHÍNH</h6>
-                  <p className="text-muted mb-0 small">Landmark 81, Vinhomes Central Park, Quận Bình Thạnh, TP.HCM</p>
+            <div className="bg-white p-4 h-100 shadow-sm border border-light rounded-4 d-flex flex-column justify-content-between">
+              <div>
+                <h5 className="fw-bold mb-4 vin-text-primary">Thông tin liên hệ</h5>
+                
+                <div className="d-flex gap-3 mb-4">
+                  <div className="fs-4 text-primary">📍</div>
+                  <div>
+                    <h6 className="fw-bold text-dark mb-1 small">TRỤ SỞ CHÍNH</h6>
+                    <p className="text-muted mb-0 small">Landmark 81, Vinhomes Central Park, Quận Bình Thạnh, TP.HCM</p>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-3 mb-4">
+                  <div className="fs-4 text-primary">📞</div>
+                  <div>
+                    <h6 className="fw-bold text-dark mb-1 small">HOTLINE HỖ TRỢ</h6>
+                    <p className="text-muted mb-0 small">1900 123 456</p>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-3 mb-4">
+                  <div className="fs-4 text-primary">✉️</div>
+                  <div>
+                    <h6 className="fw-bold text-dark mb-1 small">EMAIL</h6>
+                    <p className="text-muted mb-0 small">support@vinparking.com</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="d-flex gap-3 mb-4">
-                <div className="fs-4 text-primary">📞</div>
-                <div>
-                  <h6 className="fw-bold text-dark mb-1 small">HOTLINE HỖ TRỢ</h6>
-                  <p className="text-muted mb-0 small">1900 123 456</p>
+              <div>
+                <div className="mb-2 text-center">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowMap(!showMap)} 
+                    className="btn btn-outline-secondary w-100 rounded-3 d-flex align-items-center justify-content-center gap-2"
+                  >
+                    <span>🗺️</span> {showMap ? 'Ẩn bản đồ vị trí' : 'Xem bản đồ vị trí'}
+                  </button>
                 </div>
-              </div>
 
-              <div className="d-flex gap-3 mb-4">
-                <div className="fs-4 text-primary">✉️</div>
-                <div>
-                  <h6 className="fw-bold text-dark mb-1 small">EMAIL</h6>
-                  <p className="text-muted mb-0 small">support@vinparking.com</p>
-                </div>
-              </div>
-
-              <div className="mb-4 text-center">
-                <button className="btn btn-outline-secondary w-100 rounded-3">Xem bản đồ vị trí</button>
+                {showMap && (
+                  <div className="mt-3 overflow-hidden rounded-3 border shadow-sm">
+                    <iframe
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1959.6057181729755!2d106.71971419839477!3d10.795111900000004!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317527c2f8f30911%3A0x36ac5073f8c91acd!2sLandmark%2081!5e0!3m2!1svi!2s!4v1785410684926!5m2!1svi!2s"
+                      width="100%"
+                      height="260"
+                      style={{ border: 0 }}
+                      allowFullScreen=""
+                      loading="lazy"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      title="Landmark 81 Google Map"
+                    ></iframe>
+                  </div>
+                )}
               </div>
             </div>
           </div>

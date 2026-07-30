@@ -2,9 +2,6 @@
 import API from '../../../shared/api/config';
 
 const staffApi = {
-  suggestSlotAllocation: async (plateNumber, vehicleType) => {
-    return (await API.post('/api/slot-allocation/suggest', { plateNumber, vehicleType })).data;
-  },
   getVehicleTypes: async () => {
     return (await API.get('/api/vehicle-types')).data;
   },
@@ -50,7 +47,7 @@ const staffApi = {
   confirmExit: async (data) => {
     let paymentMethod = 'CASH';
     if (data.paymentMethod && data.paymentMethod.includes('VNPAY')) paymentMethod = 'VNPAY';
-    
+
     const payload = {
       licensePlate: data.plateNumber.replace(/[^A-Za-z0-9\-.]/g, ''),
       cardCode: data.cardCode || 'UNKNOWN',
@@ -85,17 +82,6 @@ const staffApi = {
   },
   reportLostCard: async (payload) => {
     return (await API.post('/api/incidents/lost-card', payload)).data;
-  },
-  uploadIncidentImages: async (incidentId, files) => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    return (await API.post(`/api/incidents/${incidentId}/images`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })).data;
   }
 };
 

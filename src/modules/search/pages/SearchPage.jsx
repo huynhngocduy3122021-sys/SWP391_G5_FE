@@ -216,17 +216,11 @@ export default function SearchPage() {
 
 
       {/* Main Content */}
-      <div className="container">
+      <div className="container py-4">
         <div className="row g-4">
 
           {/* Sidebar Filters */}
           <div className="col-lg-3">
-            <div className="card border-0 shadow-sm mb-4 overflow-hidden position-relative rounded-3" style={{ height: '150px' }}>
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&q=80" alt="Map" className="w-100 h-100 object-fit-cover opacity-75" />
-              <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ background: 'rgba(22,78,99,0.4)' }}>
-                <button type="button" className="btn btn-light fw-bold btn-sm shadow px-3">📍 XEM VỊ TRÍ</button>
-              </div>
-            </div>
 
             <div className="card border-0 shadow-sm p-4 rounded-3 bg-white">
               {/* Tìm nhanh trong sidebar */}

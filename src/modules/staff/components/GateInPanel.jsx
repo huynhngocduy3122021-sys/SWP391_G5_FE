@@ -140,7 +140,7 @@ export default function GateInPanel() {
         } else {
           setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
         }
-        // Tìm thông tin biển số xe 
+        // Tìm thông tin xe 
         const plate = v.licensePlate || matchTicket.licensePlate || '';
         setLicensePlate(plate);
         setVehicleColor(v.vehicleColor || '');
@@ -240,6 +240,8 @@ export default function GateInPanel() {
     return () => clearTimeout(delayDebounce);
   }, [cardCode, vehiclesList, vehicleTypes]);
 
+
+  //Khách quẹt vé vip nhưng đi xe khác
   const handleVipVehicleChange = (e) => {
     const vId = e.target.value;
     setSelectedVipVehicleId(vId);
@@ -290,6 +292,7 @@ export default function GateInPanel() {
     if (selectedFiles.length === 0) return toast.error('Vui lòng chụp/tải lên ít nhất 1 ảnh phương tiện để AI kiểm tra!');
 
     setSubmitting(true);
+    // check ai 
     try {
       const verifyRes = await staffApi.verifyLicensePlate(licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''), selectedFiles[0]);
       if (verifyRes.matched) toast.success(`AI: ${verifyRes.message}`);
@@ -304,6 +307,7 @@ export default function GateInPanel() {
       const tzOffset = new Date().getTimezoneOffset() * 60000;
       const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1); // e.g. 2026-07-11T11:24:54.123
 
+      // lấy dữ liệu xe vào 
       if (isBooking) {
         const checkInResult = await parkingApi.checkInBooking(bookingCode.trim(), cardCode.trim(), simulatedTime);
         parkingSessionId = checkInResult.parkingSessionId;
@@ -331,13 +335,7 @@ export default function GateInPanel() {
       <Row className="g-4">
         {/* L/H Column */}
         <Col lg={8} className="d-flex flex-column gap-3">
-          <CameraFeed
-            label={`LÀN VÀO - ${GATE_ID}`}
-            sub="CAM 01: NHẬN DIỆN BIỂN SỐ"
-            status="SẴN SÀNG"
-            tone="success"
-            imageUrls={previewUrls}
-          />
+          <CameraFeed label={`LÀN VÀO - ${GATE_ID}`} sub="CAM 01: NHẬN DIỆN BIỂN SỐ" status="SẴN SÀNG" tone="success" imageUrl={previewUrls.length > 0 ? previewUrls[0] : null} />
 
           <Card className="bg-white border-0 shadow-sm p-3 text-dark" style={{ borderRadius: '12px' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -483,38 +481,16 @@ export default function GateInPanel() {
 }
 //Bảng lượt gửi xe gần đây
 
-export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrls = [] }) {
-  const visibleImages = imageUrls.slice(0, 2);
-
+//Hình ảnh, camera.
+export function CameraFeed({ label, sub, status = 'SẴN SÀNG', tone = 'success', imageUrl }) {
   return (
     <Card className="bg-white border-0 overflow-hidden text-dark shadow-sm" style={{ borderRadius: '12px' }}>
       <div className="d-flex justify-content-between align-items-center p-2 px-3 border-bottom small">
         <span className="text-muted fw-bold">📷 {label}</span>
         <Badge bg={tone}>{status}</Badge>
       </div>
-      <div
-        className="position-relative d-flex align-items-stretch justify-content-center bg-black"
-        style={{ height: 220, background: visibleImages.length === 0 ? 'linear-gradient(135deg, #0b1120, #111827)' : '#000' }}
-      >
-        {visibleImages.length === 0 ? (
-          <span className="text-muted small align-self-center">{sub}</span>
-        ) : (
-          visibleImages.map((imageUrl, index) => (
-            <div
-              key={imageUrl}
-              className="position-relative flex-fill"
-              style={{
-                minWidth: 0,
-                background: `url(${imageUrl}) center/contain no-repeat #000`,
-                borderLeft: index > 0 ? '1px solid rgba(255,255,255,0.35)' : 'none'
-              }}
-            >
-              <Badge bg="dark" className="position-absolute top-0 start-0 m-2 bg-opacity-75">
-                Ảnh {index + 1}{index === 0 ? ' • AI kiểm tra' : ''}
-              </Badge>
-            </div>
-          ))
-        )}
+      <div className="position-relative d-flex align-items-center justify-content-center bg-black" style={{ height: 220, background: imageUrl ? `url(${imageUrl}) center/contain no-repeat #000` : 'linear-gradient(135deg, #0b1120, #111827)' }}>
+        {!imageUrl && <span className="text-muted small">{sub}</span>}
         <Badge bg="success" className="bg-opacity-25 text-success border border-success position-absolute bottom-0 start-0 m-2 px-2 py-1">● ĐANG NHẬN DIỆN...</Badge>
       </div>
     </Card>
