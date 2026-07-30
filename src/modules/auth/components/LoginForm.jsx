@@ -9,11 +9,10 @@ export default function LoginForm({ onSuccess, onForgot }) {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+
+
+  const processLoginSuccess = async (data) => {
     try {
-      const data = await authApi.login({ identifier: form.identifier, userPassword: form.password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('email', data.userEmail);
       localStorage.setItem('role', data.userRole);
@@ -45,7 +44,6 @@ export default function LoginForm({ onSuccess, onForgot }) {
             data.parkingBranchName ||
             '';
 
-          // Lấy thêm branch info đầy đủ nếu có branchId
           let finalBranchName = branchName;
           if (branchId && !finalBranchName) {
             try {
@@ -73,6 +71,19 @@ export default function LoginForm({ onSuccess, onForgot }) {
       }
       toast.success('Đăng nhập thành công!');
       onSuccess(data);
+    } catch (err) {
+      toast.error('Có lỗi trong quá trình xử lý dữ liệu đăng nhập!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const data = await authApi.login({ identifier: form.identifier, userPassword: form.password });
+      processLoginSuccess(data);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data || 'Đăng nhập thất bại!';
       toast.error(typeof errorMessage === 'string' ? errorMessage : 'Đăng nhập thất bại!');
@@ -110,12 +121,10 @@ export default function LoginForm({ onSuccess, onForgot }) {
           Quên mật khẩu?
         </button>
       </div>
-<button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
+      <button type="submit" className="btn w-100 fw-bold mb-3" disabled={loading} style={{ backgroundColor: '#1f6a85', color: '#fff', padding: '10px' }}>
         {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
-        {loading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
+        {loading ? 'ĐANG XỬ LÝ...' : 'ĐĂNG NHẬP'}
       </button>
-
-
     </form>
   );
 }

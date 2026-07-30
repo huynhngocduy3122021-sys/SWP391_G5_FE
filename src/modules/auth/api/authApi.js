@@ -3,6 +3,7 @@ import API from '../../../shared/api/config';
 
 const authApi = {
   login: async (data) => (await API.post('/api/auth/login', data)).data,
+  verifyRegisterOtp: async (data) => (await API.post('/api/auth/verify-register-otp', data)).data,
   register: async (data) => (await API.post('/api/auth/register', data)).data,
   adminCreateUser: async (data) => (await API.post('/api/auth/admin-create', data)).data,
   resetPassword: async (data) => (await API.post('/api/auth/reset-password', data)).data,
