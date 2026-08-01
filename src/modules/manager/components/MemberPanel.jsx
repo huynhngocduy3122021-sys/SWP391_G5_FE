@@ -558,17 +558,6 @@ export default function MemberPanel({ branchId }) {
     */
   };
 
-  const handleRejectRequest = async (req) => {
-    if (!window.confirm('Từ chối yêu cầu đăng ký này?')) return;
-    try {
-      await managerApi.rejectMonthlyTicketRequest(req.id);
-      toast.success("Đã từ chối yêu cầu!");
-      await fetchAll();
-    } catch (err) {
-      toast.error(String(err.response?.data?.message || err.response?.data || 'Có lỗi xảy ra!'));
-    }
-  };
-
   const stColor = (s) => {
     switch (String(s || '').toUpperCase()) {
       case 'AVAILABLE': return { c: 'text-success', l: 'Còn trống' };
@@ -923,7 +912,7 @@ export default function MemberPanel({ branchId }) {
             <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
               <h5 className="fw-bold text-primary m-0">Yêu cầu đăng ký thẻ tháng</h5>
               <div className="d-flex gap-1 flex-wrap">
-                {[{k:'all', l:'Tất cả'}, {k:'pending_approval', l:'Chờ duyệt'}, {k:'pending_payment', l:'Chờ thanh toán'}, {k:'approved', l:'Đã duyệt'}, {k:'rejected', l:'Hủy / Từ chối'}].map(t => (
+                {[{k:'all', l:'Tất cả'}, {k:'pending_approval', l:'Chờ duyệt'}, {k:'pending_payment', l:'Chờ thanh toán'}, {k:'approved', l:'Đã duyệt'}].map(t => (
                   <Button key={t.k} size="sm" variant={reqStatusFilter === t.k ? 'primary' : 'light'} className={`text-decoration-none fw-semibold ${reqStatusFilter === t.k ? '' : 'text-muted'}`} onClick={() => setReqStatusFilter(t.k)}>{t.l}</Button>
                 ))}
               </div>
@@ -940,7 +929,6 @@ export default function MemberPanel({ branchId }) {
                     const isProcessed = r.isProcessed;
                     const isPaid = r.isPaid;
                     const canApprove = r.requestStage === 'pending_approval' && !isProcessed;
-                    const canReject = !isProcessed && !['approved', 'rejected'].includes(r.requestStage);
                     const statusView = {
                       pending_payment: { label: 'Chờ thanh toán', bg: 'warning', text: 'dark' },
                       pending_approval: { label: 'Đã thanh toán (Chờ duyệt)', bg: 'info', text: 'white' },
@@ -963,14 +951,11 @@ export default function MemberPanel({ branchId }) {
                           </Badge>
                         </td>
                         <td>
-                          {(canApprove || canReject) && (
+                          {canApprove && (
                             <div className="d-flex gap-2 flex-wrap">
-                              <Button variant="success" size="sm" className="fw-bold px-3" disabled={!canApprove} title={!isPaid ? 'Yêu cầu chưa thanh toán' : ''} onClick={() => handleApproveRequest(r)}>
-                                {canApprove ? (hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ') : 'Chưa thanh toán'}
+                              <Button variant="success" size="sm" className="fw-bold px-3" onClick={() => handleApproveRequest(r)}>
+                                {hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ'}
                               </Button>
-                              {canReject && (
-                                <Button variant="danger" size="sm" className="fw-bold px-3" onClick={() => handleRejectRequest(r)}>Từ chối</Button>
-                              )}
                             </div>
                           )}
                         </td>
