@@ -14,7 +14,6 @@ export default function UserSidebar({ activeTab, onTabChange }) {
 
   return (
     <div className="d-flex flex-column h-100 p-3">
-      {/* Logo */}
 
 
       {/* User Info Card */}
@@ -40,10 +39,9 @@ export default function UserSidebar({ activeTab, onTabChange }) {
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
-            className={`btn text-start d-flex align-items-center gap-3 py-2 px-3 rounded-3 border-0 fw-medium transition-all ${
-              activeTab === item.id ? 'bg-light text-dark' : 'bg-transparent text-muted hover-bg-light'
-            }`}
-            style={{ 
+            className={`btn text-start d-flex align-items-center gap-3 py-2 px-3 rounded-3 border-0 fw-medium transition-all ${activeTab === item.id ? 'bg-light text-dark' : 'bg-transparent text-muted hover-bg-light'
+              }`}
+            style={{
               color: activeTab === item.id ? '#164e63' : '',
               borderLeft: activeTab === item.id ? '4px solid #164e63' : '4px solid transparent'
             }}

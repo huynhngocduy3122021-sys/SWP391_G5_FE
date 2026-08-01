@@ -31,6 +31,7 @@ const isPackagePolicy = (policy) => {
   return name.startsWith('[Gói Tháng]') || name.startsWith('[Gói VIP President]');
 };
 
+// Tính phí dựa trên chính sách giá và thời gian
 const calculateParkingFee = (policy, durationMinutes) => {
   if (!policy) return null;
 

@@ -10,6 +10,8 @@ const isMotorbikeType = (typeName = '') => {
   return normalizedName.includes('motorbike') || normalizedName.includes('xe máy') || normalizedName.includes('xe may');
 };
 
+const ACTIVE_PARKING_SERVICE_MESSAGE = 'Xe đã có dịch vụ đỗ xe nên không thể booking được.';
+
 export default function BookingPage() {
   const navigate = useNavigate();
 
@@ -24,6 +26,10 @@ export default function BookingPage() {
 
   const [userVehicles, setUserVehicles] = useState([]);
   const [selectedUserVehicleId, setSelectedUserVehicleId] = useState('other');
+
+  // Active monthly tickets & requests for checking booking eligibility
+  const [userTickets, setUserTickets] = useState([]);
+  const [userRequests, setUserRequests] = useState([]);
 
   // 1. Wizard Step State: 1 (Select Slot), 2 (Details), 3 (Success)
   const [step, setStep] = useState(1);
@@ -49,16 +55,20 @@ export default function BookingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [branchesData, vtData, policiesData, allVehiclesData] = await Promise.all([
+        const [branchesData, vtData, policiesData, allVehiclesData, ticketsData, requestsData] = await Promise.all([
           parkingApi.getAllBranches(),
           parkingApi.getAllVehicleTypes(),
           parkingApi.getAllPricePolicies(),
-          parkingApi.getAllVehicles().catch(() => [])
+          parkingApi.getAllVehicles().catch(() => []),
+          parkingApi.getMyMonthlyTickets().catch(() => []),
+          parkingApi.getMyMonthlyTicketRequests().catch(() => [])
         ]);
         
         setBranches(branchesData);
         setVehicleTypes(vtData);
         setPricePolicies(policiesData);
+        setUserTickets(Array.isArray(ticketsData) ? ticketsData : []);
+        setUserRequests(Array.isArray(requestsData) ? requestsData : []);
 
         const userId = localStorage.getItem('userId');
         const userVehiclesList = Array.isArray(allVehiclesData)
@@ -160,10 +170,30 @@ export default function BookingPage() {
   // Lấy phí booking từ backend
   const bookingFee = matchedPolicy?.bookingFee ?? matchedPolicy?.reservationFee ?? 0;
 
+  // Check if current vehicle already has monthly ticket / active parking service
+  const cleanPlate = (licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
+  const hasMonthlyService = Boolean(cleanPlate) && (
+    userTickets.some(t => {
+      const tPlate = (t.vehicle?.licensePlate || t.licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
+      const isActive = t.status === 1 || t.status === true || t.status === 'ACTIVE';
+      return isActive && tPlate === cleanPlate;
+    }) ||
+    userRequests.some(r => {
+      const rPlate = (r.vehicle?.licensePlate || r.licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
+      const isPendingOrActive = r.status !== 'REJECTED' && r.status !== 'CANCELLED' && r.status !== 'REJECTED_BY_USER';
+      return isPendingOrActive && rPlate === cleanPlate;
+    })
+  );
+
   // Complete Booking (Step 2 -> Step 3)
   const handleCreateBooking = async () => {
     if (!fullName.trim() || !phoneNumber.trim() || !licensePlate.trim()) {
       toast.error('Vui lòng nhập đầy đủ thông tin tài xế!');
+      return;
+    }
+
+    if (hasMonthlyService) {
+      toast.error(ACTIVE_PARKING_SERVICE_MESSAGE);
       return;
     }
 
@@ -219,8 +249,14 @@ export default function BookingPage() {
           data.errors.forEach(err => toast.error(err.defaultMessage || err.message || err));
           return;
         }
-        if (data.message) return toast.error(data.message);
-        if (typeof data === 'string') return toast.error(data);
+        const backendMessage = typeof data === 'string' ? data : data.message;
+        if (backendMessage) {
+          const normalizedMessage = String(backendMessage).toLowerCase();
+          if (normalizedMessage.includes('đặt chỗ đang hoạt động') || normalizedMessage.includes('active booking')) {
+            return toast.error(ACTIVE_PARKING_SERVICE_MESSAGE);
+          }
+          return toast.error(backendMessage);
+        }
       }
       
       toast.error('Có lỗi xảy ra khi tạo mã đặt chỗ trên hệ thống! Vui lòng thử lại.');
@@ -228,8 +264,15 @@ export default function BookingPage() {
   };
 
   const handleNextStep = () => {
-    if (step === 1) setStep(2);
-    else if (step === 2) handleCreateBooking();
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      if (hasMonthlyService) {
+        toast.error(ACTIVE_PARKING_SERVICE_MESSAGE);
+        return;
+      }
+      handleCreateBooking();
+    }
   };
 
   const stepsList = [
@@ -402,6 +445,22 @@ export default function BookingPage() {
                     </Col>
                   </Row>
                   <p className="text-muted small mt-2 m-0">💡 Hệ thống AI sẽ tự động nhận diện biển số này khi xe vào bãi.</p>
+
+                  {hasMonthlyService && (
+                    <div className="rounded-3 p-3 mt-3 text-start" style={{ background: '#fef2f2', border: '1.5px solid #fca5a5' }}>
+                      <div className="d-flex align-items-start gap-2">
+                        <span className="fs-5">🚫</span>
+                        <div>
+                          <strong className="text-danger d-block mb-1" style={{ fontSize: '0.9rem' }}>
+                            Phương tiện đã có dịch vụ đỗ xe!
+                          </strong>
+                          <small className="text-dark d-block mb-0" style={{ lineHeight: '1.4' }}>
+                            Xe của bạn (<strong>{licensePlate}</strong>) đã được đăng ký dịch vụ đỗ xe (thẻ tháng / VIP). Xe đã có quyền ra vào bãi tự động, không thể đặt chỗ theo giờ thêm.
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </Col>
               </Row>
             </Card>
