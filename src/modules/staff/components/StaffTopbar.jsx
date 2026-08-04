@@ -15,62 +15,78 @@ export default function StaffTopbar({ mode, onModeChange }) {
   // Real stats state
   const [realStats, setRealStats] = useState({
     totalVehicles: 0,
-    maxVehicles: 2000,
+    maxVehicles: 0,
     todayRevenue: 0,
     bookings: 0,
     exited: 0,
-    slotsLeft: 2000
+    slotsLeft: 0
   });
 
   const fetchStats = async () => {
     try {
-      const [sessionsData, bookingsData, zonesData] = await Promise.all([
+      const [sessionsData, bookingsData, capacityData, paymentsData] = await Promise.all([
         managerApi.getAllSessions(),
         bookingApi.getAllBookings(),
-        managerApi.getAllZones()
+        managerApi.getMyBranchCapacity(),
+        managerApi.getAllPayments()
       ]);
 
       const branchId = localStorage.getItem('branchId');
 
       let sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData?.content || []);
       let bookings = Array.isArray(bookingsData) ? bookingsData : (bookingsData?.content || []);
-      let zones = Array.isArray(zonesData) ? zonesData : (zonesData?.content || []);
+      const payments = Array.isArray(paymentsData) ? paymentsData : (paymentsData?.content || []);
 
       if (branchId) {
         sessions = sessions.filter(s => String(s.parkingBranchId) === String(branchId));
-        zones = zones.filter(z => String(z.parkingFloor?.parkingBranch?.parkingBranchId) === String(branchId) || String(z.branchId) === String(branchId));
       }
 
-      // Calculate total capacity
-      const totalCapacity = zones.reduce((sum, z) => sum + (z.capacity || z.totalSlots || 0), 0);
-
-      // Calculate total active vehicles (status is ACTIVE or check-out is missing)
-      const activeSessions = sessions.filter(s => s.sessionStatus === 'ACTIVE' || (!s.checkOutTime && s.checkInTime));
-      const totalVehiclesCount = activeSessions.length;
+      const totalCapacity = Number(capacityData?.totalCapacity || 0);
+      const totalVehiclesCount = Number(capacityData?.occupiedCapacity || 0);
 
       // Exited today (sessions checked out today)
       const todayStr = new Date().toDateString();
       const exitedToday = sessions.filter(s => s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr).length;
 
       // Bookings count
-      const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
+      const activeBookings = Number.isFinite(Number(capacityData?.reservedCapacity))
+        ? Number(capacityData.reservedCapacity)
+        : bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
 
-      // Today's revenue (sum of totalAmount for checkout sessions today, excluding monthly/VIP)
-      const todayRevenue = sessions
-        .filter(s => {
-          const isMOrV = (s.cardCode || s.parkingCard?.cardCode || '').startsWith('MONTH-') ||
-            (s.cardCode || s.parkingCard?.cardCode || '').startsWith('VIP-') ||
-            (s.cardCode || s.parkingCard?.cardCode || '').startsWith('EMP-');
-          return s.checkOutTime && new Date(s.checkOutTime).toDateString() === todayStr && !isMOrV && s.totalAmount;
+      // Today's revenue from successful payments in the Staff's branch.
+      // The half-open date range [startOfToday, startOfTomorrow) resets naturally at midnight.
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const staffBranchId = String(capacityData?.parkingBranchId || branchId || localStorage.getItem('parkingBranchId') || '');
+      const staffBranchName = String(capacityData?.branchName || localStorage.getItem('parkingBranchName') || '').trim().toLowerCase();
+
+      const todayRevenue = payments
+        .filter(payment => {
+          const status = String(payment.paymentStatus ?? '').toUpperCase();
+          const isPaid = ['PAID', 'SUCCESS', 'COMPLETED'].includes(status)
+            || payment.paymentStatus === true
+            || payment.paymentStatus === 1;
+          if (!isPaid || !payment.paidAt) return false;
+
+          const paidAt = new Date(payment.paidAt);
+          if (Number.isNaN(paidAt.getTime()) || paidAt < startOfToday || paidAt >= startOfTomorrow) return false;
+
+          const paymentBranchId = String(payment.branchId || '');
+          const paymentBranchName = String(payment.branchName || payment.sessionBranchName || '').trim().toLowerCase();
+          return (staffBranchId && paymentBranchId === staffBranchId)
+            || (staffBranchName && paymentBranchName === staffBranchName);
         })
-        .reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
       // Slots left
-      const slotsLeft = Math.max(0, totalCapacity - totalVehiclesCount);
+      const slotsLeft = Number.isFinite(Number(capacityData?.availableCapacity))
+        ? Number(capacityData.availableCapacity)
+        : Math.max(0, totalCapacity - totalVehiclesCount - activeBookings);
 
       setRealStats({
         totalVehicles: totalVehiclesCount,
-        maxVehicles: totalCapacity || 2000,
+        maxVehicles: totalCapacity,
         todayRevenue: todayRevenue,
         bookings: activeBookings,
         exited: exitedToday,
@@ -116,8 +132,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
   const fullName = localStorage.getItem('fullName') || 'Staff';
 
-  // Prefer real API stats
-  const displayStats = realStats.maxVehicles > 0 ? realStats : (stats || MOCK_STATS);
+  const displayStats = realStats;
+  const totalVehiclesDisplay = `${displayStats.totalVehicles} / ${displayStats.maxVehicles}`;
 
   return (
     <header style={{
@@ -134,11 +150,9 @@ export default function StaffTopbar({ mode, onModeChange }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
-        <StatItem label="TỔNG XE" value={`${displayStats.totalVehicles} / ${displayStats.maxVehicles}`} />
+        <StatItem label="TỔNG XE" value={totalVehiclesDisplay} />
         <StatItem label="DOANH THU HÔM NAY" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
         <StatItem label="ĐẶT TRƯỚC" value={displayStats.bookings} />
-        <StatItem label="ĐÃ RA" value={displayStats.exited} />
-        <StatItem label="CHỖ TRỐNG" value={displayStats.slotsLeft} color="var(--vin-success)" />
       </div>
 
       {/* Mode toggle + clock + actions */}
@@ -257,7 +271,3 @@ function StatItem({ label, value, color }) {
     </div>
   );
 }
-export const MOCK_STATS = {
-  totalVehicles: 1245, maxVehicles: 2000, todayRevenue: 14580,
-  bookings: 42, exited: 391, slotsLeft: 755,
-};

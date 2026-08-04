@@ -5,10 +5,33 @@ import { toast } from 'react-toastify';
 import parkingApi from '../../search/api/parkingApi';
 import { Card, Button, Form, Row, Col, Badge, Container } from 'react-bootstrap';
 
-const isMotorbikeType = (typeName = '') => {
-  const normalizedName = typeName.toLowerCase();
-  return normalizedName.includes('motorbike') || normalizedName.includes('xe máy') || normalizedName.includes('xe may');
+const isBookableVehicleType = (typeName = '') => {
+  const normalizedName = String(typeName).trim().toUpperCase().replace(/[\s-]+/g, '_');
+  return normalizedName === 'CAR'
+    || normalizedName === 'ELECTRIC_CAR'
+    || normalizedName === 'Ô_TÔ'
+    || normalizedName === 'Ô_TÔ_ĐIỆN';
 };
+
+const getVehicleTypeLabel = (typeName = '') => {
+  const normalizedName = String(typeName).trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const labels = {
+    CAR: 'Ô tô',
+    ELECTRIC_CAR: 'Ô tô điện',
+    MOTORBIKE: 'Xe máy',
+    MOTORCYCLE: 'Xe máy',
+    ELECTRIC_MOTORBIKE: 'Xe máy điện',
+    BICYCLE: 'Xe đạp',
+    ELECTRIC_BICYCLE: 'Xe đạp điện',
+  };
+  return labels[normalizedName] || typeName || 'Phương tiện';
+};
+
+const getVehicleId = vehicle => String(vehicle?.vehicleId || vehicle?.vehiclesId || vehicle?.id || '');
+const getVehicleTypeId = vehicle => String(
+  vehicle?.vehicleTypeId || vehicle?.vehicleType?.vehicleTypeId || vehicle?.vehicleType?.id || ''
+);
+const normalizePlate = plate => String(plate || '').trim().replace(/[^A-Za-z0-9.-]/g, '').toUpperCase();
 
 const ACTIVE_PARKING_SERVICE_MESSAGE = 'Xe đã có dịch vụ đỗ xe nên không thể booking được.';
 
@@ -22,7 +45,7 @@ export default function BookingPage() {
   // Selected state
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
-  const bookableVehicleTypes = vehicleTypes.filter(v => !isMotorbikeType(v.typeName));
+  const bookableVehicleTypes = vehicleTypes.filter(v => isBookableVehicleType(v.typeName));
 
   const [userVehicles, setUserVehicles] = useState([]);
   const [selectedUserVehicleId, setSelectedUserVehicleId] = useState('other');
@@ -80,18 +103,11 @@ export default function BookingPage() {
           setSelectedBranchId(branchesData[0].parkingBranchId || branchesData[0].branchId || branchesData[0].id);
         }
         if (vtData.length > 0) {
-          const filteredTypes = vtData.filter(v => !isMotorbikeType(v.typeName));
+          const filteredTypes = vtData.filter(v => isBookableVehicleType(v.typeName));
           const carType = filteredTypes.find(v => v.typeName.toLowerCase().includes('ô tô') || v.typeName.toLowerCase().includes('car'));
           setSelectedVehicleTypeId(carType ? carType.vehicleTypeId : filteredTypes[0]?.vehicleTypeId || '');
         }
 
-        if (userVehiclesList.length > 0) {
-          const firstV = userVehiclesList[0];
-          setSelectedUserVehicleId(firstV.vehicleId || firstV.id);
-          setLicensePlate(firstV.licensePlate || '');
-          setVehicleColor(firstV.color || '');
-          setVehicleBrand(firstV.brand || '');
-        }
       } catch (error) {
         console.error('Error fetching booking data:', error);
       }
@@ -107,7 +123,7 @@ export default function BookingPage() {
       setVehicleColor('');
       setVehicleBrand('');
     } else {
-      const v = userVehicles.find(x => String(x.vehicleId || x.id) === String(val));
+      const v = eligibleUserVehicles.find(x => getVehicleId(x) === String(val));
       if (v) {
         setLicensePlate(v.licensePlate || '');
         setVehicleColor(v.color || '');
@@ -153,6 +169,52 @@ export default function BookingPage() {
     v.vehicleTypeId === Number(selectedVehicleTypeId) || v.id === Number(selectedVehicleTypeId)
   ) || {};
 
+  const vehicleHasParkingService = vehicle => {
+    const vehicleId = getVehicleId(vehicle);
+    const plate = normalizePlate(vehicle?.licensePlate);
+
+    const hasActiveTicket = userTickets.some(ticket => {
+      const status = String(ticket.status ?? '').toUpperCase();
+      const isActive = ticket.status === 1 || ticket.status === true || status === 'ACTIVE';
+      const ticketVehicleId = getVehicleId(ticket.vehicle) || String(ticket.vehicleId || ticket.vehiclesId || '');
+      const ticketPlate = normalizePlate(ticket.vehicle?.licensePlate || ticket.licensePlate);
+      return isActive && ((vehicleId && ticketVehicleId === vehicleId) || (plate && ticketPlate === plate));
+    });
+
+    const hasActiveRequest = userRequests.some(request => {
+      const status = String(request.status ?? '').toUpperCase();
+      const isActive = !['REJECTED', 'CANCELLED', 'REJECTED_BY_USER', '2'].includes(status);
+      const requestVehicleId = getVehicleId(request.vehicle) || String(request.vehicleId || request.vehiclesId || '');
+      const requestPlate = normalizePlate(request.vehicle?.licensePlate || request.licensePlate);
+      return isActive && ((vehicleId && requestVehicleId === vehicleId) || (plate && requestPlate === plate));
+    });
+
+    return hasActiveTicket || hasActiveRequest;
+  };
+
+  const eligibleUserVehicles = userVehicles.filter(vehicle =>
+    getVehicleTypeId(vehicle) === String(selectedVehicleTypeId)
+    && !vehicleHasParkingService(vehicle)
+  );
+
+  useEffect(() => {
+    const selectedVehicle = eligibleUserVehicles.find(vehicle => getVehicleId(vehicle) === String(selectedUserVehicleId));
+    if (selectedVehicle) return;
+
+    const firstEligibleVehicle = eligibleUserVehicles[0];
+    if (firstEligibleVehicle) {
+      setSelectedUserVehicleId(getVehicleId(firstEligibleVehicle));
+      setLicensePlate(firstEligibleVehicle.licensePlate || '');
+      setVehicleColor(firstEligibleVehicle.vehicleColor || firstEligibleVehicle.color || '');
+      setVehicleBrand(firstEligibleVehicle.vehicleBrand || firstEligibleVehicle.brand || '');
+    } else {
+      setSelectedUserVehicleId('other');
+      setLicensePlate('');
+      setVehicleColor('');
+      setVehicleBrand('');
+    }
+  }, [selectedVehicleTypeId, userVehicles, userTickets, userRequests]);
+
   // Retrieve price dynamically
   // Find price policy matching vehicle type id and branch id
   let matchedPolicy = pricePolicies.find(
@@ -172,18 +234,7 @@ export default function BookingPage() {
 
   // Check if current vehicle already has monthly ticket / active parking service
   const cleanPlate = (licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
-  const hasMonthlyService = Boolean(cleanPlate) && (
-    userTickets.some(t => {
-      const tPlate = (t.vehicle?.licensePlate || t.licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
-      const isActive = t.status === 1 || t.status === true || t.status === 'ACTIVE';
-      return isActive && tPlate === cleanPlate;
-    }) ||
-    userRequests.some(r => {
-      const rPlate = (r.vehicle?.licensePlate || r.licensePlate || '').trim().replace(/[^A-Za-z0-9\-.]/g, '').toUpperCase();
-      const isPendingOrActive = r.status !== 'REJECTED' && r.status !== 'CANCELLED' && r.status !== 'REJECTED_BY_USER';
-      return isPendingOrActive && rPlate === cleanPlate;
-    })
-  );
+  const hasMonthlyService = Boolean(cleanPlate) && vehicleHasParkingService({ licensePlate: cleanPlate });
 
   // Complete Booking (Step 2 -> Step 3)
   const handleCreateBooking = async () => {
@@ -194,6 +245,16 @@ export default function BookingPage() {
 
     if (hasMonthlyService) {
       toast.error(ACTIVE_PARKING_SERVICE_MESSAGE);
+      return;
+    }
+
+    const selectedSavedVehicle = userVehicles.find(vehicle => getVehicleId(vehicle) === String(selectedUserVehicleId));
+    if (selectedUserVehicleId !== 'other' && (
+      !selectedSavedVehicle
+      || getVehicleTypeId(selectedSavedVehicle) !== String(selectedVehicleTypeId)
+      || vehicleHasParkingService(selectedSavedVehicle)
+    )) {
+      toast.error('Phương tiện không phù hợp hoặc đã đăng ký gói nên không thể booking.');
       return;
     }
 
@@ -226,7 +287,7 @@ export default function BookingPage() {
         plate: licensePlate,
         amount: bookingFee, // Save actual booking fee
         status: 'Thành công',
-        service: `Đặt giữ chỗ ${selectedVehicleType?.typeName || 'Xe'}`,
+        service: `Đặt giữ chỗ ${getVehicleTypeLabel(selectedVehicleType?.typeName)}`,
         duration: '1h',
       };
 
@@ -334,7 +395,7 @@ export default function BookingPage() {
                     <Col xs={6} key={v.vehicleTypeId}>
                       <Button variant={isSelected ? 'primary' : 'outline-secondary'} onClick={() => setSelectedVehicleTypeId(v.vehicleTypeId)} className={`w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center border shadow-sm ${isSelected ? 'bg-primary text-white border-primary' : 'bg-white text-dark'}`}>
                         <span className="fs-2 mb-1">{v.typeName?.toLowerCase().includes('ô tô') || v.typeName?.toLowerCase().includes('car') ? '🚗' : '🏍️'}</span>
-                        <span className="fw-bold small">{v.typeName}</span>
+                        <span className="fw-bold small">{getVehicleTypeLabel(v.typeName)}</span>
                       </Button>
                     </Col>
                   );
@@ -378,7 +439,7 @@ export default function BookingPage() {
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <h6 className="fw-bold text-success mb-1" style={{ fontSize: '0.85rem' }}>PHÍ GIỮ CHỖ TRƯỚC (BOOKING)</h6>
-                  <p className="text-muted small m-0">Khách hàng: {selectedVehicleType?.typeName} - {timeSlot}</p>
+                  <p className="text-muted small m-0">Khách hàng: {getVehicleTypeLabel(selectedVehicleType?.typeName)} - {timeSlot}</p>
                 </div>
                 <h4 className="fw-bold text-primary m-0">{bookingFee.toLocaleString('vi-VN')}đ</h4>
               </div>
@@ -411,11 +472,11 @@ export default function BookingPage() {
 
                 <Col md={6} className="ps-md-4">
                   <h6 className="text-muted fw-bold small mb-2 d-flex align-items-center gap-2"><span>🚙</span> THÔNG TIN XE</h6>
-                  {userVehicles.length > 0 && (
+                  {eligibleUserVehicles.length > 0 && (
                     <Form.Group className="mb-3">
                       <Form.Label className="text-muted small fw-bold mb-1">Chọn xe của bạn</Form.Label>
                       <Form.Select size="sm" className="text-dark fw-bold" value={selectedUserVehicleId} onChange={handleUserVehicleChange}>
-                        {userVehicles.map(v => <option key={v.vehicleId || v.id} value={v.vehicleId || v.id}>{v.licensePlate} {v.brand || v.color ? `(${v.brand || ''} ${v.color || ''})` : ''}</option>)}
+                        {eligibleUserVehicles.map(v => <option key={v.vehicleId || v.id} value={v.vehicleId || v.id}>{v.licensePlate} {v.vehicleBrand || v.brand || v.vehicleColor || v.color ? `(${v.vehicleBrand || v.brand || ''} ${v.vehicleColor || v.color || ''})` : ''}</option>)}
                         <option value="other">+ Đặt cho xe khác</option>
                       </Form.Select>
                     </Form.Group>
@@ -534,7 +595,7 @@ export default function BookingPage() {
 
               <Row className="g-3 w-100 text-start small border-top pt-4 mt-2">
                 <Col xs={6}><span className="text-muted d-block small fw-bold">📍 VỊ TRÍ ĐỖ</span><strong className="text-dark">{selectedBranch?.branchName}</strong></Col>
-                <Col xs={6}><span className="text-muted d-block small fw-bold">🚗 PHƯƠNG TIỆN</span><strong className="text-dark">{selectedVehicleType?.typeName} - {licensePlate}</strong>{(vehicleColor || vehicleBrand) && <span className="text-muted d-block small">({[vehicleBrand, vehicleColor].filter(Boolean).join(' - ')})</span>}</Col>
+                <Col xs={6}><span className="text-muted d-block small fw-bold">🚗 PHƯƠNG TIỆN</span><strong className="text-dark">{getVehicleTypeLabel(selectedVehicleType?.typeName)} - {licensePlate}</strong>{(vehicleColor || vehicleBrand) && <span className="text-muted d-block small">({[vehicleBrand, vehicleColor].filter(Boolean).join(' - ')})</span>}</Col>
                 <Col xs={6}><span className="text-muted d-block small fw-bold">📅 THỜI GIAN ĐẾN</span><strong className="text-dark">{timeSlot} - {formatVietnameseDate(arrivalDate)}</strong></Col>
                 <Col xs={6}><span className="text-muted d-block small fw-bold">💵 PHÍ DỰ KIẾN</span><Badge bg="success" className="bg-opacity-10 text-success border border-success border-opacity-25 py-1 px-2 fw-bold fs-6">{hourlyRate.toLocaleString('vi-VN')}đ/1h</Badge></Col>
               </Row>
@@ -550,7 +611,6 @@ export default function BookingPage() {
             </div>
 
             <div className="d-flex flex-column gap-2 px-md-4">
-              <Button variant="outline-primary" className="fw-bold py-2 rounded-3 w-100 shadow-sm">🗺️ Xem hướng dẫn đường đi</Button>
               <Button variant="primary" onClick={() => navigate('/user-dashboard', { state: { activeTab: 'bookings' } })} className="fw-bold py-2 rounded-3 w-100 shadow-sm">Quản lý lịch đặt giữ chỗ</Button>
               <Button variant="link" className="text-danger text-decoration-none fw-bold mt-2 small" onClick={async () => {
                 if (createdBookingId) {

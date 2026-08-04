@@ -1,28 +1,13 @@
 import { useState, useEffect } from 'react';
 import { mt, card } from './managerTheme';
 import bookingApi from '../../booking/api/bookingApi';
-import managerApi from '../api/manager';
 import { toast } from 'react-toastify';
 
 export default function BookingPanel({ branchId }) {
   const [bookings, setBookings] = useState([]);
-  const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [timeFilter, setTimeFilter] = useState('all'); // 'day', 'month', 'year', 'all'
-  
-  const [overbookingRate, setOverbookingRate] = useState(() => {
-    return Number(localStorage.getItem('admin_overbooking_rate') || 12);
-  });
-
-  useEffect(() => {
-    const handleSync = () => {
-      const val = localStorage.getItem('admin_overbooking_rate');
-      if (val) setOverbookingRate(Number(val));
-    };
-    window.addEventListener('storage', handleSync);
-    return () => window.removeEventListener('storage', handleSync);
-  }, []);
 
   const TABS = [
     { key: 'all', label: 'Tất cả' },
@@ -36,7 +21,6 @@ export default function BookingPanel({ branchId }) {
     const cleanBranchId = (branchId && branchId !== 'undefined' && branchId !== 'null' && branchId !== '') ? String(branchId) : localStorage.getItem('parkingBranchId');
     try {
       let bookingsData;
-      let zonesData;
 
       try {
         bookingsData = await bookingApi.getAllBookings();
@@ -45,22 +29,7 @@ export default function BookingPanel({ branchId }) {
         bookingsData = [];
       }
 
-      // Lấy zones theo chi nhánh nếu có cleanBranchId (API thật)
-      let usedBranchApi = false;
-      if (cleanBranchId) {
-        try {
-          zonesData = await managerApi.getParkingZonesByBranch(cleanBranchId);
-          usedBranchApi = true; // API branch-specific đã filter sẵn
-        } catch (err) {
-          console.warn('getParkingZonesByBranch failed, falling back to getAllZones', err);
-          zonesData = await managerApi.getAllZones();
-        }
-      } else {
-        zonesData = await managerApi.getAllZones();
-      }
-
       const parsedBookings = Array.isArray(bookingsData) ? bookingsData : bookingsData?.content || [];
-      const parsedZones = Array.isArray(zonesData) ? zonesData : zonesData?.content || [];
       
       const getBranchId = (obj) => {
         if (!obj) return '';
@@ -83,14 +52,7 @@ export default function BookingPanel({ branchId }) {
         ? parsedBookings.filter(b => getBranchId(b) === cleanBranchId)
         : parsedBookings;
 
-      // Nếu đã dùng getParkingZonesByBranch thì zones đã đúng chi nhánh rồi
-      // Nếu dùng fallback getAllZones thì cần filter thêm
-      const filteredZones = (cleanBranchId && !usedBranchApi)
-        ? parsedZones.filter(z => getBranchId(z) === cleanBranchId)
-        : parsedZones;
-
       setBookings(filteredBookings);
-      setZones(filteredZones);
     } catch (err) {
       console.error(err);
       toast.error('Không tải được danh sách đặt chỗ hoặc dữ liệu bãi xe!');
@@ -167,14 +129,31 @@ export default function BookingPanel({ branchId }) {
   });
 
   // Filter based on active tab from the timeframe bookings
-  const filteredBookings = timeframeBookings.filter(b => {
-    const s = String(b.status || '').toUpperCase();
-    if (activeTab === 'all') return true;
-    if (activeTab === 'pending') return s === 'PENDING';
-    if (activeTab === 'checked_in') return s === 'CHECKED_IN';
-    if (activeTab === 'cancelled') return s === 'CANCELLED';
-    return true;
-  });
+  const nowMs = Date.now();
+  const filteredBookings = timeframeBookings
+    .filter(b => {
+      const s = String(b.status || '').toUpperCase();
+      if (activeTab === 'all') return true;
+      if (activeTab === 'pending') return s === 'PENDING';
+      if (activeTab === 'checked_in') return s === 'CHECKED_IN';
+      if (activeTab === 'cancelled') return s === 'CANCELLED';
+      return true;
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.expectedArrivalTime).getTime();
+      const bTime = new Date(b.expectedArrivalTime).getTime();
+      const aValid = Number.isFinite(aTime);
+      const bValid = Number.isFinite(bTime);
+
+      if (!aValid && !bValid) return 0;
+      if (!aValid) return 1;
+      if (!bValid) return -1;
+
+      const aUpcoming = aTime >= nowMs;
+      const bUpcoming = bTime >= nowMs;
+      if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+      return aUpcoming ? aTime - bTime : bTime - aTime;
+    });
 
   // Calculate statistics
   // ĐÃ CHECK IN = TỔNG BOOKING - HỦY - QUÁ HẠN
@@ -183,33 +162,6 @@ export default function BookingPanel({ branchId }) {
   const expiredCount = timeframeBookings.filter(b => String(b.status || '').toUpperCase() === 'EXPIRED').length;
   const checkedInCount = Math.max(0, totalCount - cancelledCount - expiredCount);
   const cancelRate = totalCount > 0 ? (((cancelledCount + expiredCount) / totalCount) * 100).toFixed(1) : '0.0';
-
-  // Tính tổng số slot ô tô của bãi đỗ:
-  // vehicleTypeId = 3 (Ô tô) và 4 (Ô tô điện / Electric Car)
-  const CAR_VEHICLE_TYPE_IDS = [3, 4];
-
-  const getZoneVehicleTypeId = (z) => {
-    const raw =
-      z.vehicleTypeId ||
-      z.vehicleType?.vehicleTypeId ||
-      z.vehicleType?.id ||
-      z.vehicleType ||
-      null;
-    return raw !== null ? Number(raw) : null;
-  };
-
-  const totalCarSlots = zones.reduce((sum, z) => {
-    const vtId = getZoneVehicleTypeId(z);
-    const isCarZone = (vtId !== null && CAR_VEHICLE_TYPE_IDS.includes(vtId)) ||
-                      (z.vehicleTypeName || '').toLowerCase().includes('ô tô') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('car') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('xe con') || 
-                      (z.vehicleTypeName || '').toLowerCase().includes('o to');
-    return isCarZone ? sum + Number(z.capacity || 0) : sum;
-  }, 0);
-
-  // Slot dự kiến giải phóng = tổng slot ô tô × tỷ lệ overbooking
-  const freedSlots = Math.round(totalCarSlots * (overbookingRate / 100));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -260,51 +212,7 @@ export default function BookingPanel({ branchId }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '1rem' }}>
-        <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-            <span style={{ color: mt.warning }}>🎛️</span>
-            <span style={{ fontWeight: 600, color: mt.text }}>Cấu hình Bán quá tải</span>
-            <span style={{ color: mt.textMuted, fontSize: '0.8rem', cursor: 'help' }} title="Cho phép đặt chỗ vượt quá sức chứa bãi xe dựa trên tính toán tỷ lệ hủy/không đến của AI">ⓘ</span>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4 }}>
-              <span style={{ color: mt.textMuted }}>Tỷ lệ Overbooking</span>
-              <span style={{ fontWeight: 700, color: mt.text, fontSize: '1rem' }}>{overbookingRate}%</span>
-            </div>
-            <input 
-              type="range" 
-              min="0" 
-              max="30" 
-              value={overbookingRate}
-              onChange={e => setOverbookingRate(Number(e.target.value))}
-              style={{ width: '100%', cursor: 'pointer', accentColor: mt.primary }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: mt.textMuted, marginTop: 4 }}>
-              <span>0% (An toàn)</span>
-              <span>30% (Tối đa)</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${mt.border}`, fontSize: '0.875rem' }}>
-            <span style={{ color: mt.textMuted }}>Tổng slot ô tô</span>
-            <span style={{ color: mt.text, fontWeight: 600 }}>{totalCarSlots} slots</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', marginBottom: 12, fontSize: '0.875rem' }}>
-            <span style={{ color: mt.textMuted }}>Slot giải phóng dự kiến</span>
-            <span style={{ fontWeight: 700, color: mt.text }}>{freedSlots} slots</span>
-          </div>
-          <button 
-            onClick={() => {
-              localStorage.setItem('admin_overbooking_rate', overbookingRate);
-              window.dispatchEvent(new Event('storage'));
-              toast.success(`Đã lưu cấu hình bán quá tải ở mức ${overbookingRate}%!`);
-            }}
-            style={{ width: '100%', padding: '8px', background: '#fff', border: `1px solid ${mt.primary}`, color: mt.primary, fontWeight: 700, borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
-          >
-            CẬP NHẬT CẤU HÌNH
-          </button>
-        </div>
-
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
         <div style={card}>
           <div style={{ fontSize: '0.7rem', fontWeight: 700, color: mt.textMuted, textTransform: 'uppercase', marginBottom: 8 }}>TỔNG BOOKING ĐÃ ĐẶT</div>
           <div style={{ fontSize: '2.5rem', fontWeight: 800, color: mt.text, marginBottom: 8 }}>{totalCount}</div>

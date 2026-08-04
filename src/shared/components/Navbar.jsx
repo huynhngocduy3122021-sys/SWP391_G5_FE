@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Vị trí', to: '/locations' },
   { label: 'Bảng giá', to: '/pricing' },
-  { label: 'Liên hệ', to: '/contact' },
 ];
 
 export default function Navbar() {

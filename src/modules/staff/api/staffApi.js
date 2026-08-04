@@ -82,6 +82,17 @@ const staffApi = {
   },
   reportLostCard: async (payload) => {
     return (await API.post('/api/incidents/lost-card', payload)).data;
+  },
+  uploadIncidentImages: async (incidentId, files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('file', file);
+    });
+    return (await API.post(`/api/incidents/${incidentId}/images`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })).data;
   }
 };
 

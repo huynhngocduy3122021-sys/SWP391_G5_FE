@@ -68,7 +68,6 @@ export default function GateOutPanel() {
   const [pricePolicies, setPricePolicies] = useState([]);
   const [zones, setZones] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [previewUrls, setPreviewUrls] = useState([]);
   const [lostCard, setLostCard] = useState(false);
   const [timeOffset, setTimeOffset] = useState(() => Number(localStorage.getItem('demoTimeOffset') || 0));
 
@@ -80,8 +79,6 @@ export default function GateOutPanel() {
 
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
-    setPreviewUrls(urls);
-    // Đồng thời hiển thị ảnh preview bên CapturedShot
     setExitImages(urls);
     return () => {
       urls.forEach(url => URL.revokeObjectURL(url));
@@ -586,13 +583,13 @@ function CapturedShot({ title, plate, vehicleType, matchAccuracy, imageUrls }) {
     <div className="vin-card" style={{ padding: '0.75rem' }}>
       <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.5rem', fontWeight: 'bold' }}>{title}</div>
       {imageUrls && imageUrls.length > 0 ? (
-        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', marginBottom: '0.5rem', height: 240 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: imageUrls.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '0.35rem', marginBottom: '0.5rem' }}>
           {imageUrls.map((url, i) => (
             <img
               key={i}
               src={url}
               alt={`captured-${i}`}
-              style={{ height: 240, width: 'auto', borderRadius: 8, objectFit: 'contain', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0' }}
+              style={{ height: 240, width: '100%', minWidth: 0, borderRadius: 8, objectFit: 'contain', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0' }}
             />
           ))}
         </div>
