@@ -13,7 +13,7 @@ const EMPTY_FORM = {
 };
 
 const EMPTY_PACKAGE_FORM = {
-  packageName: '', packageType: 'MONTHLY', basePrice: '', durationDays: '30', vehicleTypeId: '',
+  packageName: '', basePrice: '', durationDays: '30', vehicleTypeId: '',
 };
 
 export default function PricingSettingsPanel() {
@@ -30,7 +30,7 @@ export default function PricingSettingsPanel() {
   const [saving,    setSaving]      = useState(false);
   const [formErr,   setFormErr]     = useState('');
 
-  // Modal tạo / sửa gói dịch vụ (Tháng & VIP)
+  // Modal tạo / sửa gói dịch vụ tháng
   const [showPkgModal, setShowPkgModal] = useState(false);
   const [editPkgId,    setEditPkgId]    = useState(null);
   const [pkgForm,      setPkgForm]      = useState(EMPTY_PACKAGE_FORM);
@@ -71,7 +71,6 @@ export default function PricingSettingsPanel() {
   const getPackageDetails = (p) => {
     const name = p.policyName || '';
     if (name.startsWith('[Gói Tháng]')) return { cleanName: name.replace('[Gói Tháng]', '').trim(), typeLabel: 'Gói Tháng', typeColor: 'text-primary', typeBg: 'bg-primary-subtle', typeKey: 'MONTHLY' };
-    if (name.startsWith('[Gói VIP President]')) return { cleanName: name.replace('[Gói VIP President]', '').trim(), typeLabel: 'VIP President', typeColor: 'text-warning', typeBg: 'bg-warning-subtle', typeKey: 'VIP_PRESIDENT' };
     return { cleanName: name, typeLabel: 'Khác', typeColor: 'text-secondary', typeBg: 'bg-secondary-subtle', typeKey: 'OTHER' };
   };
 
@@ -119,7 +118,6 @@ export default function PricingSettingsPanel() {
     setEditPkgId(p.pricePolicyId || p.id);
     setPkgForm({
       packageName: details.cleanName,
-      packageType: details.typeKey,
       basePrice: String(p.basePrice || ''),
       durationDays: String(Math.round((p.baseDurationMinutes || 0) / (24 * 60))),
       vehicleTypeId: String(p?.vehicleType?.vehicleTypeId || p?.vehicleType?.id || p?.vehicleTypeId || ''),
@@ -173,8 +171,7 @@ export default function PricingSettingsPanel() {
     if (Number(pkgForm.basePrice) <= 0) return setPkgFormErr('Giá gói dịch vụ phải lớn hơn 0.');
     if (Number(pkgForm.durationDays) <= 0) return setPkgFormErr('Thời hạn gói (ngày) phải lớn hơn 0.');
 
-    const prefix = pkgForm.packageType === 'MONTHLY' ? '[Gói Tháng] ' : '[Gói VIP President] ';
-    const policyName = prefix + pkgForm.packageName.trim();
+    const policyName = '[Gói Tháng] ' + pkgForm.packageName.trim();
 
     const payload = {
       policyName: policyName,
@@ -225,7 +222,7 @@ export default function PricingSettingsPanel() {
       <div className="d-flex justify-content-between align-items-center">
         <div>
           <h3 className="h4 fw-bold m-0 text-primary">Cấu hình Bảng giá &amp; Gói cước</h3>
-          <div className="small text-muted">Thiết lập bảng giá vé lượt và gói đăng ký (Tháng &amp; VIP President) dành cho hệ thống.</div>
+          <div className="small text-muted">Thiết lập bảng giá vé lượt và gói đăng ký tháng dành cho hệ thống.</div>
         </div>
         <Button variant="primary" className="fw-bold" onClick={activeTab === 'hourly' ? openCreate : openCreatePkg}>
           {activeTab === 'hourly' ? '+ Thêm Vé Lượt' : '+ Thêm Gói Dịch Vụ'}
@@ -247,7 +244,7 @@ export default function PricingSettingsPanel() {
             className={`fw-bold border-0 border-bottom border-3 ${activeTab === 'packages' ? 'text-primary border-primary' : 'text-muted border-transparent'}`} 
             onClick={() => setActiveTab('packages')}
           >
-            💎 GÓI DỊCH VỤ (THÁNG &amp; VIP PRESIDENT)
+            💎 GÓI DỊCH VỤ THÁNG
           </Nav.Link>
         </Nav.Item>
       </Nav>
@@ -316,7 +313,7 @@ export default function PricingSettingsPanel() {
         {/* Packages Tab Content */}
         {activeTab === 'packages' && (
           <>
-            <Col md={6}>
+            <Col md={12}>
               <Card className="border shadow-sm p-3 h-100">
                 <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                   <h3 className="h6 fw-bold text-primary m-0">📥 DANH SÁCH GÓI VÉ THÁNG</h3>
@@ -351,40 +348,6 @@ export default function PricingSettingsPanel() {
               </Card>
             </Col>
 
-            <Col md={6}>
-              <Card className="border shadow-sm p-3 h-100">
-                <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                  <h3 className="h6 fw-bold text-warning m-0">👑 GÓI ĐẶC QUYỀN VIP PRESIDENT</h3>
-                  <span className="fw-bold small text-muted">{policies.filter(p => (p.policyName || '').startsWith('[Gói VIP President]')).length} gói</span>
-                </div>
-                {loading ? <div className="text-center p-3 text-muted small">Đang tải...</div> : policies.filter(p => (p.policyName || '').startsWith('[Gói VIP President]')).length === 0 ? <div className="text-center p-4 text-muted small fst-italic">Chưa cấu hình gói đặc quyền VIP.</div> : (
-                  <div className="d-flex flex-column gap-2">
-                    {policies.filter(p => (p.policyName || '').startsWith('[Gói VIP President]')).map((p) => {
-                      const details = getPackageDetails(p);
-                      const days = Math.round((p.baseDurationMinutes || 0) / (24 * 60));
-                      return (
-                        <div key={p.pricePolicyId || p.id} className="border border-warning bg-warning bg-opacity-10 rounded p-2 d-flex justify-content-between align-items-center">
-                          <div>
-                            <div className="fw-bold text-dark small" style={{color: '#78350f'}}>{details.cleanName}</div>
-                            <div className="d-flex align-items-center gap-1 mt-1">
-                              <Badge className={`${details.typeBg} ${details.typeColor}`}>{details.typeLabel}</Badge>
-                              <span className="small text-warning" style={{fontSize: '0.7rem'}}>Hạn: {days} ngày • {p.vehicleType?.typeName || 'Mọi xe'}</span>
-                            </div>
-                          </div>
-                          <div className="text-end">
-                            <div className="fw-bold text-warning">{fmt(p.basePrice)} đ</div>
-                            <div className="mt-1">
-                              <Button variant="link" size="sm" className="text-primary fw-bold text-decoration-none px-1 p-0 me-2" onClick={() => openEditPkg(p)}>Sửa</Button>
-                              <Button variant="link" size="sm" className="text-danger fw-bold text-decoration-none px-1 p-0" onClick={() => setDelTarget({ id: p.pricePolicyId || p.id, name: p.policyName })}>Xóa</Button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Card>
-            </Col>
           </>
         )}
       </Row>
@@ -426,8 +389,7 @@ export default function PricingSettingsPanel() {
           <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">{editPkgId ? 'Chỉnh sửa gói cước đăng ký' : 'Tạo gói cước đăng ký mới'}</Modal.Title></Modal.Header>
           <Modal.Body className="d-flex flex-column gap-3">
             {pkgFormErr && <div className="alert alert-danger p-2 small m-0">{pkgFormErr}</div>}
-            <Form.Group><Form.Label className="small fw-bold text-muted mb-1">TÊN GÓI ĐĂNG KÝ *</Form.Label><Form.Control type="text" placeholder="Ví dụ: Gói xe máy Standard, VIP Oto..." value={pkgForm.packageName} onChange={e => setPkgForm({ ...pkgForm, packageName: e.target.value })} /></Form.Group>
-            <Form.Group><Form.Label className="small fw-bold text-muted mb-1">LOẠI ĐĂNG KÝ (PHÂN KHÚC) *</Form.Label><Form.Select value={pkgForm.packageType} onChange={e => setPkgForm({ ...pkgForm, packageType: e.target.value })}><option value="MONTHLY">Gói cước Tháng (Monthly Package)</option><option value="VIP_PRESIDENT">Gói cước VIP President (Đặc quyền tối cao)</option></Form.Select></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted mb-1">TÊN GÓI ĐĂNG KÝ *</Form.Label><Form.Control type="text" placeholder="Ví dụ: Gói xe máy Standard" value={pkgForm.packageName} onChange={e => setPkgForm({ ...pkgForm, packageName: e.target.value })} /></Form.Group>
             <Form.Group><Form.Label className="small fw-bold text-muted mb-1">LOẠI PHƯƠNG TIỆN ÁP DỤNG *</Form.Label><Form.Select value={pkgForm.vehicleTypeId} onChange={e => setPkgForm({ ...pkgForm, vehicleTypeId: e.target.value })}><option value="">-- Chọn loại xe --</option>{vtypes.map(v => <option key={vtId(v)} value={vtId(v)}>{vtName(v)}</option>)}</Form.Select></Form.Group>
             <Row className="g-2">
               <Col><Form.Group><Form.Label className="small fw-bold text-muted mb-1">ĐƠN GIÁ GÓI (ĐỒNG) *</Form.Label><Form.Control type="number" min="1" placeholder="Ví dụ: 120000" value={pkgForm.basePrice} onChange={e => setPkgForm({ ...pkgForm, basePrice: e.target.value })} /></Form.Group></Col>
