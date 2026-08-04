@@ -269,6 +269,7 @@ export default function GateInPanel() {
     return () => urls.forEach(url => URL.revokeObjectURL(url));
   }, [selectedFiles]);
 
+  // Lookup mã đặt chỗ
   const handleLookupBooking = async () => {
     if (!bookingCode.trim()) return toast.error('Vui lòng nhập mã đặt chỗ!');
     try {
@@ -282,7 +283,7 @@ export default function GateInPanel() {
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Không tìm thấy thông tin đặt chỗ!'); }
   };
-
+  // Xác nhận 
   const handleConfirm = async () => {
     const isMOrV = checkIsMonthlyOrVip(cardCode);
     if (isBooking && !bookingCode.trim()) return toast.error('Vui lòng nhập mã đặt chỗ!');

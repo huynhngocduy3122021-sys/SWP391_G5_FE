@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import parkingApi from '../../search/api/parkingApi';
 import { formatDate } from '../../../shared/utils/format';
-import { isVehicleCompatibleWithPolicy, getPolicyVehicleTypeId } from '../../../shared/utils/vehiclePackageValidation';
+import { isVehicleCompatibleWithPolicy, getPolicyVehicleTypeId, getVehicleTypeId } from '../../../shared/utils/vehiclePackageValidation';
 
 const getDaysLeft = (dateStr) => {
   if (!dateStr) return null;
@@ -33,7 +33,7 @@ export default function VehicleSection() {
 
   // Subscribe / Renew Modal
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
-  const [modalStep, setModalStep] = useState(1); // 1 = form, 2 = payment QR
+  const [modalStep, setModalStep] = useState(1); // 1: form, 2: payment, 3: completed
   const [subscribeMode, setSubscribeMode] = useState('new'); // 'new' | 'renew'
   const [renewTicket, setRenewTicket] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
@@ -46,6 +46,7 @@ export default function VehicleSection() {
   const [submittedRequestId, setSubmittedRequestId] = useState(null);
   const [submittedLicensePlate, setSubmittedLicensePlate] = useState('');
   const [paymentError, setPaymentError] = useState('');
+  const [processingRequestId, setProcessingRequestId] = useState(null);
 
   const loadData = async () => {
     if (!userId) return;
@@ -129,12 +130,17 @@ export default function VehicleSection() {
 
   // ---- Subscribe / Renew ----
   const handleSubscribeClick = (pkg) => {
+    if (getPackageStatusForUser(pkg) === 'FULLY_REGISTERED') {
+      toast.info('Phương tiện thuộc loại xe này đã có thẻ đỗ xe/vé tháng hoạt động.');
+      return;
+    }
     setSubscribeMode('new');
     setRenewTicket(null);
     setSelectedPackage(pkg);
-    const matching = vehicles.filter(v => isVehicleCompatibleWithPolicy(v, pkg));
+    const matching = vehicles.filter(v => isVehicleCompatibleWithPolicy(v, pkg) && !isVehicleRegistered(v));
     setSubscribeVehicleId(matching.length > 0 ? String(matching[0].vehicleId || matching[0].vehiclesId || matching[0].id) : 'new');
-    setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
+    const defaultTypeId = getPolicyVehicleTypeId(pkg) || (vehicleTypes.length > 0 ? String(vehicleTypes[0].vehicleTypeId || vehicleTypes[0].id) : '');
+    setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '', vehicleTypeId: defaultTypeId });
     setModalStep(1);
     setPaymentUrl(''); setPaymentQrData(''); setPaymentError('');
     setShowSubscribeModal(true);
@@ -195,13 +201,16 @@ export default function VehicleSection() {
     if (!selectedBranchId) return toast.warning('Vui lòng chọn chi nhánh đăng ký!');
     if (!selectedPackage) return toast.warning('Vui lòng chọn gói dịch vụ!');
 
-    if (subscribeVehicleId !== 'new') {
+    if (subscribeVehicleId !== 'new' && subscribeMode !== 'renew') {
       const selectedVehicle = vehicles.find(v =>
         String(v.vehicleId || v.vehiclesId || v.id) === String(subscribeVehicleId)
       );
       if (!selectedVehicle) return toast.error('Không tìm thấy phương tiện đã chọn.');
       if (!isVehicleCompatibleWithPolicy(selectedVehicle, selectedPackage)) {
         return toast.error('Loại phương tiện không phù hợp với gói dịch vụ đã chọn.');
+      }
+      if (isVehicleRegistered(selectedVehicle)) {
+        return toast.error('Phương tiện này đã có thẻ tháng hoặc yêu cầu đang được xử lý.');
       }
     }
 
@@ -220,8 +229,8 @@ export default function VehicleSection() {
       let vehicleId;
       if (subscribeVehicleId === 'new') {
         if (!newVehicleData.licensePlate.trim()) { setSubmitting(false); return toast.warning('Vui lòng nhập biển số xe!'); }
-        const policyVehicleTypeId = getPolicyVehicleTypeId(selectedPackage);
-        if (!policyVehicleTypeId) { setSubmitting(false); return toast.error('Gói dịch vụ chưa được cấu hình loại phương tiện.'); }
+        const policyVehicleTypeId = newVehicleData.vehicleTypeId || getPolicyVehicleTypeId(selectedPackage) || (vehicleTypes.length > 0 ? vehicleTypes[0].vehicleTypeId : null);
+        if (!policyVehicleTypeId) { setSubmitting(false); return toast.error('Vui lòng chọn loại phương tiện.'); }
         const created = await parkingApi.createVehicle({
           licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
           vehicleColor: newVehicleData.vehicleColor.trim(),
@@ -242,14 +251,12 @@ export default function VehicleSection() {
         branchId: Number(selectedBranchId),
       };
 
-      // Gia hạn phải đi qua endpoint riêng. Nếu gửi vào endpoint đăng ký mới,
-      // backend sẽ chặn vì phương tiện vẫn đang có vé tháng còn hiệu lực.
       const reqResult = subscribeMode === 'renew'
         ? await parkingApi.submitRenewalRequest(renewalTicketId, requestPayload)
         : await parkingApi.submitMonthlyTicketRequest({
-            ...requestPayload,
-            vehicleId,
-          });
+          ...requestPayload,
+          vehicleId,
+        });
       createdRequestId = reqResult?.requestId
         || reqResult?.monthlyTicketRequestId
         || reqResult?.monthlyTicketRequest?.id
@@ -264,7 +271,6 @@ export default function VehicleSection() {
           const pUrl = payRes?.paymentUrl || payRes?.url || payRes?.redirectUrl || payRes;
           if (typeof pUrl === 'string' && pUrl.startsWith('http')) {
             setPaymentUrl(pUrl);
-            // Extract QR data from URL (use the URL itself as QR content)
             setPaymentQrData(pUrl);
           } else if (payRes?.qrCode) {
             setPaymentQrData(payRes.qrCode);
@@ -279,7 +285,6 @@ export default function VehicleSection() {
         setPaymentError('no_request_id');
       }
 
-      // Advance to payment step
       setModalStep(2);
       await loadData();
     } catch (err) {
@@ -297,11 +302,164 @@ export default function VehicleSection() {
     setSubmittedRequestId(null);
   };
 
+  const getRequestId = (request) => request?.requestId || request?.monthlyTicketRequestId || request?.id;
+
+  const handlePayPendingRequest = async (request) => {
+    const requestId = getRequestId(request);
+    if (!requestId) {
+      toast.error('Không tìm thấy mã yêu cầu để thanh toán.');
+      return;
+    }
+
+    const policyId = request.pricePolicy?.pricePolicyId || request.pricePolicyId || request.policy?.pricePolicyId || request.policyId;
+    const packageForRequest = packages.find(p => String(p.pricePolicyId || p.id) === String(policyId))
+      || packages.find(p => p.policyName === (request.pricePolicy?.policyName || request.policyName))
+      || request.pricePolicy
+      || request.policy;
+    const vehicleId = request.vehicle?.vehicleId || request.vehicle?.vehiclesId || request.vehicle?.id || request.vehicleId || request.vehiclesId;
+    const branchId = request.branch?.parkingBranchId || request.branch?.id || request.parkingBranchId || request.branchId;
+
+    setProcessingRequestId(String(requestId));
+    setSelectedPackage(packageForRequest || null);
+    setSubscribeVehicleId(vehicleId ? String(vehicleId) : '');
+    setSelectedBranchId(branchId ? String(branchId) : '');
+    setSubmittedRequestId(requestId);
+    setSubmittedLicensePlate(request.vehicle?.licensePlate || request.licensePlate || '');
+    setPaymentUrl('');
+    setPaymentQrData('');
+    setPaymentError('');
+
+    try {
+      const paymentResponse = await parkingApi.createMonthlyTicketPayment(requestId);
+      const url = paymentResponse?.paymentUrl || paymentResponse?.url || paymentResponse?.redirectUrl || paymentResponse;
+      if (typeof url === 'string' && url.startsWith('http')) {
+        setPaymentUrl(url);
+        setPaymentQrData(url);
+      } else if (paymentResponse?.qrCode) {
+        setPaymentQrData(paymentResponse.qrCode);
+      } else {
+        setPaymentError('no_payment_url');
+      }
+      setModalStep(2);
+      setShowSubscribeModal(true);
+    } catch (err) {
+      const message = err.response?.data?.message || err.response?.data || 'Không thể tạo liên kết thanh toán VNPay.';
+      toast.error(typeof message === 'string' ? message : 'Không thể tạo liên kết thanh toán VNPay.');
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleCancelPendingRequest = async (request) => {
+    const requestId = getRequestId(request);
+    if (!requestId) {
+      toast.error('Không tìm thấy mã yêu cầu để hủy.');
+      return;
+    }
+    if (!window.confirm('Bạn có chắc chắn muốn hủy yêu cầu đăng ký gói này?')) return;
+
+    setProcessingRequestId(String(requestId));
+    try {
+      await parkingApi.cancelMyMonthlyTicketRequest(requestId);
+      toast.success('Đã hủy yêu cầu đăng ký gói.');
+      await loadData();
+    } catch (err) {
+      const message = err.response?.data?.message || err.response?.data || 'Không thể hủy yêu cầu vào lúc này.';
+      toast.error(typeof message === 'string' ? message : 'Không thể hủy yêu cầu vào lúc này.');
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   const activeTickets = myTickets.filter(t => t.status === 1 || t.status === true || t.status === 'ACTIVE');
   const expiredTickets = myTickets.filter(t => t.status === 0 || t.status === false || t.status === 'EXPIRED' || t.status === 'INACTIVE');
+
+  // Requests currently pending approval
+  const pendingRequests = myRequests.filter(r => {
+    const st = String(r.status ?? '').toUpperCase();
+    return st !== 'REJECTED' && st !== 'CANCELLED' && st !== 'REJECTED_BY_USER' && st !== 'APPROVED' && st !== '2';
+  });
+
+  const activeVehicleIds = new Set(
+    activeTickets.map(t => t.vehicle?.vehicleId || t.vehicle?.vehiclesId || t.vehicle?.id || t.vehicleId || t.vehiclesId).filter(Boolean).map(String)
+  );
+  const activeLicensePlates = new Set(
+    activeTickets.map(t => t.vehicle?.licensePlate || t.licensePlate).filter(Boolean)
+  );
+
+  const isVehicleActive = (v) => {
+    if (!v) return false;
+    const id = String(v.vehicleId || v.vehiclesId || v.id || '');
+    const plate = v.licensePlate;
+    return (id && activeVehicleIds.has(id)) || (plate && activeLicensePlates.has(plate));
+  };
+
+  const pendingVehicleIds = new Set(
+    pendingRequests.map(r => r.vehicle?.vehicleId || r.vehicle?.vehiclesId || r.vehicle?.id || r.vehicleId || r.vehiclesId).filter(Boolean).map(String)
+  );
+  const pendingLicensePlates = new Set(
+    pendingRequests.map(r => r.vehicle?.licensePlate || r.licensePlate).filter(Boolean)
+  );
+
+  const isVehiclePending = (v) => {
+    if (!v) return false;
+    const id = String(v.vehicleId || v.vehiclesId || v.id || '');
+    const plate = v.licensePlate;
+    return (id && pendingVehicleIds.has(id)) || (plate && pendingLicensePlates.has(plate));
+  };
+
+  const registeredVehicleIds = new Set([...activeVehicleIds, ...pendingVehicleIds]);
+  const registeredLicensePlates = new Set([...activeLicensePlates, ...pendingLicensePlates]);
+
+  const isVehicleRegistered = (v) => {
+    if (!v) return false;
+    const id = String(v.vehicleId || v.vehiclesId || v.id || '');
+    const plate = v.licensePlate;
+    return (id && registeredVehicleIds.has(id)) || (plate && registeredLicensePlates.has(plate));
+  };
+
+  const getPackageStatusForUser = (pkg) => {
+    const compatible = vehicles.filter(v => isVehicleCompatibleWithPolicy(v, pkg));
+
+    if (compatible.length > 0) {
+      const activeCompatible = compatible.filter(v => isVehicleActive(v));
+      if (activeCompatible.length === compatible.length) {
+        return 'FULLY_REGISTERED';
+      }
+      const unregistered = compatible.filter(v => !isVehicleRegistered(v));
+      if (unregistered.length === 0) {
+        return 'PENDING_APPROVAL';
+      }
+      return 'CAN_REGISTER';
+    }
+
+    const policyVehicleTypeId = getPolicyVehicleTypeId(pkg);
+    const hasActiveTicketForType = activeTickets.some(t => {
+      const tPolicyTypeId = getPolicyVehicleTypeId(t.pricePolicy || t.policy);
+      const tVehicleTypeId = t.vehicle ? getVehicleTypeId(t.vehicle) : null;
+      return policyVehicleTypeId && (
+        String(tPolicyTypeId) === String(policyVehicleTypeId) ||
+        String(tVehicleTypeId) === String(policyVehicleTypeId)
+      );
+    });
+    if (hasActiveTicketForType) return 'FULLY_REGISTERED';
+
+    const hasPendingReqForType = pendingRequests.some(r => {
+      const rPolicyTypeId = getPolicyVehicleTypeId(r.pricePolicy || r.policy);
+      const rVehicleTypeId = r.vehicle ? getVehicleTypeId(r.vehicle) : null;
+      return policyVehicleTypeId && (
+        String(rPolicyTypeId) === String(policyVehicleTypeId) ||
+        String(rVehicleTypeId) === String(policyVehicleTypeId)
+      );
+    });
+    if (hasPendingReqForType) return 'PENDING_APPROVAL';
+
+    return 'CAN_REGISTER';
+  };
+
   const matchingVehicles = selectedPackage
-    ? vehicles.filter(v => isVehicleCompatibleWithPolicy(v, selectedPackage))
-    : vehicles;
+    ? vehicles.filter(v => isVehicleCompatibleWithPolicy(v, selectedPackage) && !isVehicleRegistered(v))
+    : vehicles.filter(v => !isVehicleRegistered(v));
 
   if (loading) {
     return (
@@ -318,12 +476,85 @@ export default function VehicleSection() {
         <p className="text-muted m-0">Quản lý các phương tiện đã đăng ký và đăng ký các gói dịch vụ đỗ xe của bạn.</p>
       </div>
 
-      {/* ===== GÓI CƯỚC ĐÃ ĐĂNG KÝ ===== */}
-      {(activeTickets.length > 0 || expiredTickets.length > 0) && (
+      {/* ===== GÓI CƯỚC ĐÃ ĐĂNG KÝ HOẶC ĐANG DUYỆT ===== */}
+      {(activeTickets.length > 0 || pendingRequests.length > 0 || expiredTickets.length > 0) && (
         <div className="mb-5">
           <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
-            <span className="text-success fs-5">🎟️</span> Gói cước đã đăng ký
+            <span className="text-success fs-5">🎟️</span> Gói cước đã đăng ký &amp; yêu cầu
           </h6>
+
+          {/* Thẻ / Yêu cầu đang trong quá trình duyệt */}
+          {pendingRequests.length > 0 && (
+            <div className="d-flex flex-column gap-3 mb-3">
+              {pendingRequests.map((req, idx) => {
+                const requestId = getRequestId(req);
+                const isProcessing = String(processingRequestId) === String(requestId);
+                const plate = req.vehicle?.licensePlate || req.licensePlate || '—';
+                const rawName = req.pricePolicy?.policyName || req.policyName || 'Gói tháng';
+                const pName = rawName.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '').replace('[Gói ', '').replace(']', '');
+                const bName = req.branch?.branchName || req.branchName || req.parkingBranchName || '—';
+                const statusStr = String(req.status ?? '').toUpperCase();
+                const isAwaitingPayment = statusStr === 'PENDING_PAYMENT' || statusStr === '0';
+                const isAwaitingApproval = statusStr === 'PENDING_APPROVAL' || statusStr === '1';
+                return (
+                  <div key={req.requestId || req.monthlyTicketRequestId || req.id || idx}
+                    className="card rounded-4 shadow-sm overflow-hidden"
+                    style={{ border: '1.5px solid #facc15', background: 'linear-gradient(135deg, #fefce8, #fef08a)' }}>
+                    <div className="px-4 py-2 d-flex justify-content-between align-items-center" style={{ background: '#eab308' }}>
+                      <span className="text-dark fw-bold small">
+                        {isAwaitingPayment ? '💳 Chờ thanh toán' : '⏳ Đang trong quá trình duyệt'}
+                      </span>
+                      <span className="text-dark small fw-semibold opacity-90">
+                        {isAwaitingPayment ? 'Vui lòng hoàn tất thanh toán' : 'Chờ Ban Quản Lý phê duyệt'}
+                      </span>
+                    </div>
+                    <div className="px-4 py-3">
+                      <div className="row g-3 align-items-center">
+                        <div className="col-md">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                              style={{ width: 52, height: 52, background: '#fef9c3', fontSize: '1.6rem' }}>📝</div>
+                            <div className="flex-grow-1">
+                              <div className="fw-bold text-dark mb-1" style={{ fontSize: '1.05rem' }}>{pName}</div>
+                              <div className="d-flex flex-wrap gap-3 small text-muted">
+                                <span>🚗 Biển số: <strong className="text-dark">{plate}</strong></span>
+                                <span>📍 Bãi đỗ: <strong className="text-dark">{bName}</strong></span>
+                              </div>
+                              <div className="small text-warning-emphasis mt-1 fw-medium" style={{ fontSize: '0.8rem', color: '#854d0e' }}>
+                                {isAwaitingPayment
+                                  ? 'ℹ️ Yêu cầu đã được ghi nhận. Vui lòng thanh toán để gửi cho Ban Quản Lý phê duyệt.'
+                                  : 'ℹ️ Đã thanh toán thành công. Yêu cầu đang chờ Ban Quản Lý phê duyệt & kích hoạt.'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-auto d-flex gap-2 justify-content-md-end">
+                          {isAwaitingPayment && (
+                            <button
+                              type="button"
+                              className="btn btn-primary fw-bold rounded-pill px-3"
+                              disabled={isProcessing}
+                              onClick={() => handlePayPendingRequest(req)}
+                            >
+                              {isProcessing ? 'Đang xử lý...' : 'Thanh toán'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger fw-bold rounded-pill px-3"
+                            disabled={isProcessing}
+                            onClick={() => handleCancelPendingRequest(req)}
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {activeTickets.length > 0 && (
             <div className="d-flex flex-column gap-3 mb-3">
@@ -450,7 +681,17 @@ export default function VehicleSection() {
                     <div className="mb-3 mt-2">
                       <div className="text-muted small">{v.vehicleBrand || 'Hãng xe'} {v.vehicleColor ? `(${v.vehicleColor})` : ''}</div>
                       <h4 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px', color: '#164e63' }}>{v.licensePlate}</h4>
-                      <div className="text-muted small mt-1">{v.vehicleTypeName || 'Phương tiện'} • Đang hoạt động</div>
+                      <div className="text-muted small mt-1">
+                        {v.vehicleTypeName || 'Phương tiện'} • {
+                          isVehicleActive(v) ? (
+                            <span className="text-success fw-semibold">🎫 Đã có thẻ tháng</span>
+                          ) : isVehiclePending(v) ? (
+                            <span className="text-warning fw-semibold" style={{ color: '#b45309' }}>⏳ Đang trong quá trình duyệt</span>
+                          ) : (
+                            'Chưa đăng ký gói'
+                          )
+                        }
+                      </div>
                     </div>
                     <div className="mt-auto border-top pt-2 d-flex justify-content-between">
                       <button className="btn btn-link text-danger text-decoration-none p-0 fw-bold small" onClick={() => handleDelete(v.vehicleId)}>Xóa</button>
@@ -471,25 +712,39 @@ export default function VehicleSection() {
             </div>
           ) : (
             <div className="d-flex flex-column gap-3 mb-4">
-              {packages.map((pkg) => (
-                <div className="card border rounded-4 shadow-sm" key={pkg.pricePolicyId} style={{ borderColor: '#e2e8f0', backgroundColor: '#ffffff' }}>
-                  <div className="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="bg-info bg-opacity-10 text-info rounded-3 d-flex justify-content-center align-items-center" style={{ width: '48px', height: '48px', fontSize: '1.5rem' }}>💎</div>
-                      <div>
-                        <h6 className="fw-bold text-dark m-0">{pkg.policyName}</h6>
-                        <small className="text-muted">
-                          Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
-                        </small>
+              {packages.map((pkg) => {
+                const status = getPackageStatusForUser(pkg);
+                const isFullyRegistered = status === 'FULLY_REGISTERED';
+                return (
+                  <div className="card border rounded-4 shadow-sm" key={pkg.pricePolicyId || pkg.id} style={{ borderColor: '#e2e8f0', backgroundColor: '#ffffff' }}>
+                    <div className="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="bg-info bg-opacity-10 text-info rounded-3 d-flex justify-content-center align-items-center" style={{ width: '48px', height: '48px', fontSize: '1.5rem' }}>💎</div>
+                        <div>
+                          <h6 className="fw-bold text-dark m-0">{pkg.policyName}</h6>
+                          <small className="text-muted">
+                            Thời lượng: {pkg.baseDurationMinutes / 60 / 24} ngày
+                          </small>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-3">
+                        <span className="fw-bold text-dark fs-5">{pkg.basePrice?.toLocaleString('vi-VN')} VNĐ</span>
+                        {status === 'FULLY_REGISTERED' ? (
+                          <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fw-bold d-flex align-items-center gap-1" style={{ fontSize: '0.85rem' }}>
+                            <span>✓</span> Đã có thẻ đỗ xe
+                          </span>
+                        ) : status === 'PENDING_APPROVAL' ? (
+                          <span className="badge border px-3 py-2 rounded-pill fw-bold d-flex align-items-center gap-1" style={{ fontSize: '0.85rem', color: '#854d0e', backgroundColor: '#fef9c3', borderColor: '#fde047' }}>
+                            <span>⏳</span> Đang trong quá trình duyệt
+                          </span>
+                        ) : (
+                          <button className="btn fw-bold text-white px-4 rounded-pill" style={{ backgroundColor: '#164e63' }} onClick={() => handleSubscribeClick(pkg)}>Đăng ký gói</button>
+                        )}
                       </div>
                     </div>
-                    <div className="d-flex align-items-center gap-3">
-                      <span className="fw-bold text-dark fs-5">{pkg.basePrice?.toLocaleString('vi-VN')} VNĐ</span>
-                      <button className="btn fw-bold text-white px-4 rounded-pill" style={{ backgroundColor: '#164e63' }} onClick={() => handleSubscribeClick(pkg)}>Đăng ký gói</button>
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -568,7 +823,7 @@ export default function VehicleSection() {
               </h5>
               <button type="button" className="btn-close" onClick={() => setShowSubscribeModal(false)}></button>
             </div>
-            
+
             <div className="mb-4 bg-light p-3 rounded-3 border">
               <h6 className="fw-bold text-primary mb-1">{selectedPackage?.policyName}</h6>
               <h4 className="fw-bold m-0 mt-2" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ <span className="fs-6 text-muted fw-normal">/ {selectedPackage?.baseDurationMinutes / 60 / 24} ngày</span></h4>
@@ -576,14 +831,14 @@ export default function VehicleSection() {
 
             {/* Step indicator */}
             <div className="d-flex justify-content-center gap-2 pt-3 pb-1 px-4" style={{ borderBottom: '1px solid #f1f5f9' }}>
-              {[{ n: 1, label: 'Thông tin' }, { n: 2, label: 'Thanh toán' }].map(s => (
+              {[{ n: 1, label: 'Thông tin' }, { n: 2, label: 'Thanh toán' }, { n: 3, label: 'Hoàn tất' }].map(s => (
                 <div key={s.n} className="d-flex align-items-center gap-1">
                   <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold small"
                     style={{ width: 26, height: 26, background: modalStep >= s.n ? '#164e63' : '#e2e8f0', color: modalStep >= s.n ? '#fff' : '#94a3b8', fontSize: '0.75rem' }}>
                     {modalStep > s.n ? '✓' : s.n}
                   </div>
                   <span className="small fw-semibold" style={{ color: modalStep >= s.n ? '#164e63' : '#94a3b8' }}>{s.label}</span>
-                  {s.n < 2 && <span style={{ color: '#cbd5e1', margin: '0 4px' }}>›</span>}
+                  {s.n < 3 && <span style={{ color: '#cbd5e1', margin: '0 4px' }}>›</span>}
                 </div>
               ))}
             </div>
@@ -673,6 +928,20 @@ export default function VehicleSection() {
                             <label className="form-label small fw-bold text-dark">Biển số xe *</label>
                             <input type="text" required className="form-control" value={newVehicleData.licensePlate} onChange={e => setNewVehicleData({ ...newVehicleData, licensePlate: e.target.value })} placeholder="Ví dụ: 30A-123.45" />
                           </div>
+                          <div className="mb-2">
+                            <label className="form-label small fw-bold text-dark">Loại phương tiện *</label>
+                            <select
+                              className="form-select"
+                              value={newVehicleData.vehicleTypeId || getPolicyVehicleTypeId(selectedPackage) || (vehicleTypes[0]?.vehicleTypeId ? String(vehicleTypes[0].vehicleTypeId) : '')}
+                              onChange={e => setNewVehicleData({ ...newVehicleData, vehicleTypeId: e.target.value })}
+                            >
+                              {vehicleTypes.map(t => (
+                                <option key={t.vehicleTypeId || t.id} value={t.vehicleTypeId || t.id}>
+                                  {t.typeName || t.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                           <div className="row g-2 mt-1">
                             <div className="col-6">
                               <label className="form-label small fw-bold text-dark">Hãng xe</label>
@@ -702,17 +971,29 @@ export default function VehicleSection() {
                 </>
               )}
 
-              {/* ===== STEP 2: PAYMENT QR ===== */}
+              {/* ===== STEP 2: PAYMENT METHOD SELECTION ===== */}
               {modalStep === 2 && (
-                <div className="text-center py-2">
-                  {/* Success header */}
-                  <div className="mb-4">
-                    <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                      style={{ width: 64, height: 64, background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', fontSize: '2rem' }}>✅</div>
-                    <h5 className="fw-bold text-dark mb-1">Yêu cầu đã được gửi!</h5>
+                <div className="py-2 text-center">
+                  <div className="mb-3">
+                    <h5 className="fw-bold text-dark mb-1">Chọn hình thức thanh toán</h5>
                     <p className="text-muted small mb-0">
                       Gói <strong>{selectedPackage?.policyName?.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '')}</strong> cho xe <strong>{submittedLicensePlate}</strong>
                     </p>
+                  </div>
+
+                  <div className="mb-4 text-start">
+                    <label className="form-label small text-muted fw-semibold mb-2">💳 Phương thức thanh toán *</label>
+                    <div className="card p-3 rounded-3 shadow-sm" style={{ border: '2px solid #2563eb', backgroundColor: '#eff6ff' }}>
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="rounded-3 p-2 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40, background: '#dbeafe' }}>
+                          <span style={{ fontSize: '1.2rem' }}>💳</span>
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark mb-0" style={{ fontSize: '0.95rem' }}>Thanh toán qua VNPay (Ngân hàng / QR)</div>
+                          <div className="text-muted small">Thanh toán trực tuyến nhanh chóng qua VNPay</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Order summary */}
@@ -735,49 +1016,71 @@ export default function VehicleSection() {
                     </div>
                   </div>
 
-                  {/* QR / Payment section */}
-                  {paymentQrData ? (
-                    <div className="mb-4">
-                      <p className="small text-muted mb-4">
-                        Vui lòng nhấp vào nút bên dưới để mở cổng thanh toán VNPay. Bạn có thể quét mã QR bằng ứng dụng ngân hàng tại trang thanh toán của VNPay.
-                      </p>
-                      {paymentUrl && (
-                        <button
-                          type="button"
-                          onClick={() => { window.open(paymentUrl, '_blank'); }}
-                          className="btn fw-bold px-5 py-3 rounded-pill text-white d-inline-flex align-items-center justify-content-center gap-3 w-100"
-                          style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.4)', fontSize: '1.1rem', border: 'none' }}
-                        >
-                          <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" alt="VNPay" style={{ height: 24, width: 'auto', filter: 'brightness(0) invert(1)' }} />
-                          Thanh toán qua VNPay
-                        </button>
-                      )}
-                    </div>
-                  ) : paymentError === 'api_error' || paymentError === 'no_request_id' ? (
-                    <div className="rounded-3 p-3 mb-4" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-                      <div className="d-flex align-items-start gap-2 text-start">
-                        <span>⚠️</span>
-                        <div className="small">
-                          <strong className="text-amber-700">Không thể khởi tạo thanh toán online</strong><br />
-                          Yêu cầu của bạn đã được ghi nhận. Vui lòng đến quầy để hoàn tất thanh toán, hoặc liên hệ hotline <strong>1900 8868</strong>.
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-3 p-3 mb-4" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                      <div className="small text-primary">
-                        ℹ️ Yêu cầu đã được ghi nhận. Ban quản lý sẽ xử lý và liên hệ với bạn.
-                      </div>
-                    </div>
-                  )}
+                  <div className="mb-3">
+                    <p className="small text-muted mb-3 text-start">
+                      Nhấp nút VNPay bên dưới để mở cổng thanh toán ngân hàng trực tuyến.
+                    </p>
+                    {paymentUrl && (
+                      <button
+                        type="button"
+                        onClick={() => window.open(paymentUrl, '_blank')}
+                        className="btn fw-bold px-5 py-3 rounded-pill text-white d-inline-flex align-items-center justify-content-center gap-3 w-100 mb-3"
+                        style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', boxShadow: '0 4px 12px rgba(37,99,235,0.4)', fontSize: '1.05rem', border: 'none' }}
+                      >
+                        <img src="https://vincheck.vn/wp-content/uploads/2021/05/logo-vnpay.png" alt="VNPay" style={{ height: 24, width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                        Thanh toán qua VNPay
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-outline-primary fw-bold rounded-pill w-100 py-2"
+                      onClick={() => setModalStep(3)}
+                    >
+                      Đã hoàn tất / Chuyển sang bước Hoàn tất →
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                  {/* Note */}
-                  <p className="small text-muted mb-4">
-                    Sau khi thanh toán, vui lòng chờ ban quản lý duyệt và kích hoạt thẻ tháng của bạn.
+              {/* ===== STEP 3: COMPLETION / SUCCESS ===== */}
+              {modalStep === 3 && (
+                <div className="text-center py-3">
+                  <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                    style={{ width: 72, height: 72, background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', fontSize: '2.5rem', boxShadow: '0 4px 12px rgba(34,197,94,0.3)' }}>🎉</div>
+                  <h4 className="fw-bold text-dark mb-1">Yêu cầu đăng ký hoàn tất!</h4>
+                  <p className="text-muted small mb-4">
+                    Gói <strong>{selectedPackage?.policyName?.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '')}</strong> cho xe <strong>{submittedLicensePlate}</strong> đã được ghi nhận vào hệ thống.
                   </p>
 
-                  <button className="btn btn-outline-secondary rounded-pill px-4" onClick={handleCloseSubscribeModal}>
-                    Đóng
+                  <div className="rounded-3 p-3 mb-4 text-start" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div className="d-flex justify-content-between small mb-2">
+                      <span className="text-muted">Gói dịch vụ</span>
+                      <strong className="text-dark">{selectedPackage?.policyName?.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '')}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between small mb-2">
+                      <span className="text-muted">Phương tiện</span>
+                      <strong className="text-dark">{submittedLicensePlate}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between small mb-2">
+                      <span className="text-muted">Hình thức thanh toán</span>
+                      <span className="badge border fw-bold" style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                        💳 VNPay / Ngân hàng
+                      </span>
+                    </div>
+                    <div className="border-top pt-2 mt-2 d-flex justify-content-between">
+                      <span className="fw-bold">Tổng thanh toán</span>
+                      <strong className="fs-5" style={{ color: '#164e63' }}>{selectedPackage?.basePrice?.toLocaleString('vi-VN')}đ</strong>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3 p-3 mb-4 text-start" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <small className="text-success d-block fw-semibold mb-1">📌 Ghi chú kích hoạt thẻ:</small>
+                    <small className="text-dark d-block" style={{ lineHeight: '1.5' }}>
+                      Ban quản lý sẽ xác minh thanh toán online và kích hoạt thẻ tháng cho xe <strong>{submittedLicensePlate}</strong> trong thời gian sớm nhất.
+                    </small>
+                  </div>
+
+                  <button className="btn fw-bold text-white rounded-pill px-5 py-2.5" style={{ backgroundColor: '#164e63' }} onClick={handleCloseSubscribeModal}>
+                    Đã hiểu &amp; Hoàn tất
                   </button>
                 </div>
               )}
