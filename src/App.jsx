@@ -13,7 +13,6 @@ import Footer from './modules/landing/components/Footer';
 import LandingPage from './modules/landing/pages/LandingPage';
 import SearchPage from './modules/search/pages/SearchPage';
 import AuthPage from './modules/auth/pages/AuthPage';
-import ContactPage from './modules/contact/pages/ContactPage';
 import PricingPage from './modules/pricing/pages/PricingPage';
 import PaymentResultPage from './modules/payment/pages/PaymentResultPage';
 import NotFoundPage from './modules/not-found/pages/NotFoundPage';
@@ -112,7 +111,6 @@ export default function App() {
           <Route path="/locations" element={<PublicLayout><SearchPage /></PublicLayout>} />
           <Route path="/pricing" element={<PublicLayout><PricingPage /></PublicLayout>} />
           <Route path="/payment-result" element={<PublicLayout><PaymentResultPage /></PublicLayout>} />
-          <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
           <Route path="/auth" element={<AuthPage />} />
 
           {/* User Routes */}

@@ -114,16 +114,24 @@ export default function IncidentPanel({ branchId }) {
   useEffect(() => { fetchIncidents(); }, [branchId]);
 
   /* ── derived ── */
-  const filtered = incidents.filter(i => {
-    const matchStatus   = statusFilter   === 'ALL' || i.status   === statusFilter;
-    const matchPriority = priorityFilter === 'ALL' || i.priority === priorityFilter;
-    const q = search.toLowerCase();
-    const matchSearch   = !q
-      || i.title?.toLowerCase().includes(q)
-      || i.reporterName?.toLowerCase().includes(q)
-      || i.description?.toLowerCase().includes(q);
-    return matchStatus && matchPriority && matchSearch;
-  });
+  const filtered = incidents
+    .filter(i => {
+      const matchStatus   = statusFilter   === 'ALL' || i.status   === statusFilter;
+      const matchPriority = priorityFilter === 'ALL' || i.priority === priorityFilter;
+      const q = search.toLowerCase();
+      const matchSearch   = !q
+        || i.title?.toLowerCase().includes(q)
+        || i.reporterName?.toLowerCase().includes(q)
+        || i.description?.toLowerCase().includes(q);
+      return matchStatus && matchPriority && matchSearch;
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      if (!Number.isFinite(aTime)) return 1;
+      if (!Number.isFinite(bTime)) return -1;
+      return bTime - aTime;
+    });
 
   const countByStatus = (s) => incidents.filter(i => i.status === s).length;
 

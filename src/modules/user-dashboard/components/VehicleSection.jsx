@@ -6,6 +6,22 @@ import parkingApi from '../../search/api/parkingApi';
 import { formatDate } from '../../../shared/utils/format';
 import { isVehicleCompatibleWithPolicy, getPolicyVehicleTypeId, getVehicleTypeId } from '../../../shared/utils/vehiclePackageValidation';
 
+const getVehicleTypeLabel = (typeName) => {
+  const normalized = String(typeName || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const labels = {
+    CAR: 'Ô tô',
+    ELECTRIC_CAR: 'Ô tô điện',
+    MOTORBIKE: 'Xe máy',
+    MOTORCYCLE: 'Xe máy',
+    ELECTRIC_MOTORBIKE: 'Xe máy điện',
+    BICYCLE: 'Xe đạp',
+    ELECTRIC_BICYCLE: 'Xe đạp điện',
+    TRUCK: 'Xe tải',
+    BUS: 'Xe buýt',
+  };
+  return labels[normalized] || typeName || 'Phương tiện';
+};
+
 const getDaysLeft = (dateStr) => {
   if (!dateStr) return null;
   const diffTime = new Date(dateStr) - new Date();
@@ -177,11 +193,19 @@ export default function VehicleSection() {
       return;
     }
 
+    const branchId = ticket.branch?.parkingBranchId
+      || ticket.parkingBranch?.parkingBranchId
+      || ticket.branchId
+      || ticket.parkingBranchId;
+    if (!branchId) {
+      toast.error('Vé hiện tại không có thông tin chi nhánh. Không thể gia hạn.');
+      return;
+    }
+
     setSubscribeMode('renew');
     setRenewTicket(ticket);
     setSelectedPackage(pkg);
-    const branchId = ticket.branch?.parkingBranchId || ticket.branchId || ticket.parkingBranchId;
-    setSelectedBranchId(branchId ? String(branchId) : (branches.length > 0 ? String(branches[0].parkingBranchId || branches[0].id) : ''));
+    setSelectedBranchId(String(branchId));
     setSubscribeVehicleId(String(vehicleId));
     setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
     setModalStep(1);
@@ -198,8 +222,18 @@ export default function VehicleSection() {
 
   const handleConfirmSubscribe = async (e) => {
     e.preventDefault();
-    if (!selectedBranchId) return toast.warning('Vui lòng chọn chi nhánh đăng ký!');
     if (!selectedPackage) return toast.warning('Vui lòng chọn gói dịch vụ!');
+
+    const renewalBranchId = renewTicket?.branch?.parkingBranchId
+      || renewTicket?.parkingBranch?.parkingBranchId
+      || renewTicket?.branchId
+      || renewTicket?.parkingBranchId;
+    const requestBranchId = subscribeMode === 'renew' ? renewalBranchId : selectedBranchId;
+    if (!requestBranchId) {
+      return toast.warning(subscribeMode === 'renew'
+        ? 'Không tìm thấy chi nhánh của vé hiện tại.'
+        : 'Vui lòng chọn chi nhánh đăng ký!');
+    }
 
     if (subscribeVehicleId !== 'new' && subscribeMode !== 'renew') {
       const selectedVehicle = vehicles.find(v =>
@@ -229,8 +263,8 @@ export default function VehicleSection() {
       let vehicleId;
       if (subscribeVehicleId === 'new') {
         if (!newVehicleData.licensePlate.trim()) { setSubmitting(false); return toast.warning('Vui lòng nhập biển số xe!'); }
-        const policyVehicleTypeId = newVehicleData.vehicleTypeId || getPolicyVehicleTypeId(selectedPackage) || (vehicleTypes.length > 0 ? vehicleTypes[0].vehicleTypeId : null);
-        if (!policyVehicleTypeId) { setSubmitting(false); return toast.error('Vui lòng chọn loại phương tiện.'); }
+        const policyVehicleTypeId = getPolicyVehicleTypeId(selectedPackage);
+        if (!policyVehicleTypeId) { setSubmitting(false); return toast.error('Gói dịch vụ chưa được cấu hình loại phương tiện.'); }
         const created = await parkingApi.createVehicle({
           licensePlate: newVehicleData.licensePlate.trim().replace(/[^A-Za-z0-9\-.]/g, ''),
           vehicleColor: newVehicleData.vehicleColor.trim(),
@@ -248,7 +282,7 @@ export default function VehicleSection() {
 
       const requestPayload = {
         policyId: selectedPackage.pricePolicyId || selectedPackage.id,
-        branchId: Number(selectedBranchId),
+        branchId: Number(requestBranchId),
       };
 
       const reqResult = subscribeMode === 'renew'
@@ -460,6 +494,13 @@ export default function VehicleSection() {
   const matchingVehicles = selectedPackage
     ? vehicles.filter(v => isVehicleCompatibleWithPolicy(v, selectedPackage) && !isVehicleRegistered(v))
     : vehicles.filter(v => !isVehicleRegistered(v));
+  const selectedPackageVehicleTypeId = getPolicyVehicleTypeId(selectedPackage);
+  const selectedPackageVehicleType = vehicleTypes.find(type =>
+    String(type.vehicleTypeId || type.id) === String(selectedPackageVehicleTypeId)
+  );
+  const selectedBranchExists = branches.some(branch =>
+    String(branch.parkingBranchId || branch.id) === String(selectedBranchId)
+  );
 
   if (loading) {
     return (
@@ -494,8 +535,10 @@ export default function VehicleSection() {
                 const pName = rawName.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '').replace('[Gói ', '').replace(']', '');
                 const bName = req.branch?.branchName || req.branchName || req.parkingBranchName || '—';
                 const statusStr = String(req.status ?? '').toUpperCase();
-                const isAwaitingPayment = statusStr === 'PENDING_PAYMENT' || statusStr === '0';
-                const isAwaitingApproval = statusStr === 'PENDING_APPROVAL' || statusStr === '1';
+                const paymentStatus = String(req.payment?.paymentStatus || req.payment?.status || '').toUpperCase();
+                const isPaymentSuccessful = ['PAID', 'SUCCESS', 'COMPLETED'].includes(paymentStatus)
+                  || (String(req.payment?.responseCode || '') === '00' && Boolean(req.payment?.paidAt));
+                const isAwaitingPayment = !isPaymentSuccessful && (statusStr === 'PENDING_PAYMENT' || statusStr === '0');
                 return (
                   <div key={req.requestId || req.monthlyTicketRequestId || req.id || idx}
                     className="card rounded-4 shadow-sm overflow-hidden"
@@ -539,14 +582,16 @@ export default function VehicleSection() {
                               {isProcessing ? 'Đang xử lý...' : 'Thanh toán'}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="btn btn-outline-danger fw-bold rounded-pill px-3"
-                            disabled={isProcessing}
-                            onClick={() => handleCancelPendingRequest(req)}
-                          >
-                            Hủy
-                          </button>
+                          {isAwaitingPayment && (
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger fw-bold rounded-pill px-3"
+                              disabled={isProcessing}
+                              onClick={() => handleCancelPendingRequest(req)}
+                            >
+                              Hủy
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -682,7 +727,7 @@ export default function VehicleSection() {
                       <div className="text-muted small">{v.vehicleBrand || 'Hãng xe'} {v.vehicleColor ? `(${v.vehicleColor})` : ''}</div>
                       <h4 className="fw-bold text-dark m-0" style={{ letterSpacing: '1px', color: '#164e63' }}>{v.licensePlate}</h4>
                       <div className="text-muted small mt-1">
-                        {v.vehicleTypeName || 'Phương tiện'} • {
+                        {getVehicleTypeLabel(v.vehicleTypeName)} • {
                           isVehicleActive(v) ? (
                             <span className="text-success fw-semibold">🎫 Đã có thẻ tháng</span>
                           ) : isVehiclePending(v) ? (
@@ -798,7 +843,7 @@ export default function VehicleSection() {
               <div className="mb-3">
                 <label className="form-label small text-muted fw-semibold">Loại phương tiện</label>
                 <select className="form-select" value={formData.vehicleTypeId} onChange={e => setFormData({ ...formData, vehicleTypeId: e.target.value })}>
-                  {vehicleTypes.map(type => <option key={type.vehicleTypeId} value={type.vehicleTypeId}>{type.typeName}</option>)}
+                  {vehicleTypes.map(type => <option key={type.vehicleTypeId} value={type.vehicleTypeId}>{getVehicleTypeLabel(type.typeName)}</option>)}
                 </select>
               </div>
               <div className="d-flex gap-2 justify-content-end mt-4">
@@ -883,11 +928,27 @@ export default function VehicleSection() {
 
                   <form onSubmit={handleConfirmSubscribe}>
                     <div className="mb-3">
-                      <label className="form-label small text-muted fw-semibold mb-2">📍 Chọn chi nhánh</label>
-                      <select className="form-select mb-3" value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)} required>
+                      <label className="form-label small text-muted fw-semibold mb-2">
+                        📍 {subscribeMode === 'renew' ? 'Chi nhánh gia hạn' : 'Chọn chi nhánh'}
+                      </label>
+                      <select
+                        className="form-select mb-3"
+                        value={selectedBranchId}
+                        onChange={e => setSelectedBranchId(e.target.value)}
+                        required
+                        disabled={subscribeMode === 'renew'}
+                      >
                         <option value="">-- Chọn chi nhánh --</option>
+                        {selectedBranchId && !selectedBranchExists && (
+                          <option value={selectedBranchId}>
+                            {renewTicket?.branch?.branchName || renewTicket?.parkingBranch?.branchName || renewTicket?.branchName || renewTicket?.parkingBranchName || `Chi nhánh #${selectedBranchId}`}
+                          </option>
+                        )}
                         {branches.map(b => <option key={b.parkingBranchId || b.id} value={b.parkingBranchId || b.id}>{b.branchName || b.parkingBranchName || b.name}</option>)}
                       </select>
+                      {subscribeMode === 'renew' && (
+                        <small className="text-muted d-block mb-3">Chi nhánh được cố định theo vé hiện tại.</small>
+                      )}
 
                       <label className="form-label small text-muted fw-semibold mb-2">
                         {matchingVehicles.length > 0 ? '🚗 Chọn phương tiện' : '🚗 Thông tin phương tiện đăng ký'}
@@ -932,15 +993,14 @@ export default function VehicleSection() {
                             <label className="form-label small fw-bold text-dark">Loại phương tiện *</label>
                             <select
                               className="form-select"
-                              value={newVehicleData.vehicleTypeId || getPolicyVehicleTypeId(selectedPackage) || (vehicleTypes[0]?.vehicleTypeId ? String(vehicleTypes[0].vehicleTypeId) : '')}
-                              onChange={e => setNewVehicleData({ ...newVehicleData, vehicleTypeId: e.target.value })}
+                              value={selectedPackageVehicleTypeId || ''}
+                              disabled
                             >
-                              {vehicleTypes.map(t => (
-                                <option key={t.vehicleTypeId || t.id} value={t.vehicleTypeId || t.id}>
-                                  {t.typeName || t.name}
-                                </option>
-                              ))}
+                              <option value={selectedPackageVehicleTypeId || ''}>
+                                {getVehicleTypeLabel(selectedPackageVehicleType?.typeName || selectedPackageVehicleType?.name || selectedPackage?.vehicleType?.typeName || selectedPackage?.vehicleTypeName)}
+                              </option>
                             </select>
+                            <small className="text-muted">Loại phương tiện được cố định theo gói đã chọn.</small>
                           </div>
                           <div className="row g-2 mt-1">
                             <div className="col-6">

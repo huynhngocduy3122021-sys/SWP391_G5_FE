@@ -112,6 +112,7 @@ export default function MemberPanel({ branchId }) {
   const [approvingRequest, setApprovingRequest] = useState(null);
   const [approveCardId, setApproveCardId] = useState('');
   const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [cancellingRequestId, setCancellingRequestId] = useState(null);
   const [createCardForm, setCreateCardForm] = useState({ cardCode: '', parkingBranchId: '', cardType: 'NORMAL' });
   const [editCardForm, setEditCardForm] = useState({ cardCode: '', parkingBranchId: '', status: '', cardType: 'NORMAL' });
   const [submittingCard, setSubmittingCard] = useState(false);
@@ -701,6 +702,23 @@ export default function MemberPanel({ branchId }) {
     }
   };
 
+  const handleCancelPendingPaymentRequest = async request => {
+    const requestId = request?.id || request?.requestId || request?.monthlyTicketRequestId;
+    if (!requestId) return toast.error('Không tìm thấy mã yêu cầu để hủy.');
+    if (!window.confirm('Bạn có chắc chắn muốn hủy yêu cầu đang chờ thanh toán này?')) return;
+
+    setCancellingRequestId(String(requestId));
+    try {
+      await managerApi.rejectMonthlyTicketRequest(requestId);
+      toast.success('Đã hủy yêu cầu chờ thanh toán.');
+      await fetchAll();
+    } catch (err) {
+      toast.error(String(err.response?.data?.message || err.response?.data || 'Không thể hủy yêu cầu lúc này.'));
+    } finally {
+      setCancellingRequestId(null);
+    }
+  };
+
   const normalizeReqStatus = (status) => {
     const value = String(status ?? '').trim().toUpperCase();
 
@@ -929,6 +947,8 @@ export default function MemberPanel({ branchId }) {
                     const isProcessed = r.isProcessed;
                     const isPaid = r.isPaid;
                     const canApprove = r.requestStage === 'pending_approval' && !isProcessed;
+                    const canCancel = r.requestStage === 'pending_payment' && !isPaid && !isProcessed;
+                    const isCancelling = String(cancellingRequestId) === String(r.id || r.requestId || r.monthlyTicketRequestId);
                     const statusView = {
                       pending_payment: { label: 'Chờ thanh toán', bg: 'warning', text: 'dark' },
                       pending_approval: { label: 'Đã thanh toán (Chờ duyệt)', bg: 'info', text: 'white' },
@@ -957,6 +977,17 @@ export default function MemberPanel({ branchId }) {
                                 {hasExisting ? 'Duyệt gia hạn' : 'Duyệt / Cấp Thẻ'}
                               </Button>
                             </div>
+                          )}
+                          {canCancel && (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="fw-bold px-3"
+                              disabled={isCancelling}
+                              onClick={() => handleCancelPendingPaymentRequest(r)}
+                            >
+                              {isCancelling ? 'Đang hủy...' : 'Hủy yêu cầu'}
+                            </Button>
                           )}
                         </td>
                       </tr>
@@ -1047,7 +1078,7 @@ export default function MemberPanel({ branchId }) {
           <Modal.Header closeButton><Modal.Title className="fs-6 fw-bold">Thêm thẻ RFID mới</Modal.Title></Modal.Header>
           <Modal.Body className="d-flex flex-column gap-3">
             <Form.Group><Form.Label className="small fw-bold text-muted">MÃ THẺ (RFID CODE)</Form.Label><Form.Control type="text" placeholder="VD: CARD-9921" value={createCardForm.cardCode} onChange={e => setCreateCardForm({ ...createCardForm, cardCode: e.target.value })} required /></Form.Group>
-            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={createCardForm.cardType} onChange={e => setCreateCardForm({ ...createCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng (MONTH-)</option><option value="VIP">Thẻ VIP (VIP-)</option><option value="EMPLOYEE">Thẻ nhân viên (EMP-)</option></Form.Select></Form.Group>
+            <Form.Group><Form.Label className="small fw-bold text-muted">LOẠI THẺ</Form.Label><Form.Select value={createCardForm.cardType} onChange={e => setCreateCardForm({ ...createCardForm, cardType: e.target.value })}><option value="NORMAL">Thẻ thường</option><option value="MONTHLY">Thẻ tháng (MONTH-)</option><option value="EMPLOYEE">Thẻ nhân viên (EMP-)</option></Form.Select></Form.Group>
             <Form.Group><Form.Label className="small fw-bold text-muted">CHI NHÁNH</Form.Label><Form.Select value={createCardForm.parkingBranchId} onChange={e => setCreateCardForm({ ...createCardForm, parkingBranchId: e.target.value })} required disabled={!!cleanBranchId}><option value="">Chọn chi nhánh...</option>{branches.map(b => <option key={b.parkingBranchId} value={b.parkingBranchId}>{b.branchName || b.parkingBranchName}</option>)}</Form.Select></Form.Group>
           </Modal.Body>
           <Modal.Footer><Button variant="outline-secondary" onClick={() => setShowCreateCard(false)}>Hủy</Button><Button variant="primary" type="submit" disabled={submittingCard}>{submittingCard ? 'Đang xử lý...' : 'Lưu thẻ'}</Button></Modal.Footer>

@@ -5,6 +5,7 @@ const managerApi = {
   // ── Parking Branch ────────────────────────────────────────
   getParkingBranches:       async ()           => (await API.get('/api/parking-branches')).data,
   getParkingBranchById:     async (id)         => (await API.get(`/api/parking-branches/${id}`)).data,
+  getMyBranchCapacity:      async ()           => (await API.get('/api/parking-branches/my-capacity')).data,
   createParkingBranch:      async (data)       => (await API.post('/api/parking-branches', data)).data,
   updateParkingBranch:      async (id, data)   => (await API.put(`/api/parking-branches/${id}`, data)).data,
   updateParkingBranchStatus: async (id, active) => (await API.patch(`/api/parking-branches/${id}/status`, null, { params: { active } })).data,
@@ -75,6 +76,9 @@ const managerApi = {
   // ── Parking Sessions (dùng cho Overview) ──────────────────
   getAllSessions:            async (params = {}) => (await API.get('/api/parking-sessions', { params })).data,
   getSessionImages:          async (id)          => (await API.get(`/api/parking-session/${id}/images`)).data,
+
+  // ── Payments (dùng cho doanh thu Staff/Manager) ───────────
+  getAllPayments:            async ()            => (await API.get('/api/payments/all')).data,
 };
 
 export default managerApi;
