@@ -213,6 +213,42 @@ export default function VehicleSection() {
     setShowSubscribeModal(true);
   };
 
+  const handleReregisterClick = (ticket) => {
+    const vehicleId = ticket.vehicle?.vehicleId || ticket.vehicle?.vehiclesId || ticket.vehicleId || ticket.vehiclesId;
+    const vehicle = vehicles.find(v => String(v.vehicleId || v.vehiclesId || v.id) === String(vehicleId)) || ticket.vehicle;
+    const policyId = ticket.pricePolicy?.pricePolicyId || ticket.pricePolicyId || ticket.policy?.pricePolicyId || ticket.policyId;
+    const policyName = ticket.pricePolicy?.policyName || ticket.policy?.policyName || ticket.policyName;
+    
+    const pkg = packages.find(p => policyId != null && String(p.pricePolicyId || p.id) === String(policyId))
+             || packages.find(p => policyName && p.policyName === policyName && isVehicleCompatibleWithPolicy(vehicle, p));
+
+    if (!pkg) {
+      toast.error('Không tìm thấy đúng gói hiện tại của vé. Vui lòng liên hệ quản lý để kiểm tra dữ liệu gói.');
+      return;
+    }
+
+    if (!vehicle || !isVehicleCompatibleWithPolicy(vehicle, pkg)) {
+      toast.error('Gói hiện tại không phù hợp với loại phương tiện. Không thể đăng ký lại.');
+      return;
+    }
+
+    const branchId = ticket.branch?.parkingBranchId || ticket.parkingBranch?.parkingBranchId || ticket.branchId || ticket.parkingBranchId;
+    if (!branchId) {
+      toast.error('Vé hiện tại không có thông tin chi nhánh. Không thể đăng ký lại.');
+      return;
+    }
+
+    setSubscribeMode('new');
+    setRenewTicket(null);
+    setSelectedPackage(pkg);
+    setSelectedBranchId(String(branchId));
+    setSubscribeVehicleId(String(vehicleId));
+    setNewVehicleData({ licensePlate: '', vehicleBrand: '', vehicleColor: '' });
+    setModalStep(1);
+    setPaymentUrl(''); setPaymentQrData(''); setPaymentError('');
+    setShowSubscribeModal(true);
+  };
+
   useEffect(() => {
     if (packages.length > 0 && location.state?.autoSubscribePackage) {
       const targetPkg = packages.find(p => String(p.pricePolicyId || p.id) === String(location.state.autoSubscribePackage.policyId || location.state.autoSubscribePackage.id));
@@ -405,8 +441,39 @@ export default function VehicleSection() {
     }
   };
 
-  const activeTickets = myTickets.filter(t => t.status === 1 || t.status === true || t.status === 'ACTIVE');
-  const expiredTickets = myTickets.filter(t => t.status === 0 || t.status === false || t.status === 'EXPIRED' || t.status === 'INACTIVE');
+  const activeTickets = myTickets.filter(t => t.status === 1 || t.status === true || String(t.status).toUpperCase() === 'ACTIVE');
+  const allExpiredTickets = myTickets.filter(t => t.status === 0 || t.status === false || ['EXPIRED', 'INACTIVE'].includes(String(t.status).toUpperCase()));
+
+  const getTicketVehicleIdentity = (ticket) => ({
+    id: String(ticket.vehicle?.vehicleId || ticket.vehicle?.vehiclesId || ticket.vehicle?.id || ticket.vehicleId || ticket.vehiclesId || ''),
+    plate: String(ticket.vehicle?.licensePlate || ticket.licensePlate || '').replace(/[^A-Z0-9]/gi, '').toUpperCase(),
+  });
+
+  const getTicketPackageKey = (ticket) => {
+    const policyId = ticket.pricePolicy?.pricePolicyId || ticket.pricePolicy?.id || ticket.pricePolicyId || ticket.policy?.pricePolicyId || ticket.policy?.id || ticket.policyId;
+    if (policyId != null) return `ID:${policyId}`;
+    const policyName = ticket.pricePolicy?.policyName || ticket.policy?.policyName || ticket.policyName;
+    if (policyName) return `NAME:${String(policyName).trim().toUpperCase()}`;
+    const cardCode = String(ticket.cardCode || ticket.parkingCard?.cardCode || '').toUpperCase();
+    if (cardCode.startsWith('VIP-')) return 'TYPE:VIP';
+    if (cardCode.startsWith('MONTH-')) return 'TYPE:MONTHLY';
+    return '';
+  };
+
+  const expiredTickets = allExpiredTickets.filter(expiredTicket => {
+    const expiredVehicle = getTicketVehicleIdentity(expiredTicket);
+    const expiredPackageKey = getTicketPackageKey(expiredTicket);
+    const hasSuccessfulReregistration = activeTickets.some(activeTicket => {
+      const activeVehicle = getTicketVehicleIdentity(activeTicket);
+      const sameVehicle = (expiredVehicle.id && activeVehicle.id && expiredVehicle.id === activeVehicle.id)
+        || (expiredVehicle.plate && activeVehicle.plate && expiredVehicle.plate === activeVehicle.plate);
+      if (!sameVehicle) return false;
+
+      const activePackageKey = getTicketPackageKey(activeTicket);
+      return expiredPackageKey && activePackageKey && expiredPackageKey === activePackageKey;
+    });
+    return !hasSuccessfulReregistration;
+  });
 
   // Requests currently pending approval
   const pendingRequests = myRequests.filter(r => {
@@ -611,26 +678,37 @@ export default function VehicleSection() {
                 const pName = rawName.replace('[Gói Tháng] ', '').replace('[Gói VIP President] ', '').replace('[Gói ', '').replace(']', '');
                 const bName = ticket.branch?.branchName || ticket.branchName || ticket.parkingBranchName || '—';
                 const cardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
+                const isCardLost = ticket.parkingCard?.status === 'LOST';
+
                 return (
                   <div key={ticket.monthlyTicketId || ticket.id || idx}
                     className="card rounded-4 shadow-sm overflow-hidden"
-                    style={{ border: `1.5px solid ${expiring ? '#f59e0b' : '#86efac'}`, background: expiring ? 'linear-gradient(135deg,#fffbeb,#fef9c3)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)' }}>
-                    <div className="px-4 py-2 d-flex justify-content-between align-items-center" style={{ background: expiring ? '#f59e0b' : '#16a34a' }}>
-                      <span className="text-white fw-bold small">{expiring ? '⚠️ Sắp hết hạn' : '✅ Đang hoạt động'}</span>
-                      {daysLeft !== null && <span className="text-white small fw-semibold opacity-90">{daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}</span>}
+                    style={{ border: `1.5px solid ${isCardLost ? '#ef4444' : (expiring ? '#f59e0b' : '#86efac')}`, background: isCardLost ? 'linear-gradient(135deg,#fef2f2,#fee2e2)' : (expiring ? 'linear-gradient(135deg,#fffbeb,#fef9c3)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)') }}>
+                    <div className="px-4 py-2 d-flex justify-content-between align-items-center" style={{ background: isCardLost ? '#ef4444' : (expiring ? '#f59e0b' : '#16a34a') }}>
+                      <span className="text-white fw-bold small">{isCardLost ? '🚨 Thẻ bị mất - Đang chờ cấp lại' : (expiring ? '⚠️ Sắp hết hạn' : '✅ Đang hoạt động')}</span>
+                      {daysLeft !== null && !isCardLost && <span className="text-white small fw-semibold opacity-90">{daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}</span>}
                     </div>
                     <div className="px-4 py-3">
                       <div className="row g-3 align-items-center">
                         <div className="col-md-8">
                           <div className="d-flex align-items-start gap-3">
                             <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 52, height: 52, background: expiring ? '#fef3c7' : '#dcfce7', fontSize: '1.6rem' }}>🎫</div>
+                              style={{ width: 52, height: 52, background: isCardLost ? '#fecaca' : (expiring ? '#fef3c7' : '#dcfce7'), fontSize: '1.6rem' }}>🎫</div>
                             <div>
                               <div className="fw-bold text-dark mb-1" style={{ fontSize: '1.05rem' }}>{pName}</div>
                               <div className="d-flex flex-wrap gap-3 small text-muted">
                                 <span>🚗 <strong className="text-dark">{plate}</strong></span>
                                 <span>📍 {bName}</span>
-                                {cardCode && <span>🪪 Thẻ: <strong className="text-dark">{cardCode}</strong></span>}
+                                {cardCode && (
+                                  <span>
+                                    🪪 Thẻ: 
+                                    {isCardLost ? (
+                                      <span className="text-danger fw-bold ms-1">Đã báo mất</span>
+                                    ) : (
+                                      <strong className="text-dark ms-1">{cardCode}</strong>
+                                    )}
+                                  </span>
+                                )}
                               </div>
                               <div className="d-flex flex-wrap gap-3 small text-muted mt-1">
                                 {ticket.startDate && <span>📅 Bắt đầu: {formatDate(ticket.startDate)}</span>}
@@ -642,16 +720,20 @@ export default function VehicleSection() {
                           </div>
                         </div>
                         <div className="col-md-4 d-flex flex-column gap-2 align-items-md-end">
-                          <button
-                            className="btn fw-bold px-4 rounded-pill text-white d-flex align-items-center gap-2"
-                            style={{ background: expiring ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#164e63,#0e7490)', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-                            onClick={() => handleRenewClick(ticket)}>
-                            🔄 Gia hạn gói
-                          </button>
-                          {expiring && (
-                            <span className="badge text-warning bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-pill px-3 py-1 small">
-                              ⚠️ Hãy gia hạn trước khi hết hạn
-                            </span>
+                          {!isCardLost && (
+                            <>
+                              <button
+                                className="btn fw-bold px-4 rounded-pill text-white d-flex align-items-center gap-2"
+                                style={{ background: expiring ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#164e63,#0e7490)', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                                onClick={() => handleRenewClick(ticket)}>
+                                🔄 Gia hạn gói
+                              </button>
+                              {expiring && (
+                                <span className="badge text-warning bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-pill px-3 py-1 small">
+                                  ⚠️ Hãy gia hạn trước khi hết hạn
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -683,7 +765,7 @@ export default function VehicleSection() {
                     </div>
                     <button className="btn btn-sm fw-bold rounded-pill px-3"
                       style={{ border: '1.5px solid #164e63', color: '#164e63', background: 'white' }}
-                      onClick={() => handleRenewClick(ticket)}>Đăng ký lại</button>
+                      onClick={() => handleReregisterClick(ticket)}>Đăng ký lại</button>
                   </div>
                 );
               })}

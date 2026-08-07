@@ -31,6 +31,11 @@ const staffApi = {
       }
     })).data;
   },
+  lookupMonthlyCard: async (cardCode, time) => {
+    return (await API.get('/api/monthly-tickets/card-lookup', {
+      params: { cardCode, time }
+    })).data;
+  },
   getActiveSessionByCardCode: async (cardCode, time) => {
     return (await API.get('/api/parking-sessions/active-session', {
       params: { cardCode, time }

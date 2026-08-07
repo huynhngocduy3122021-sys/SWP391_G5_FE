@@ -12,6 +12,7 @@ const GATE_ID = 'GATE-04';
 export default function GateInPanel() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
+  const [monthlyCardLookupStatus, setMonthlyCardLookupStatus] = useState(null);
 
   const [licensePlate, setLicensePlate] = useState('');
   const [cardCode, setCardCode] = useState('');
@@ -36,6 +37,16 @@ export default function GateInPanel() {
   const [vipOwnerName, setVipOwnerName] = useState('');
   const [selectedVipVehicleId, setSelectedVipVehicleId] = useState('');
   const [isMonthlyOrVipCard, setIsMonthlyOrVipCard] = useState(false);
+
+  const clearRegisteredVehicle = () => {
+    setLicensePlate('');
+    setVehicleColor('');
+    setVehicleBrand('');
+    setIsAutoPopulated(false);
+    setVipVehicles([]);
+    setVipOwnerName('');
+    setSelectedVipVehicleId('');
+  };
 
   //lấy dữ liệu từ những xe gần đây ở bên dưới và 6 xe gần nhất ở bên phải
   const fetchStatsData = async () => {
@@ -99,130 +110,59 @@ export default function GateInPanel() {
 
 
   const lookupCardCode = async (cleanCode) => {
-    try {
-      const ticketsData = await managerApi.getAllMonthlyTickets();
-      const tickets = Array.isArray(ticketsData) ? ticketsData : (ticketsData?.content || []);
+    const isRegisteredCard =
+      cleanCode.startsWith('MONTH-') ||
+      cleanCode.startsWith('VIP-') ||
+      cleanCode.startsWith('EMP-');
 
-      const matchTicket = tickets.find(t => {
-        const tCode = (t.cardCode || t.parkingCard?.cardCode || '').trim().toUpperCase();
-        return tCode === cleanCode || tCode === `MONTH-${cleanCode}` || tCode === `VIP-${cleanCode}` || tCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${tCode}` || cleanCode === `VIP-${tCode}` || cleanCode === `EMP-${tCode}`;
-      });
+    if (isRegisteredCard) {
+      const timeOffset = Number(localStorage.getItem('demoTimeOffset') || 0);
+      const tzOffset = new Date().getTimezoneOffset() * 60000;
+      const simulatedTime = new Date(Date.now() + timeOffset - tzOffset).toISOString().slice(0, -1);
 
-      if (matchTicket) {
-        let v = matchTicket.vehicle || {};
-        const ticketVehicleId = matchTicket.vehicleId || v.vehicleId;
+      try {
+        const result = await staffApi.lookupMonthlyCard(
+          cleanCode,
+          simulatedTime || undefined
+        );
 
-        if (ticketVehicleId) {
-          try {
-            const fetched = await managerApi.getVehicleById(ticketVehicleId);
-            if (fetched) v = fetched;
-          } catch (err) { }
+        setMonthlyCardLookupStatus(result.lookupStatus);
+
+        if (result.lookupStatus !== 'ACTIVE') {
+          clearRegisteredVehicle();
+          setIsMonthlyOrVipCard(true);
+          toast.error(result.message);
+          return false;
         }
 
-        if (!v.vehicleColor || !v.vehicleBrand) {
-          const localMatch = vehiclesList.find(x => String(x.vehicleId) === String(ticketVehicleId) || (x.licensePlate && v.licensePlate && x.licensePlate.toUpperCase().replace(/\s/g, '') === v.licensePlate.toUpperCase().replace(/\s/g, '')));
-          if (localMatch) v = { ...localMatch, ...v };
-        }
+        setLicensePlate(result.licensePlate || '');
+        setVehicleColor(result.vehicleColor || '');
+        setVehicleBrand(result.vehicleBrand || '');
+        if (result.vehicleTypeId) setVehicleTypeId(result.vehicleTypeId);
 
-        const isVip = cleanCode.startsWith('VIP-') || (matchTicket.cardCode || '').startsWith('VIP-') || (matchTicket.parkingCard?.cardCode || '').startsWith('VIP-');
-
-        if (isVip) {
-          const ownerId = matchTicket.userId || matchTicket.user?.id || matchTicket.user?.userId || v.userId || v.user?.id || v.user?.userId;
-          const ownerName = matchTicket.userFullName || matchTicket.user?.fullName || v.userFullName || v.user?.fullName || 'VIP Member';
-          setVipOwnerName(ownerName);
-          const uVehicles = vehiclesList.filter(x => {
-            if (ownerId && String(x.userId || x.user?.id || x.user?.userId) === String(ownerId)) return true;
-            if (ownerName && (x.userFullName || x.user?.fullName) === ownerName) return true;
-            return false;
-          });
-          setVipVehicles(uVehicles.length > 0 ? uVehicles : [v]);
-          setSelectedVipVehicleId(v.vehicleId || v.id || '');
-        } else {
-          setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
-        }
-        // Tìm thông tin xe 
-        const plate = v.licensePlate || matchTicket.licensePlate || '';
-        setLicensePlate(plate);
-        setVehicleColor(v.vehicleColor || '');
-        setVehicleBrand(v.vehicleBrand || '');
         setIsAutoPopulated(true);
         setIsMonthlyOrVipCard(true);
-
-        const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id || matchTicket.vehicleTypeId;
-        if (vTypeId) {
-          setVehicleTypeId(vTypeId);
-        } else {
-          const matchTypeName = (v.vehicleTypeName || v.vehicleType?.typeName || '').toLowerCase();
-          if (matchTypeName) {
-            const matchedType = vehicleTypes.find(vt => (vt.typeName || '').toLowerCase().includes(matchTypeName) || matchTypeName.includes((vt.typeName || '').toLowerCase()));
-            if (matchedType) setVehicleTypeId(matchedType.vehicleTypeId);
-          }
-        }
-        toast.success(`Tìm thấy vé tháng/VIP hoạt động cho xe: ${plate}!`);
+        toast.success(`Thẻ hợp lệ cho xe ${result.licensePlate}`);
         return true;
+      } catch (err) {
+        console.error("Lỗi khi tìm kiếm thông tin thẻ:", err);
+        return false;
       }
-      // Tìm biển số xe 
-      const matchVehicle = vehiclesList.find(v => {
-        const vCode = (v.cardCode || v.parkingCard?.cardCode || v.rfidCard?.cardCode || '').trim().toUpperCase();
-        return vCode === cleanCode || vCode === `MONTH-${cleanCode}` || vCode === `VIP-${cleanCode}` || vCode === `EMP-${cleanCode}` || cleanCode === `MONTH-${vCode}` || cleanCode === `VIP-${vCode}` || cleanCode === `EMP-${vCode}`;
-      });
+    }
 
-      if (matchVehicle) {
-        let v = matchVehicle;
-        if (v.vehicleId) {
-          try {
-            const fetched = await managerApi.getVehicleById(v.vehicleId);
-            if (fetched) v = fetched;
-          } catch (err) { }
-        }
-        const isVip = cleanCode.startsWith('VIP-') || (v.cardCode || '').startsWith('VIP-') || (v.parkingCard?.cardCode || '').startsWith('VIP-') || (v.rfidCard?.cardCode || '').startsWith('VIP-');
-
-        if (isVip) {
-          const ownerId = v.userId || v.user?.id || v.user?.userId;
-          const ownerName = v.userFullName || v.user?.fullName || 'VIP Member';
-          setVipOwnerName(ownerName);
-          const uVehicles = vehiclesList.filter(x => {
-            if (ownerId && String(x.userId || x.user?.id || x.user?.userId) === String(ownerId)) return true;
-            if (ownerName && (x.userFullName || x.user?.fullName) === ownerName) return true;
-            return false;
-          });
-          setVipVehicles(uVehicles.length > 0 ? uVehicles : [v]);
-          setSelectedVipVehicleId(v.vehicleId || v.id || '');
-        } else {
-          setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
-        }
-
-        const plate = v.licensePlate || '';
-        setLicensePlate(plate);
-        setVehicleColor(v.vehicleColor || '');
-        setVehicleBrand(v.vehicleBrand || '');
-        setIsAutoPopulated(true);
-        setIsMonthlyOrVipCard(isVip);
-
-        const vTypeId = v.vehicleTypeId || v.vehicleType?.vehicleTypeId || v.vehicleType?.id;
-        if (vTypeId) {
-          setVehicleTypeId(vTypeId);
-        } else {
-          const matchTypeName = (v.vehicleTypeName || v.vehicleType?.typeName || '').toLowerCase();
-          if (matchTypeName) {
-            const matchedType = vehicleTypes.find(vt => (vt.typeName || '').toLowerCase().includes(matchTypeName) || matchTypeName.includes((vt.typeName || '').toLowerCase()));
-            if (matchedType) setVehicleTypeId(matchedType.vehicleTypeId);
-          }
-        }
-        toast.success(`Tìm thấy thông tin xe đăng ký: ${plate}`);
-        return true;
-      }
-    } catch (err) { console.error("Lỗi khi tìm kiếm thông tin thẻ:", err); }
     return false;
   };
 
   useEffect(() => {
     const cleanCode = cardCode.trim().toUpperCase();
+
+    setMonthlyCardLookupStatus(null);
+
     if (!cleanCode) {
       if (isAutoPopulated) {
-        setLicensePlate(''); setVehicleColor(''); setVehicleBrand('');
+        clearRegisteredVehicle();
         if (vehicleTypes.length > 0) setVehicleTypeId(vehicleTypes[0].vehicleTypeId);
-        setIsAutoPopulated(false); setIsMonthlyOrVipCard(false); setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
+        setIsMonthlyOrVipCard(false);
       }
       return;
     }
@@ -232,9 +172,9 @@ export default function GateInPanel() {
     const delayDebounce = setTimeout(async () => {
       const found = await lookupCardCode(cleanCode);
       if (!found && isAutoPopulated) {
-        setLicensePlate(''); setVehicleColor(''); setVehicleBrand('');
+        clearRegisteredVehicle();
         if (vehicleTypes.length > 0) setVehicleTypeId(vehicleTypes[0].vehicleTypeId);
-        setIsAutoPopulated(false); setIsMonthlyOrVipCard(false); setVipVehicles([]); setVipOwnerName(''); setSelectedVipVehicleId('');
+        setIsMonthlyOrVipCard(false);
       }
     }, 500);
     return () => clearTimeout(delayDebounce);
@@ -326,8 +266,18 @@ export default function GateInPanel() {
       if (isBooking) setBookingCode('');
       fetchStatsData();
     } catch (err) {
-      let errorStr = err.message === 'Network Error' ? 'Không thể kết nối tới Backend!' : (err.response?.data?.message || err.response?.data || 'Lỗi server khi check-in!');
-      toast.error(typeof errorStr === 'string' ? errorStr : 'Lỗi server khi check-in!');
+      if (err.message === 'Network Error') {
+        toast.error('Không thể kết nối tới Backend!');
+      } else {
+        const message =
+          err?.response?.data?.message ||
+          (typeof err?.response?.data === 'string'
+            ? err.response.data
+            : null) ||
+          err?.message ||
+          'Không thể check-in';
+        toast.error(message);
+      }
     } finally { setSubmitting(false); }
   };
 
@@ -442,7 +392,7 @@ export default function GateInPanel() {
               )}
             </Form.Group>
 
-            <Button variant="success" size="lg" className="w-100 fw-bold d-flex align-items-center justify-content-center gap-2" disabled={submitting} onClick={handleConfirm}>
+            <Button variant="success" size="lg" className="w-100 fw-bold d-flex align-items-center justify-content-center gap-2" disabled={submitting || (checkIsMonthlyOrVip(cardCode) && monthlyCardLookupStatus !== 'ACTIVE' && monthlyCardLookupStatus !== null)} onClick={handleConfirm}>
               {submitting ? <Spinner animation="border" size="sm" /> : '⚡'} PHÁT THẺ & MỞ BARIE
             </Button>
           </Card>

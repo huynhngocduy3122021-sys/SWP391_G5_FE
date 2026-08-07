@@ -39,8 +39,8 @@ const adminApi = {
   },
 
   // Get all incidents/tickets for support tracking
-  getAllIncidents: async () => {
-    return (await API.get('/api/incidents')).data;
+  getAllIncidents: async (params = {}) => {
+    return (await API.get('/api/incidents', { params })).data;
   },
 
   // Get all payments for revenue report (includes paidAt for accurate timing)

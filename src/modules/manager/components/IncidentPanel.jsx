@@ -34,6 +34,14 @@ const fmtDt = (dt) => {
   return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')} ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
 };
 
+const isMonthlyLostCardIncident = (incident) => {
+  if (!incident || incident.incidentType !== 'LOST_CARD') return false;
+  const cardType = String(incident.parkingCardType || incident.cardType || '').toUpperCase();
+  const cardCode = String(incident.parkingCardCode || incident.cardCode || '').toUpperCase();
+  return incident.monthlyCardReplacementRequired === true
+    && (cardType === 'MONTHLY' || cardCode.startsWith('MONTH-'));
+};
+
 /* ── main component ──────────────────────── */
 export default function IncidentPanel({ branchId }) {
   const [incidents, setIncidents] = useState([]);
@@ -60,6 +68,71 @@ export default function IncidentPanel({ branchId }) {
   const [detailTarget, setDetailTarget] = useState(null);
   const [incidentImages, setIncidentImages] = useState(null);
   const [loadingImages, setLoadingImages] = useState(false);
+
+  // Modal thay thẻ
+  const [replaceTarget, setReplaceTarget] = useState(null);
+  const [replacementCardId, setReplacementCardId] = useState('');
+  const [availableCards, setAvailableCards] = useState([]);
+  const [replacing, setReplacing] = useState(false);
+  const [replaceErr, setReplaceErr] = useState('');
+
+  useEffect(() => {
+    if (!replaceTarget) return undefined;
+
+    let cancelled = false;
+    setReplacementCardId('');
+    setReplaceErr('');
+    setAvailableCards([]);
+
+    const loadAvailableReplacementCards = async () => {
+      try {
+        const [cardsRes, ticketsRes] = await Promise.all([
+          managerApi.getParkingCards(),
+          managerApi.getAllMonthlyTickets(),
+        ]);
+        if (cancelled) return;
+
+        const cards = Array.isArray(cardsRes?.content) ? cardsRes.content : (Array.isArray(cardsRes) ? cardsRes : []);
+        const tickets = Array.isArray(ticketsRes?.content) ? ticketsRes.content : (Array.isArray(ticketsRes) ? ticketsRes : []);
+        const now = Date.now();
+        const activeMonthlyCardIds = new Set(
+          tickets
+            .filter(ticket => {
+              const status = ticket.status;
+              const isActive = status === 1 || status === true || String(status).toUpperCase() === 'ACTIVE';
+              const endDate = ticket.endDate || ticket.expiryDate;
+              const endTime = endDate ? new Date(endDate).getTime() : null;
+              const isNotExpired = !endDate || (Number.isFinite(endTime) && endTime >= now);
+              return isActive && isNotExpired;
+            })
+            .map(ticket => ticket.parkingCardId || ticket.parkingCard?.parkingCardId || ticket.parkingCard?.id)
+            .filter(Boolean)
+            .map(String)
+        );
+        const targetBranchId = replaceTarget.parkingBranchId
+          || replaceTarget.branchId
+          || replaceTarget.parkingBranch?.parkingBranchId
+          || replaceTarget.parkingBranch?.id;
+
+        setAvailableCards(cards.filter(card => {
+          const cardId = card.parkingCardId || card.id;
+          const cardBranchId = card.parkingBranchId || card.branchId || card.parkingBranch?.parkingBranchId || card.parkingBranch?.id;
+          const cardType = String(card.type || card.cardType || '').toUpperCase();
+          const cardCode = String(card.cardCode || '').toUpperCase();
+          return String(card.status).toUpperCase() === 'AVAILABLE'
+            && (cardType === 'MONTHLY' || cardCode.startsWith('MONTH-'))
+            && String(cardBranchId) === String(targetBranchId)
+            && !activeMonthlyCardIds.has(String(cardId));
+        }));
+      } catch (err) {
+        console.error('Failed to fetch replacement cards', err);
+        if (!cancelled) setAvailableCards([]);
+      }
+    };
+
+    loadAvailableReplacementCards();
+    return () => { cancelled = true; };
+  }, [replaceTarget]);
 
   useEffect(() => {
     if (detailTarget) {
@@ -160,6 +233,23 @@ export default function IncidentPanel({ branchId }) {
       setCancelErr(String(err?.response?.data?.message || err?.response?.data || 'Thao tác thất bại!'));
     } finally {
       setCancelling(false);
+    }
+  };
+
+  /* ── replace card ── */
+  const handleReplaceCard = async () => {
+    if (!isMonthlyLostCardIncident(replaceTarget)) {
+      return setReplaceErr('Chỉ hỗ trợ thay thế cho thẻ tháng bị mất.');
+    }
+    if (!replacementCardId) return setReplaceErr('Vui lòng chọn thẻ RFID thay thế.');
+    setReplacing(true);
+    try {
+      await managerApi.replaceLostMonthlyCard(replaceTarget.incidentId, replacementCardId);
+      setReplaceTarget(null); setReplacementCardId(''); fetchIncidents();
+    } catch (err) {
+      setReplaceErr(String(err?.response?.data?.message || err?.response?.data || 'Không thể cấp thẻ thay thế!'));
+    } finally {
+      setReplacing(false);
     }
   };
 
@@ -292,9 +382,15 @@ export default function IncidentPanel({ branchId }) {
                             ✓ Giải quyết
                           </button>
                           <button type="button" onClick={() => { setCancelTarget(i); setCancelReason(''); setCancelErr(''); }}
-                            style={{ border: '1px solid #fca5a5', background: '#fff5f5', color: mt.danger, borderRadius: 6, padding: '3px 7px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600 }}>
+                            style={{ border: '1px solid #fca5a5', background: '#fff5f5', color: mt.danger, borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
                             ✕ Hủy
                           </button>
+                          {isMonthlyLostCardIncident(i) && !i.replacementCardId && (
+                            <button type="button" onClick={() => setReplaceTarget(i)}
+                              style={{ border: '1px solid #93c5fd', background: '#eff6ff', color: 'var(--vin-primary)', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600 }}>
+                              💳 Thay thẻ
+                            </button>
+                          )}
                         </>
                       )}
                     </td>
@@ -325,9 +421,13 @@ export default function IncidentPanel({ branchId }) {
                 ['SĐT báo cáo',   detailTarget.reporterPhone || '—'],
                 ['Nhân viên xử lý', detailTarget.assignedStaffName || 'Chưa phân công'],
                 ['Chi nhánh',     detailTarget.parkingBranchName || '—'],
+                ['Thẻ liên quan', detailTarget.parkingCardCode || '—'],
+                detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementCardId ? ['Thẻ thay thế', detailTarget.replacementCardCode || `#${detailTarget.replacementCardId}`] : null,
+                detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementTicketId ? ['Mã vé tháng mới', `#${detailTarget.replacementTicketId}`] : null,
+                detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementAt ? ['Thời gian cấp thẻ', fmtDt(detailTarget.replacementAt)] : null,
                 ['Tạo lúc',       fmtDt(detailTarget.createdAt)],
                 ['Giải quyết lúc', fmtDt(detailTarget.resolvedAt)],
-              ].map(([lbl, val]) => (
+              ].filter(Boolean).map(([lbl, val]) => (
                 <div key={lbl} style={{ display: 'flex', gap: '1rem', borderBottom: `1px solid ${mt.border}`, paddingBottom: '0.5rem' }}>
                   <div style={{ width: 140, color: mt.textMuted, fontWeight: 600, flexShrink: 0 }}>{lbl}</div>
                   <div style={{ color: mt.text }}>{val}</div>
@@ -435,6 +535,55 @@ export default function IncidentPanel({ branchId }) {
               <button onClick={handleCancel} disabled={cancelling}
                 style={{ border: 'none', background: '#dc2626', color: 'var(--vin-text-main)', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════ MODAL: Thay thẻ ════ */}
+      {replaceTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#3b82f6)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ color: 'var(--vin-text-main)', fontWeight: 700 }}>💳 Cấp thẻ thay thế #{replaceTarget.incidentId}</div>
+              <button onClick={() => setReplaceTarget(null)} disabled={replacing}
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'var(--vin-text-main)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              {replaceErr && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.5rem 0.75rem', color: mt.danger, fontSize: '0.8rem', marginBottom: '1rem' }}>⚠ {replaceErr}</div>}
+              
+              <div style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Thẻ bị mất: <strong style={{ color: mt.danger }}>{replaceTarget.parkingCardCode || 'Không rõ'}</strong></div>
+                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Loại thẻ: <strong>{replaceTarget.parkingCardType || 'Không rõ'}</strong></div>
+                <div style={{ color: mt.textMuted }}>Chi nhánh: <strong>{replaceTarget.parkingBranchName || replaceTarget.branchName || 'Không rõ'}</strong></div>
+              </div>
+
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: mt.textMuted, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                Chọn thẻ RFID mới *
+              </label>
+              <select 
+                value={replacementCardId} 
+                onChange={e => { setReplaceErr(''); setReplacementCardId(e.target.value); }}
+                style={{ width: '100%', border: `1px solid ${mt.border}`, borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: '0.85rem', outline: 'none' }}
+              >
+                <option value="">-- Chọn thẻ khả dụng --</option>
+                {availableCards.map(c => (
+                  <option key={c.parkingCardId || c.id} value={c.parkingCardId || c.id}>
+                    {c.cardCode} (Loại: {c.type})
+                  </option>
+                ))}
+              </select>
+              {availableCards.length === 0 && (
+                <div style={{ fontSize: '0.75rem', color: mt.danger, marginTop: 4 }}>Không có thẻ trống phù hợp với chi nhánh và loại thẻ này.</div>
+              )}
+            </div>
+            <div style={{ padding: '1rem 1.5rem', borderTop: `1px solid ${mt.border}`, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setReplaceTarget(null)} disabled={replacing}
+                style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}>Đóng</button>
+              <button onClick={handleReplaceCard} disabled={replacing || !replacementCardId}
+                style={{ border: 'none', background: !replacementCardId ? '#94a3b8' : 'linear-gradient(135deg,#1e3a8a,#3b82f6)', color: 'white', borderRadius: 8, padding: '0.5rem 1.25rem', cursor: 'pointer', fontWeight: 700 }}>
+                {replacing ? 'Đang cấp...' : 'Xác nhận cấp thẻ'}
               </button>
             </div>
           </div>
