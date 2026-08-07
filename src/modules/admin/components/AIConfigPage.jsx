@@ -32,7 +32,7 @@ export default function AIConfigPage() {
         managerApi.getParkingBranches().catch(() => []),
         adminApi.getAllSessions().catch(() => []),
         managerApi.getAllZones().catch(() => []),
-        adminApi.getAllIncidents().catch(() => ({ content: [] })),
+        adminApi.getAllIncidents({ page: 0, size: 100 }),
       ]);
 
       const brList = Array.isArray(br) ? br : (br?.content || br?.data || []);
@@ -43,8 +43,12 @@ export default function AIConfigPage() {
       setSessions(seList);
       setZones(zoList);
       
-      const incList = Array.isArray(incRes) ? incRes : (incRes?.content || incRes?.data || []);
-      setIncidents(incList);
+      const incList = Array.isArray(incRes) ? incRes : (incRes?.content || incRes?.data?.content || incRes?.data || []);
+      setIncidents([...incList].sort((a, b) => {
+        const aTime = new Date(a.createdAt || 0).getTime();
+        const bTime = new Date(b.createdAt || 0).getTime();
+        return bTime - aTime;
+      }));
     } catch (err) {
       console.error(err);
       toast.error('Không tải được dữ liệu phân tích và sự cố!');

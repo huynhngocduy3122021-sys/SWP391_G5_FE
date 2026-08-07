@@ -56,7 +56,9 @@ const managerApi = {
   getMonthlyTicketById:     async (id)         => (await API.get(`/api/monthly-tickets/${id}`)).data,
   createMonthlyTicket:      async (data)       => (await API.post('/api/monthly-tickets', data)).data,
   updateMonthlyTicket:      async (id, data)   => (await API.put(`/api/monthly-tickets/${id}`, data)).data,
+  stopMonthlyTicket:        async (id)         => (await API.patch(`/api/monthly-tickets/${id}/stop`)).data,
   deleteMonthlyTicket:      async (id)         => (await API.delete(`/api/monthly-tickets/${id}`)).data,
+
 
   // ── Monthly Ticket Requests ───────────────────────────────
   getAllMonthlyTicketRequests: async ()         => (await API.get('/api/monthly-ticket-requests')).data,
@@ -72,6 +74,7 @@ const managerApi = {
   assignIncident:           async (id, staffId) => (await API.put(`/api/incidents/${id}/assign`, { staffId: Number(staffId), assignedStaffId: Number(staffId), id: Number(staffId), userId: Number(staffId) })).data,
   getIncidentImages:        async (id)          => (await API.get(`/api/incidents/${id}/images`)).data,
   deleteIncidentImage:      async (incidentId, imageId) => (await API.delete(`/api/incidents/${incidentId}/images/${imageId}`)).data,
+  replaceLostMonthlyCard:   async (incidentId, replacementCardId) => (await API.put(`/api/incidents/${incidentId}/replace-monthly-card`, { replacementCardId: Number(replacementCardId) })).data,
 
   // ── Parking Sessions (dùng cho Overview) ──────────────────
   getAllSessions:            async (params = {}) => (await API.get('/api/parking-sessions', { params })).data,

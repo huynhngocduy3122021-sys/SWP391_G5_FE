@@ -430,24 +430,36 @@ export default function MemberPanel({ branchId }) {
     } catch (err) { toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi!')); }
   };
 
-  const handleToggleTicket = async (t) => {
-    const tid = getTicketId(t);
-    if (!tid) return toast.error("Không tìm thấy ID vé tháng!");
-    const isActive = t.status === 1 || t.status === true;
+  const handleStopTicket = async (ticket) => {
+    const ticketId = getTicketId(ticket);
+    if (!ticketId) return toast.error('Không tìm thấy ID vé tháng');
+
     try {
-      await managerApi.updateMonthlyTicket(tid, { vehicleId: t.vehicleId, parkingCardId: t.parkingCardId, guestName: t.guestName || null, guestPhone: t.guestPhone || null, startDate: t.startDate, endDate: t.endDate, status: isActive ? 0 : 1 });
-      const cardId = t.parkingCardId || t.parkingCard?.parkingCardId || t.parkingCard?.id;
-      const assocCard = allCards.find(c => String(c.parkingCardId) === String(cardId));
-      if (assocCard) {
-        await managerApi.updateParkingCard(assocCard.parkingCardId, {
-          ...assocCard,
-          status: isActive ? 'AVAILABLE' : 'IN_USE',
-          type: assocCard.type || assocCard.cardType || 'MONTHLY',
-          cardType: assocCard.cardType || assocCard.type || 'MONTHLY'
-        }).catch(err => console.error("Failed to sync card status during toggle:", err));
-      }
-      toast.success(isActive ? 'Đã tạm dừng vé!' : 'Đã kích hoạt vé!'); fetchAll();
-    } catch (err) { toast.error(String(err.response?.data?.message || err.response?.data || 'Lỗi!')); }
+      await managerApi.stopMonthlyTicket(ticketId);
+      toast.success('Đã tạm dừng vé tháng');
+      await fetchAll();
+    } catch (error) {
+      toast.error(String(error.response?.data?.message || error.response?.data || 'Không thể dừng vé tháng'));
+    }
+  };
+
+  const handleDeleteStoppedTicket = async (ticket) => {
+    const ticketId = getTicketId(ticket);
+    if (!ticketId) return toast.error('Không tìm thấy ID vé tháng');
+
+    const confirmed = window.confirm(
+      `Xóa vé tháng của xe ${ticket.licensePlate || ticket.vehicle?.licensePlate || ''}? ` +
+      'Thẻ RFID sẽ được giải phóng để cấp cho đăng ký mới.'
+    );
+    if (!confirmed) return;
+
+    try {
+      await managerApi.deleteMonthlyTicket(ticketId);
+      toast.success('Đã xóa vé tháng và giải phóng thẻ RFID');
+      await fetchAll();
+    } catch (error) {
+      toast.error(String(error.response?.data?.message || error.response?.data || 'Không thể xóa vé tháng'));
+    }
   };
 
   const handleApproveRequest = async (req) => {
@@ -913,8 +925,15 @@ export default function MemberPanel({ branchId }) {
                         <td className="small text-muted">{fmtDate(t.startDate)}<br />đến {fmtDate(t.endDate)}</td>
                         <td><Badge bg={isActive ? 'success' : 'secondary'}>{isActive ? 'Hiệu lực' : 'Tạm dừng'}</Badge></td>
                         <td>
-                          <Button variant="link" size="sm" className={`text-decoration-none px-1 fw-bold ${isActive ? 'text-warning' : 'text-success'}`} onClick={() => handleToggleTicket(t)}>{isActive ? 'Dừng' : 'Kích hoạt'}</Button>
-                          <Button variant="link" size="sm" className="text-danger text-decoration-none px-1" onClick={() => handleDeleteTicket(t)}>Xóa</Button>
+                          {isActive ? (
+                            <Button variant="link" size="sm" className="text-decoration-none px-1 fw-bold text-warning" onClick={() => handleStopTicket(t)}>
+                              Dừng
+                            </Button>
+                          ) : (
+                            <Button variant="link" size="sm" className="text-decoration-none px-1 fw-bold text-danger" onClick={() => handleDeleteStoppedTicket(t)}>
+                              Xóa
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
