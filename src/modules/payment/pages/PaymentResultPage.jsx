@@ -16,6 +16,36 @@ export default function PaymentResultPage() {
   useEffect(() => {
     const paymentType = searchParams.get("paymentType");
 
+    if (paymentType === 'LOST_CARD') {
+      const incidentId = searchParams.get('incidentId')
+        || localStorage.getItem('vinparking_lost_card_active_incident');
+      if (!incidentId) {
+        setPaymentResult({ success: false, message: 'Không tìm thấy mã báo cáo để xác minh thanh toán.' });
+        setVerifying(false);
+        return;
+      }
+      let active = true;
+      parkingApi.getIncidentById(incidentId)
+        .then((incident) => {
+          if (!active) return;
+          const paymentStatus = String(incident?.paymentStatus || incident?.payment?.paymentStatus || incident?.payment?.status || incident?.lostCardPayment?.paymentStatus || '').toUpperCase();
+          setPaymentResult({
+            success: paymentStatus === 'PAID',
+            message: paymentStatus === 'PAID'
+              ? 'Đã thanh toán phí mất thẻ thành công.'
+              : `Thanh toán chưa được xác nhận (${paymentStatus || 'PENDING'}). Vui lòng thử lại nếu cần.`,
+          });
+          if (paymentStatus === 'PAID') {
+            localStorage.removeItem('vinparking_lost_card_active_incident');
+          }
+        })
+        .catch((error) => {
+          if (active) setPaymentResult({ success: false, message: error.response?.data?.message || 'Không thể xác minh thanh toán với hệ thống.' });
+        })
+        .finally(() => { if (active) setVerifying(false); });
+      return () => { active = false; };
+    }
+
     if (paymentType && paymentType !== "MONTHLY_TICKET") {
       setPaymentResult({
         success: false,

@@ -217,6 +217,7 @@ export default function GateOutPanel() {
     }
 
     setConfirming(true);
+    const checkoutLostCard = lostCard && !isPackageCard;
     try {
       const verifyRes = await staffApi.verifyLicensePlate(exitPlate.trim().toUpperCase(), selectedFiles[0]);
       if (verifyRes.matched) {
@@ -234,14 +235,15 @@ export default function GateOutPanel() {
         cardCode: cardCode.trim(),
         plateNumber: exitPlate.trim().toUpperCase(),
         paymentMethod: selectedMethod,
-        lostCard: lostCard,
+        // Phí mất thẻ tháng được thanh toán ở luồng incident riêng.
+        lostCard: checkoutLostCard,
         time: simulatedTime
       });
-      const paidAmount = getSessionAmount(res) ?? ((isPackageCard ? 0 : (parkingCharge?.amount || 0)) + (lostCard ? 50000 : 0));
+      const paidAmount = getSessionAmount(res) ?? ((isPackageCard ? 0 : (parkingCharge?.amount || 0)) + (checkoutLostCard ? 50000 : 0));
 
       // Tự động đưa thẻ về trạng thái AVAILABLE (còn trống) đối với TẤT CẢ CÁC THẺ sau khi checkout xong (nếu không mất thẻ)
       try {
-        if (!lostCard) {
+        if (!checkoutLostCard) {
           const cleanCode = cardCode.trim().toUpperCase();
           const cardsData = await managerApi.getParkingCards();
           const parsedCards = Array.isArray(cardsData) ? cardsData : [];
@@ -268,7 +270,7 @@ export default function GateOutPanel() {
         }
       }
 
-      const isFree = isPackageCard && !lostCard;
+      const isFree = isPackageCard && !checkoutLostCard;
       if (selectedMethod === 'CASH' || isFree) {
         const msg = isFree
           ? `✅ Thẻ ${cardCode.startsWith('VIP-') ? 'VIP' : cardCode.startsWith('EMP-') ? 'Nhân viên' : 'Tháng'} hợp lệ — Xe ${exitPlate} ra cổng MIỄN PHÍ!`
@@ -348,7 +350,7 @@ export default function GateOutPanel() {
 
   // Kiểm tra thẻ tháng hoặc VIP hoặc Nhân viên (miễn phí, không cần thu tiền)
   const isPackageCard = (cardCode || '').startsWith('MONTH-') || (cardCode || '').startsWith('VIP-') || (cardCode || '').startsWith('EMP-');
-  const showPaymentPanel = !isPackageCard || lostCard;
+  const showPaymentPanel = !isPackageCard;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem', padding: '1.25rem', background: 'var(--vin-bg-deep)', minHeight: '100vh', color: 'var(--vin-text-main)' }}>
@@ -497,7 +499,7 @@ export default function GateOutPanel() {
 
           <div style={{ borderTop: '1px solid #e2e8f0', margin: '1rem 0' }} />
 
-          {activeSession && (
+          {activeSession && !isPackageCard && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: '#fffbeb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fde68a' }}>
               <input
                 type="checkbox"
@@ -509,6 +511,12 @@ export default function GateOutPanel() {
               <label htmlFor="lostCardCheckbox" style={{ color: '#d97706', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none', margin: 0 }}>
                 ⚠️ Báo mất thẻ vật lý (Phí: 50.000 đ)
               </label>
+            </div>
+          )}
+
+          {activeSession && isPackageCard && (
+            <div style={{ background: '#fff7ed', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', color: '#9a3412', fontSize: '0.82rem', fontWeight: 600 }}>
+              ℹ️ Phí mất thẻ tháng được xử lý riêng tại mục <strong>Báo cáo sự cố</strong>, không cộng vào thanh toán checkout.
             </div>
           )}
 

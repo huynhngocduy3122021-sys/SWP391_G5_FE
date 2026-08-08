@@ -13,6 +13,7 @@ export default function GateInPanel() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
   const [monthlyCardLookupStatus, setMonthlyCardLookupStatus] = useState(null);
+  const [cardBlockedReason, setCardBlockedReason] = useState('');
 
   const [licensePlate, setLicensePlate] = useState('');
   const [cardCode, setCardCode] = useState('');
@@ -126,12 +127,18 @@ export default function GateInPanel() {
           simulatedTime || undefined
         );
 
-        setMonthlyCardLookupStatus(result.lookupStatus);
+        const lookupStatus = String(result.lookupStatus || result.status || '').toUpperCase();
+        const cardStatus = String(result.cardStatus || result.parkingCardStatus || result.card?.status || '').toUpperCase();
+        const isLostCard = ['LOST', 'LOST_PENDING_VERIFICATION', 'LOST_PENDING', 'BLOCKED_LOST'].includes(cardStatus)
+          || ['LOST', 'LOST_PENDING_VERIFICATION', 'LOST_PENDING', 'BLOCKED_LOST'].includes(lookupStatus);
 
-        if (result.lookupStatus !== 'ACTIVE') {
+        setMonthlyCardLookupStatus(isLostCard ? 'LOST' : lookupStatus);
+        setCardBlockedReason(isLostCard ? (result.message || 'Thẻ đã được báo mất và đang bị khóa, không thể check-in.') : '');
+
+        if (isLostCard || lookupStatus !== 'ACTIVE') {
           clearRegisteredVehicle();
           setIsMonthlyOrVipCard(true);
-          toast.error(result.message);
+          toast.error(isLostCard ? (result.message || 'Thẻ đã bị mất, không thể check-in.') : (result.message || 'Thẻ không hợp lệ hoặc không hoạt động.'));
           return false;
         }
 
@@ -146,6 +153,9 @@ export default function GateInPanel() {
         return true;
       } catch (err) {
         console.error("Lỗi khi tìm kiếm thông tin thẻ:", err);
+        const message = err.response?.data?.message || 'Không thể xác thực thẻ. Vui lòng kiểm tra lại.';
+        setCardBlockedReason(message);
+        toast.error(message);
         return false;
       }
     }
@@ -157,6 +167,7 @@ export default function GateInPanel() {
     const cleanCode = cardCode.trim().toUpperCase();
 
     setMonthlyCardLookupStatus(null);
+    setCardBlockedReason('');
 
     if (!cleanCode) {
       if (isAutoPopulated) {
@@ -229,6 +240,9 @@ export default function GateInPanel() {
     if (isBooking && !bookingCode.trim()) return toast.error('Vui lòng nhập mã đặt chỗ!');
     if (!isMOrV && !licensePlate) return toast.error('Vui lòng nhập biển số xe!');
     if (!cardCode) return toast.error('Vui lòng nhập mã thẻ!');
+    if (monthlyCardLookupStatus === 'LOST' || cardBlockedReason) {
+      return toast.error(cardBlockedReason || 'Thẻ đã bị mất, không thể check-in.');
+    }
     if (!isMOrV && !vehicleTypeId) return toast.error('Vui lòng chọn loại xe!');
     if (selectedFiles.length === 0) return toast.error('Vui lòng chụp/tải lên ít nhất 1 ảnh phương tiện để AI kiểm tra!');
 
@@ -332,7 +346,8 @@ export default function GateInPanel() {
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label className="small fw-bold text-muted mb-1">MÃ THẺ (QUẸT THẺ)</Form.Label>
-                    <Form.Control type="text" className="bg-light text-dark border-0 fw-bold" value={cardCode} onChange={e => setCardCode(e.target.value)} style={{ boxShadow: 'inset 0 0 0 1px var(--vin-border)' }} />
+                  <Form.Control type="text" className={`fw-bold ${cardBlockedReason ? 'bg-danger bg-opacity-10 text-danger border-danger' : 'bg-light text-dark border-0'}`} value={cardCode} onChange={e => setCardCode(e.target.value)} style={!cardBlockedReason ? { boxShadow: 'inset 0 0 0 1px var(--vin-border)' } : {}} />
+                  {cardBlockedReason && <div className="mt-2 p-2 rounded border border-danger bg-danger bg-opacity-10 text-danger small fw-semibold">🚫 {cardBlockedReason}</div>}
                   </Form.Group>
                   <Row className="g-3 mb-3">
                     <Col xs={6}>
@@ -392,7 +407,7 @@ export default function GateInPanel() {
               )}
             </Form.Group>
 
-            <Button variant="success" size="lg" className="w-100 fw-bold d-flex align-items-center justify-content-center gap-2" disabled={submitting || (checkIsMonthlyOrVip(cardCode) && monthlyCardLookupStatus !== 'ACTIVE' && monthlyCardLookupStatus !== null)} onClick={handleConfirm}>
+            <Button variant="success" size="lg" className="w-100 fw-bold d-flex align-items-center justify-content-center gap-2" disabled={submitting || Boolean(cardBlockedReason) || (checkIsMonthlyOrVip(cardCode) && monthlyCardLookupStatus !== 'ACTIVE' && monthlyCardLookupStatus !== null)} onClick={handleConfirm}>
               {submitting ? <Spinner animation="border" size="sm" /> : '⚡'} PHÁT THẺ & MỞ BARIE
             </Button>
           </Card>

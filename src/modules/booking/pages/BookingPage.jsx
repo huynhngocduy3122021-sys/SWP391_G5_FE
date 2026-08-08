@@ -467,7 +467,7 @@ export default function BookingPage() {
                   <h6 className="text-muted fw-bold small mb-2 d-flex align-items-center gap-2"><span>🕒</span> THỜI GIAN</h6>
                   <p className="text-muted small mb-1">Thời gian đến dự kiến</p>
                   <strong className="text-primary d-block mb-2">{timeSlot}, {formatVietnameseDate(arrivalDate)}</strong>
-                  <p className="text-danger small fst-italic m-0">* Slot đặt trước sẽ được giữ tối đa 30 phút. Vui lòng check-in đúng giờ.</p>
+                  <p className="text-danger small fst-italic m-0">* Slot đặt trước sẽ được giữ tối đa 1 tiếng. Vui lòng check-in đúng giờ.</p>
                 </Col>
 
                 <Col md={6} className="ps-md-4">

@@ -17,6 +17,7 @@ const TYPE_LABELS = {
 const STATUS_CFG = {
   PENDING:     { label: 'Chờ xử lý',   bg: '#fef3c7', color: '#92400e' },
   IN_PROGRESS: { label: 'Đang xử lý',  bg: '#dbeafe', color: 'var(--vin-primary)' },
+  WAITING_PAYMENT: { label: 'Chờ thanh toán', bg: '#ffedd5', color: '#c2410c' },
   RESOLVED:    { label: 'Đã xử lý',    bg: '#dcfce7', color: '#166534' },
   CANCELLED:   { label: 'Đã hủy',      bg: '#f1f5f9', color: '#64748b' },
 };
@@ -36,11 +37,45 @@ const fmtDt = (dt) => {
 
 const isMonthlyLostCardIncident = (incident) => {
   if (!incident || incident.incidentType !== 'LOST_CARD') return false;
-  const cardType = String(incident.parkingCardType || incident.cardType || '').toUpperCase();
-  const cardCode = String(incident.parkingCardCode || incident.cardCode || '').toUpperCase();
-  return incident.monthlyCardReplacementRequired === true
-    && (cardType === 'MONTHLY' || cardCode.startsWith('MONTH-'));
+  const cardType = incident.cardType || incident.parkingCardType || incident.card?.cardType;
+  return String(cardType || '').toUpperCase() === 'MONTHLY';
 };
+
+const getIncidentCardType = (incident) => String(
+  incident?.cardType || incident?.parkingCardType || incident?.card?.cardType || ''
+).toUpperCase();
+const isRegularLostCardIncident = (incident) => Boolean(
+  incident?.incidentType === 'LOST_CARD' && getIncidentCardType(incident) === 'REGULAR'
+);
+const getIncidentCardCode = (incident) => incident?.parkingCardCode
+  || incident?.cardCode
+  || incident?.parkingCard?.cardCode
+  || incident?.card?.cardCode
+  || 'Không rõ';
+const formatApiError = (error, fallback) => {
+  const data = error?.response?.data;
+  if (typeof data?.message === 'string') return data.message;
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    try { return JSON.stringify(data); } catch { return fallback; }
+  }
+  return error?.message || fallback;
+};
+
+const getPaymentStatus = (incident) => String(
+  incident?.paymentStatus
+  || incident?.payment?.paymentStatus
+  || incident?.payment?.status
+  || incident?.lostCardPayment?.paymentStatus
+  || ''
+).toUpperCase();
+
+const hasActiveParkingSession = (incident) => Boolean(
+  incident?.parkingSession?.active
+  || String(incident?.parkingSession?.status || incident?.parkingSession?.sessionStatus || '').toUpperCase() === 'ACTIVE'
+  || String(incident?.parkingSessionStatus || incident?.activeSession?.status || '').toUpperCase() === 'ACTIVE'
+  || String(incident?.sessionStatus || '').toUpperCase() === 'ACTIVE'
+);
 
 /* ── main component ──────────────────────── */
 export default function IncidentPanel({ branchId }) {
@@ -75,6 +110,7 @@ export default function IncidentPanel({ branchId }) {
   const [availableCards, setAvailableCards] = useState([]);
   const [replacing, setReplacing] = useState(false);
   const [replaceErr, setReplaceErr] = useState('');
+  const [approvingGuestId, setApprovingGuestId] = useState(null);
 
   useEffect(() => {
     if (!replaceTarget) return undefined;
@@ -115,7 +151,9 @@ export default function IncidentPanel({ branchId }) {
           || replaceTarget.parkingBranch?.id;
 
         setAvailableCards(cards.filter(card => {
-          const cardId = card.parkingCardId || card.id;
+          // Backend yêu cầu đúng parkingCardId, tuyệt đối không dùng card.id.
+          const cardId = card.parkingCardId;
+          if (!cardId) return false;
           const cardBranchId = card.parkingBranchId || card.branchId || card.parkingBranch?.parkingBranchId || card.parkingBranch?.id;
           const cardType = String(card.type || card.cardType || '').toUpperCase();
           const cardCode = String(card.cardCode || '').toUpperCase();
@@ -173,10 +211,15 @@ export default function IncidentPanel({ branchId }) {
         return '';
       };
 
-      setIncidents(cleanBranchId 
-        ? parsed.filter(i => getBranchId(i) === cleanBranchId)
-        : parsed
-      );
+      const scoped = cleanBranchId ? parsed.filter(i => getBranchId(i) === cleanBranchId) : parsed;
+      const hydrated = await Promise.all(scoped.map(async (incident) => {
+        if (incident.incidentType !== 'LOST_CARD' || !incident.incidentId) return incident;
+        try {
+          const detail = await managerApi.getIncidentById(incident.incidentId);
+          return { ...incident, ...detail };
+        } catch { return incident; }
+      }));
+      setIncidents(hydrated);
     } catch {
       setIncidents([]);
     } finally {
@@ -213,12 +256,30 @@ export default function IncidentPanel({ branchId }) {
     if (!resolveNote.trim()) return setResolveErr('Vui lòng nhập ghi chú giải quyết.');
     setResolving(true);
     try {
-      await managerApi.resolveIncident(resolveTarget.incidentId, { resolutionNotes: resolveNote.trim() });
+      await managerApi.resolveIncident(resolveTarget.incidentId, {
+        resolutionNotes: resolveNote.trim(),
+      });
       setResolveTarget(null); setResolveNote(''); fetchIncidents();
     } catch (err) {
       setResolveErr(String(err?.response?.data?.message || err?.response?.data || 'Thao tác thất bại!'));
     } finally {
       setResolving(false);
+    }
+  };
+
+  const handleApproveGuestLostCard = async (incident) => {
+    if (!isRegularLostCardIncident(incident) || incident.status !== 'PENDING' || approvingGuestId) return;
+    setApprovingGuestId(incident.incidentId);
+    try {
+      await managerApi.verifyLostCard(incident.incidentId);
+      await managerApi.resolveIncident(incident.incidentId, {
+        resolutionNotes: 'Đã duyệt và hoàn tất báo cáo mất thẻ guest.',
+      });
+      await fetchIncidents();
+    } catch (err) {
+      window.alert(formatApiError(err, 'Không thể duyệt báo cáo guest.'));
+    } finally {
+      setApprovingGuestId(null);
     }
   };
 
@@ -247,7 +308,7 @@ export default function IncidentPanel({ branchId }) {
       await managerApi.replaceLostMonthlyCard(replaceTarget.incidentId, replacementCardId);
       setReplaceTarget(null); setReplacementCardId(''); fetchIncidents();
     } catch (err) {
-      setReplaceErr(String(err?.response?.data?.message || err?.response?.data || 'Không thể cấp thẻ thay thế!'));
+      setReplaceErr(formatApiError(err, 'Không thể cấp thẻ thay thế!'));
     } finally {
       setReplacing(false);
     }
@@ -349,10 +410,19 @@ export default function IncidentPanel({ branchId }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(i => {
-                const sc = STATUS_CFG[i.status]   || { label: i.status,   bg: '#f1f5f9', color: '#64748b' };
-                const pc = PRIORITY_CFG[i.priority] || { label: i.priority, color: mt.textMuted };
-                const canAct = i.status === 'PENDING' || i.status === 'IN_PROGRESS';
+                {filtered.map(i => {
+                  const sc = STATUS_CFG[i.status]   || { label: i.status,   bg: '#f1f5f9', color: '#64748b' };
+                  const pc = PRIORITY_CFG[i.priority] || { label: i.priority, color: mt.textMuted };
+                  const canAct = i.status === 'PENDING' || i.status === 'IN_PROGRESS';
+                  const isLostCard = i.incidentType === 'LOST_CARD';
+                  const canLostCardAct = canAct || (isLostCard && i.status === 'WAITING_PAYMENT');
+                  const isLostCardPaid = isLostCard && getPaymentStatus(i) === 'PAID';
+                  const canResolveLostCard = isLostCard
+                    && (getIncidentCardType(i) === 'REGULAR'
+                      ? i.status === 'IN_PROGRESS'
+                      : Boolean(i.replacementCardId)
+                        && getPaymentStatus(i) === 'PAID'
+                        );
                 return (
                   <tr key={i.incidentId} style={{ borderBottom: `1px solid ${mt.border}` }}>
                     <td style={{ padding: '8px', color: mt.textMuted }}>#{i.incidentId}</td>
@@ -375,22 +445,35 @@ export default function IncidentPanel({ branchId }) {
                         style={{ border: `1px solid ${mt.border}`, background: '#fff', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem' }}>
                         👁 Chi tiết
                       </button>
-                      {canAct && (
+                      {isRegularLostCardIncident(i) && i.status === 'PENDING' && (
+                        <button type="button" onClick={() => handleApproveGuestLostCard(i)} disabled={approvingGuestId === i.incidentId}
+                          style={{ border: '1px solid #86efac', background: '#f0fdf4', color: '#166534', borderRadius: 6, padding: '3px 7px', cursor: approvingGuestId === i.incidentId ? 'wait' : 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
+                          {approvingGuestId === i.incidentId ? 'Đang duyệt...' : '✓ Duyệt'}
+                        </button>
+                      )}
+                      {canLostCardAct && (
                         <>
-                          <button type="button" onClick={() => { setResolveTarget(i); setResolveNote(''); setResolveErr(''); }}
+                          {(!isLostCard || canResolveLostCard) && <button type="button" onClick={() => { setResolveTarget(i); setResolveNote(''); setResolveErr(''); }}
                             style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', color: mt.success, borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
                             ✓ Giải quyết
+                          </button>}
+                          <button type="button" disabled={isLostCardPaid} onClick={() => { setCancelTarget(i); setCancelReason(''); setCancelErr(''); }}
+                            title={isLostCardPaid ? 'Không thể hủy report sau khi thanh toán thành công' : 'Hủy report'}
+                            style={{ border: `1px solid ${isLostCardPaid ? '#cbd5e1' : '#fca5a5'}`, background: isLostCardPaid ? '#f8fafc' : '#fff5f5', color: isLostCardPaid ? '#94a3b8' : mt.danger, borderRadius: 6, padding: '3px 7px', cursor: isLostCardPaid ? 'not-allowed' : 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
+                            {isLostCardPaid ? '🔒 Đã thanh toán' : '✕ Hủy'}
                           </button>
-                          <button type="button" onClick={() => { setCancelTarget(i); setCancelReason(''); setCancelErr(''); }}
-                            style={{ border: '1px solid #fca5a5', background: '#fff5f5', color: mt.danger, borderRadius: 6, padding: '3px 7px', cursor: 'pointer', marginRight: 4, fontSize: '0.72rem', fontWeight: 600 }}>
-                            ✕ Hủy
-                          </button>
-                          {isMonthlyLostCardIncident(i) && !i.replacementCardId && (
-                            <button type="button" onClick={() => setReplaceTarget(i)}
-                              style={{ border: '1px solid #93c5fd', background: '#eff6ff', color: 'var(--vin-primary)', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600 }}>
-                              💳 Thay thẻ
-                            </button>
-                          )}
+                          {isMonthlyLostCardIncident(i) && !i.replacementCardId && (() => {
+                            const activeSession = hasActiveParkingSession(i);
+                            const verified = String(i.status).toUpperCase() === 'IN_PROGRESS';
+                            const paid = getPaymentStatus(i) === 'PAID';
+                            const disabled = !verified || !paid;
+                            const label = i.status === 'PENDING' ? '⏳ Chờ xác minh/thanh toán' : !paid ? '⏳ Chờ thanh toán' : !verified ? '⏳ Chờ xử lý' : activeSession ? '💳 Cấp thẻ & chuyển session' : '💳 Cấp thẻ';
+                            return <button type="button" disabled={disabled} onClick={() => setReplaceTarget(i)}
+                              title={!verified ? 'Manager cần xác minh báo cáo trước' : !paid ? 'Chỉ cấp thẻ sau khi payment PAID' : activeSession ? 'Cấp thẻ mới và chuyển session đang hoạt động' : 'Cấp thẻ thay thế'}
+                              style={{ border: `1px solid ${disabled ? '#cbd5e1' : '#93c5fd'}`, background: disabled ? '#f8fafc' : '#eff6ff', color: disabled ? '#94a3b8' : 'var(--vin-primary)', borderRadius: 6, padding: '3px 7px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '0.72rem', fontWeight: 600 }}>
+                              {label}
+                            </button>;
+                          })()}
                         </>
                       )}
                     </td>
@@ -422,6 +505,10 @@ export default function IncidentPanel({ branchId }) {
                 ['Nhân viên xử lý', detailTarget.assignedStaffName || 'Chưa phân công'],
                 ['Chi nhánh',     detailTarget.parkingBranchName || '—'],
                 ['Thẻ liên quan', detailTarget.parkingCardCode || '—'],
+                detailTarget.incidentType === 'LOST_CARD' && isMonthlyLostCardIncident(detailTarget) ? ['Thanh toán phí mất thẻ', getPaymentStatus(detailTarget) || 'Chưa có'] : null,
+                detailTarget.incidentType === 'LOST_CARD' && isMonthlyLostCardIncident(detailTarget) ? ['Phương thức thanh toán', detailTarget.paymentMethod || detailTarget.payment?.paymentMethod || '—'] : null,
+                detailTarget.incidentType === 'LOST_CARD' && isMonthlyLostCardIncident(detailTarget) ? ['Số tiền', `${Number(detailTarget.payment?.amount || detailTarget.lostCardFee || 50000).toLocaleString('vi-VN')} VND`] : null,
+                detailTarget.incidentType === 'LOST_CARD' && isMonthlyLostCardIncident(detailTarget) && (detailTarget.receiptNumber || detailTarget.payment?.receiptNumber) ? ['Số biên lai', detailTarget.receiptNumber || detailTarget.payment?.receiptNumber] : null,
                 detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementCardId ? ['Thẻ thay thế', detailTarget.replacementCardCode || `#${detailTarget.replacementCardId}`] : null,
                 detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementTicketId ? ['Mã vé tháng mới', `#${detailTarget.replacementTicketId}`] : null,
                 detailTarget.incidentType === 'LOST_CARD' && detailTarget.replacementAt ? ['Thời gian cấp thẻ', fmtDt(detailTarget.replacementAt)] : null,
@@ -554,8 +641,8 @@ export default function IncidentPanel({ branchId }) {
               {replaceErr && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.5rem 0.75rem', color: mt.danger, fontSize: '0.8rem', marginBottom: '1rem' }}>⚠ {replaceErr}</div>}
               
               <div style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
-                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Thẻ bị mất: <strong style={{ color: mt.danger }}>{replaceTarget.parkingCardCode || 'Không rõ'}</strong></div>
-                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Loại thẻ: <strong>{replaceTarget.parkingCardType || 'Không rõ'}</strong></div>
+                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Thẻ bị mất: <strong style={{ color: mt.danger }}>{getIncidentCardCode(replaceTarget)}</strong></div>
+                <div style={{ color: mt.textMuted, marginBottom: 4 }}>Loại thẻ: <strong>{replaceTarget.cardType || replaceTarget.parkingCardType || replaceTarget.card?.cardType || 'MONTHLY'}</strong></div>
                 <div style={{ color: mt.textMuted }}>Chi nhánh: <strong>{replaceTarget.parkingBranchName || replaceTarget.branchName || 'Không rõ'}</strong></div>
               </div>
 
@@ -569,7 +656,7 @@ export default function IncidentPanel({ branchId }) {
               >
                 <option value="">-- Chọn thẻ khả dụng --</option>
                 {availableCards.map(c => (
-                  <option key={c.parkingCardId || c.id} value={c.parkingCardId || c.id}>
+                  <option key={c.parkingCardId} value={c.parkingCardId}>
                     {c.cardCode} (Loại: {c.type})
                   </option>
                 ))}

@@ -16,6 +16,7 @@ import AuthPage from './modules/auth/pages/AuthPage';
 import PricingPage from './modules/pricing/pages/PricingPage';
 import PaymentResultPage from './modules/payment/pages/PaymentResultPage';
 import NotFoundPage from './modules/not-found/pages/NotFoundPage';
+import LostCardReportPage from './modules/lost-card/pages/LostCardReportPage';
 
 // --- User, Manager & Staff Pages ---
 import DashboardPage from './modules/user-dashboard/pages/DashboardPage';
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/locations" element={<PublicLayout><SearchPage /></PublicLayout>} />
           <Route path="/pricing" element={<PublicLayout><PricingPage /></PublicLayout>} />
           <Route path="/payment-result" element={<PublicLayout><PaymentResultPage /></PublicLayout>} />
+          <Route path="/lost-card-report" element={<PublicLayout><LostCardReportPage /></PublicLayout>} />
           <Route path="/auth" element={<AuthPage />} />
 
           {/* User Routes */}

@@ -28,6 +28,32 @@ const getDaysLeft = (dateStr) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
+const getLostCardAmount = (incident) => incident?.lostCardFee
+  ?? incident?.payment?.amount
+  ?? incident?.paymentAmount
+  ?? incident?.amount;
+const getLostCardPaymentStatus = (incident) => String(
+  incident?.paymentStatus || incident?.payment?.paymentStatus || incident?.payment?.status || incident?.lostCardPayment?.paymentStatus || ''
+).toUpperCase();
+const getLostCardPaymentMethod = (incident) => String(
+  incident?.paymentMethod || incident?.payment?.paymentMethod || incident?.lostCardPayment?.paymentMethod || ''
+).toUpperCase();
+const getLostCardCardType = (incident) => String(
+  incident?.cardType || incident?.parkingCardType || incident?.card?.cardType || ''
+).toUpperCase();
+const hasActiveLostCardSession = (incident) => Boolean(
+  incident?.parkingSession?.active
+  || String(incident?.parkingSession?.status || incident?.parkingSession?.sessionStatus || '').toUpperCase() === 'ACTIVE'
+  || String(incident?.parkingSessionStatus || incident?.sessionStatus || '').toUpperCase() === 'ACTIVE'
+);
+const getLostCardStatusLabel = (status) => ({
+  PENDING: 'Đang xử lý',
+  WAITING_PAYMENT: 'Chờ thanh toán',
+  IN_PROGRESS: 'Đang xử lý',
+  RESOLVED: 'Đã hoàn tất',
+  CANCELLED: 'Đã hủy',
+}[String(status || '').toUpperCase()] || status || 'Chưa xác định');
+
 export default function VehicleSection() {
   const location = useLocation();
   const userId = localStorage.getItem('userId');
@@ -46,6 +72,14 @@ export default function VehicleSection() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [formData, setFormData] = useState({ licensePlate: '', vehicleColor: '', vehicleBrand: '', vehicleTypeId: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [lostCardTarget, setLostCardTarget] = useState(null);
+  const [lostCardNote, setLostCardNote] = useState('');
+  const [reportingLostCard, setReportingLostCard] = useState(false);
+  const [lostCardIncident, setLostCardIncident] = useState(null);
+  const [lostCardPaymentLoading, setLostCardPaymentLoading] = useState(false);
+  const [lostCardGuestCode, setLostCardGuestCode] = useState('');
+  const [lostCardGuestPlate, setLostCardGuestPlate] = useState('');
+  const [lostCardIncidentsByTicket, setLostCardIncidentsByTicket] = useState({});
 
   // Subscribe / Renew Modal
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
@@ -78,7 +112,35 @@ export default function VehicleSection() {
       ]);
       const allVeh = Array.isArray(vehRes) ? vehRes : (vehRes?.content || vehRes?.data || []);
       setVehicles(allVeh.filter(v => String(v.userId) === String(userId) && !v.deleted));
-      setMyTickets(Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || ticketsRes?.data || []));
+      const nextTickets = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.content || ticketsRes?.data || []);
+      setMyTickets(nextTickets);
+      nextTickets.forEach((ticket) => {
+        const ticketId = ticket.monthlyTicketId || ticket.ticketId || ticket.id;
+        const currentCardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
+        if (!ticketId || !currentCardCode) return;
+        const markerKey = `vinparking_lost_card_${ticketId}`;
+        const markerRaw = localStorage.getItem(markerKey);
+        if (!markerRaw) return;
+        try {
+          const marker = JSON.parse(markerRaw);
+          if (marker.oldCardCode && String(marker.oldCardCode) !== String(currentCardCode) && !marker.notified) {
+            toast.success(`Thẻ mới ${currentCardCode} đã được cấp thay thế cho thẻ bị mất ${marker.oldCardCode}.`);
+            localStorage.setItem(markerKey, JSON.stringify({ ...marker, notified: true, replacementCardCode: currentCardCode }));
+          }
+        } catch { localStorage.removeItem(markerKey); }
+      });
+      const incidentEntries = await Promise.all(nextTickets.map(async (ticket) => {
+        const ticketId = ticket.monthlyTicketId || ticket.ticketId || ticket.id;
+        const currentCardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
+        if (!ticketId || !currentCardCode) return null;
+        try {
+          const marker = JSON.parse(localStorage.getItem(`vinparking_lost_card_${ticketId}`) || 'null');
+          if (!marker?.incidentId || String(marker.oldCardCode) !== String(currentCardCode)) return null;
+          const incident = await parkingApi.getIncidentById(marker.incidentId);
+          return [String(ticketId), incident];
+        } catch { return null; }
+      }));
+      setLostCardIncidentsByTicket(Object.fromEntries(incidentEntries.filter(Boolean)));
       setMyRequests(Array.isArray(reqsRes) ? reqsRes : (reqsRes?.content || reqsRes?.data || []));
 
       if (typeRes) {
@@ -460,6 +522,146 @@ export default function VehicleSection() {
     return '';
   };
 
+  const handleReportLostCard = async (e) => {
+    e.preventDefault();
+    if (!lostCardTarget || reportingLostCard) return;
+
+    const cardCode = lostCardTarget.parkingCard?.cardCode || lostCardTarget.cardCode;
+    const monthlyTicketId = lostCardTarget.monthlyTicketId || lostCardTarget.ticketId || lostCardTarget.id;
+    const parkingCardId = lostCardTarget.parkingCard?.parkingCardId
+      || lostCardTarget.parkingCard?.id
+      || lostCardTarget.parkingCardId;
+    const parkingBranchId = lostCardTarget.parkingCard?.parkingBranch?.parkingBranchId
+      || lostCardTarget.parkingCard?.parkingBranch?.branchId
+      || lostCardTarget.parkingCard?.parkingBranch?.id
+      || lostCardTarget.parkingCard?.parkingBranchId
+      || lostCardTarget.parkingBranch?.parkingBranchId
+      || lostCardTarget.parkingBranchId
+      || lostCardTarget.branch?.parkingBranchId
+      || lostCardTarget.branchId;
+    const vehicleId = lostCardTarget.vehicle?.vehicleId
+      || lostCardTarget.vehicle?.vehiclesId
+      || lostCardTarget.vehicle?.id
+      || lostCardTarget.vehicleId
+      || lostCardTarget.vehiclesId;
+    const activeSession = lostCardTarget.parkingSession
+      || lostCardTarget.activeParkingSession
+      || lostCardTarget.session;
+
+    if (!cardCode) {
+      toast.error('Không tìm thấy mã thẻ tháng để báo mất.');
+      return;
+    }
+    if (!parkingBranchId) {
+      toast.error('Thẻ tháng không có thông tin parkingBranchId. Không thể báo mất thẻ.');
+      return;
+    }
+
+    setReportingLostCard(true);
+    try {
+      const response = await parkingApi.reportLostMonthlyCard({
+        cardType: 'MONTHLY',
+        vehicleId,
+        parkingLotId: parkingBranchId,
+        licensePlate: lostCardTarget.vehicle?.licensePlate || lostCardTarget.licensePlate,
+        lostStage: activeSession?.status === 'ACTIVE' ? 'INSIDE_PARKING' : 'BEFORE_ENTRY',
+        lostAt: new Date().toISOString(),
+        cardCode,
+        monthlyTicketId,
+        parkingCardId,
+        parkingBranchId: Number(parkingBranchId),
+        description: lostCardNote.trim() || `Khách hàng báo mất thẻ tháng ${cardCode}`
+      });
+      const incidentId = response?.incidentId || response?.id || response?.incident?.incidentId;
+      if (incidentId) {
+        const detail = await parkingApi.getIncidentById(incidentId).catch(() => response?.incident || response);
+        setLostCardIncident(detail);
+      }
+      if (monthlyTicketId) {
+        localStorage.setItem(`vinparking_lost_card_${monthlyTicketId}`, JSON.stringify({ oldCardCode: cardCode, incidentId, notified: false }));
+      }
+      toast.success('Đã gửi báo cáo mất thẻ. Vui lòng chờ nhân viên xác minh và tạo phí thanh toán.');
+      setLostCardNote('');
+      await loadData();
+    } catch (err) {
+      console.error('Report lost monthly card error:', err);
+      const msg = err.response?.data?.message || err.response?.data || 'Không thể gửi báo cáo mất thẻ.';
+      toast.error(typeof msg === 'string' ? msg : 'Không thể gửi báo cáo mất thẻ.');
+    } finally {
+      setReportingLostCard(false);
+    }
+  };
+
+  const handleOpenLostCard = async (ticket) => {
+    setLostCardTarget(ticket);
+    setLostCardIncident(null);
+    setLostCardNote('');
+    setLostCardGuestCode('');
+    setLostCardGuestPlate(ticket.vehicle?.licensePlate || ticket.licensePlate || '');
+    const ticketId = ticket.monthlyTicketId || ticket.ticketId || ticket.id;
+    if (!ticketId) return;
+    try {
+      const marker = JSON.parse(localStorage.getItem(`vinparking_lost_card_${ticketId}`) || 'null');
+      const incidentId = marker?.incidentId;
+      if (incidentId) {
+        const detail = await parkingApi.getIncidentById(incidentId);
+        // Báo cáo đã thanh toán là lịch sử của thẻ cũ. Khi user bấm
+        // "Báo mất thẻ" lần nữa, phải mở form để tạo incident mới.
+        // Marker vẫn được giữ lại để loadData thông báo khi thẻ thay thế được cấp.
+        const currentCardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
+        const detailStatus = String(detail?.status || '').toUpperCase();
+        if (String(marker?.oldCardCode) === String(currentCardCode)
+          && !['RESOLVED', 'CANCELLED'].includes(detailStatus)) {
+          setLostCardIncident(detail);
+        }
+      }
+    } catch { /* Báo cáo mới chưa có incident hoặc backend tạm thời chưa trả chi tiết. */ }
+  };
+
+  const handleLostCardPayment = async () => {
+    const incidentId = lostCardIncident?.incidentId || lostCardIncident?.id;
+    const status = String(lostCardIncident?.status || '').toUpperCase();
+    const paymentStatus = getLostCardPaymentStatus(lostCardIncident);
+    if (!incidentId || !['PENDING', 'WAITING_PAYMENT'].includes(status) || ['PAID', 'PENDING', 'CASH_PENDING_VERIFICATION'].includes(paymentStatus) || lostCardPaymentLoading) return;
+    const activeSession = hasActiveLostCardSession(lostCardIncident);
+    if (activeSession && (!lostCardGuestCode.trim() || !lostCardGuestPlate.trim())) {
+      toast.error('Vui lòng nhập mã thẻ guest và biển số để checkout mất thẻ.');
+      return;
+    }
+    setLostCardPaymentLoading(true);
+    try {
+      const payment = activeSession
+        ? await parkingApi.createLostCardGuestCheckout(incidentId, {
+          guestCardCode: lostCardGuestCode.trim(),
+          licensePlate: lostCardGuestPlate.trim(),
+        })
+        : await parkingApi.createLostCardPayment(incidentId);
+      if (!payment?.paymentUrl) throw new Error('Không nhận được paymentUrl từ backend.');
+      // Một số callback VNPay không trả incidentId trên URL, lưu lại để trang
+      // kết quả vẫn xác minh trạng thái trực tiếp với backend.
+      localStorage.setItem('vinparking_lost_card_active_incident', String(incidentId));
+      window.location.assign(payment.paymentUrl);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Không thể tạo link thanh toán phí mất thẻ.');
+    } finally { setLostCardPaymentLoading(false); }
+  };
+
+  const handleCancelLostCard = async () => {
+    const incidentId = lostCardIncident?.incidentId || lostCardIncident?.id;
+    const status = String(lostCardIncident?.status || '').toUpperCase();
+    const paymentStatus = getLostCardPaymentStatus(lostCardIncident);
+    if (!incidentId || !['PENDING', 'IN_PROGRESS', 'WAITING_PAYMENT'].includes(status) || paymentStatus === 'PAID') return;
+    try {
+      await parkingApi.cancelLostCardIncident(incidentId, 'Người dùng yêu cầu hủy báo cáo mất thẻ.');
+      toast.success('Đã hủy báo cáo mất thẻ.');
+      setLostCardTarget(null);
+      setLostCardIncident(null);
+      await loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể hủy báo cáo mất thẻ.');
+    }
+  };
+
   const expiredTickets = allExpiredTickets.filter(expiredTicket => {
     const expiredVehicle = getTicketVehicleIdentity(expiredTicket);
     const expiredPackageKey = getTicketPackageKey(expiredTicket);
@@ -679,6 +881,27 @@ export default function VehicleSection() {
                 const bName = ticket.branch?.branchName || ticket.branchName || ticket.parkingBranchName || '—';
                 const cardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
                 const isCardLost = ticket.parkingCard?.status === 'LOST';
+                const ticketId = ticket.monthlyTicketId || ticket.ticketId || ticket.id;
+                const currentCardCode = ticket.parkingCard?.cardCode || ticket.cardCode;
+                let lostCardMarker = null;
+                try {
+                  lostCardMarker = JSON.parse(localStorage.getItem(`vinparking_lost_card_${ticketId}`) || 'null');
+                } catch { /* marker không hợp lệ sẽ được bỏ qua */ }
+                const isSameReportedCard = Boolean(
+                  lostCardMarker?.oldCardCode &&
+                  String(lostCardMarker.oldCardCode) === String(currentCardCode)
+                );
+                const trackedLostCardIncident = isSameReportedCard
+                  ? lostCardIncidentsByTicket[String(ticketId)]
+                  : null;
+                const trackedStatus = String(trackedLostCardIncident?.status || '').toUpperCase();
+                const hasOpenLostCardReport = ['PENDING', 'WAITING_PAYMENT', 'IN_PROGRESS'].includes(trackedStatus);
+                const isWaitingReplacement = isSameReportedCard
+                  && hasOpenLostCardReport
+                  && getLostCardPaymentStatus(trackedLostCardIncident) === 'PAID';
+                const hasLostCardReport = isSameReportedCard
+                  && Boolean(lostCardMarker?.incidentId)
+                  && hasOpenLostCardReport;
 
                 return (
                   <div key={ticket.monthlyTicketId || ticket.id || idx}
@@ -720,13 +943,19 @@ export default function VehicleSection() {
                           </div>
                         </div>
                         <div className="col-md-4 d-flex flex-column gap-2 align-items-md-end">
-                          {!isCardLost && (
+                          {(!isCardLost || hasLostCardReport || isWaitingReplacement) && (
                             <>
                               <button
                                 className="btn fw-bold px-4 rounded-pill text-white d-flex align-items-center gap-2"
                                 style={{ background: expiring ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#164e63,#0e7490)', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
                                 onClick={() => handleRenewClick(ticket)}>
                                 🔄 Gia hạn gói
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn ${isWaitingReplacement ? 'btn-outline-secondary' : hasLostCardReport ? 'btn-outline-primary' : 'btn-outline-danger'} fw-bold px-4 rounded-pill d-flex align-items-center gap-2`}
+                                onClick={() => handleOpenLostCard(ticket)}>
+                                {isWaitingReplacement ? '⏳ Đang chờ cấp thẻ mới' : hasLostCardReport ? '👁️ Xem báo cáo' : '⚠️ Báo mất thẻ'}
                               </button>
                               {expiring && (
                                 <span className="badge text-warning bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-pill px-3 py-1 small">
@@ -899,6 +1128,73 @@ export default function VehicleSection() {
           </div>
         </div>
       </div>
+
+      {/* === Lost monthly card confirmation === */}
+      {lostCardTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.58)', zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="card border-0 shadow-lg rounded-4 overflow-hidden" style={{ width: '100%', maxWidth: '460px', background: '#fff' }} role="dialog" aria-modal="true" aria-labelledby="lost-card-title">
+            <div className="p-4 border-bottom d-flex align-items-start justify-content-between gap-3" style={{ background: '#fff7ed' }}>
+              <div className="d-flex align-items-start gap-3">
+                <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44, background: '#fee2e2', fontSize: '1.25rem' }}>⚠️</div>
+                <div>
+                  <h5 id="lost-card-title" className="fw-bold text-dark mb-1">Báo mất thẻ tháng</h5>
+                  <p className="small text-muted mb-0">Thẻ sẽ bị khóa để tránh phát sinh lượt sử dụng trái phép.</p>
+                </div>
+              </div>
+              <button type="button" className="btn-close" aria-label="Đóng" disabled={reportingLostCard} onClick={() => setLostCardTarget(null)} />
+            </div>
+            <form onSubmit={handleReportLostCard} className="p-4">
+              <div className="rounded-3 p-3 mb-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div className="d-flex justify-content-between gap-3 mb-2">
+                  <span className="small text-muted">Mã thẻ</span>
+                  <strong className="text-dark">{lostCardTarget.parkingCard?.cardCode || lostCardTarget.cardCode || '—'}</strong>
+                </div>
+                <div className="d-flex justify-content-between gap-3">
+                  <span className="small text-muted">Biển số xe</span>
+                  <strong className="text-dark">{lostCardTarget.vehicle?.licensePlate || lostCardTarget.licensePlate || '—'}</strong>
+                </div>
+                <div className="d-flex justify-content-between gap-3 mt-2 pt-2 border-top">
+                  <span className="small text-muted">Chi nhánh bãi xe</span>
+                  <strong className="text-dark text-end">
+                    {lostCardTarget.parkingCard?.parkingBranch?.branchName
+                      || lostCardTarget.parkingBranch?.branchName
+                      || lostCardTarget.branch?.branchName
+                      || lostCardTarget.parkingCard?.parkingBranchName
+                      || lostCardTarget.parkingBranchName
+                      || '—'}
+                  </strong>
+                </div>
+              </div>
+              {lostCardIncident && (
+                <div className="rounded-3 p-3 mb-3" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                  <><div className="d-flex justify-content-between gap-3 mb-2"><span className="small text-muted">Trạng thái xử lý</span><strong className="text-primary">{getLostCardStatusLabel(lostCardIncident.status)}</strong></div>{String(lostCardIncident.status || '').toUpperCase() === 'PENDING' && <div className="small text-muted mb-2">Báo cáo mất thẻ đang được hệ thống xử lý.</div>}{String(lostCardIncident.status || '').toUpperCase() === 'IN_PROGRESS' && <div className="small text-muted mb-2">Báo cáo đang được xử lý. Manager có thể cấp thẻ mới và chuyển session sang thẻ mới để bạn checkout.</div>}{lostCardIncident.replacementCardId && <div className="small text-success fw-semibold">Thẻ mới đã được cấp. Dùng thẻ mới để checkout.</div>}</>
+                </div>
+              )}
+              {lostCardIncident
+                && getLostCardCardType(lostCardIncident) === 'MONTHLY'
+                && ['PENDING', 'WAITING_PAYMENT'].includes(String(lostCardIncident.status || '').toUpperCase())
+                && !getLostCardPaymentStatus(lostCardIncident)
+                && <div className="rounded-3 p-3 mb-3" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                  <div className="small fw-bold text-warning-emphasis mb-2">Phí xử lý mất thẻ: 50.000 VND</div>
+                  {hasActiveLostCardSession(lostCardIncident) && <>
+                    <div className="small text-muted mb-2">Xe đang trong bãi. Nhập mã thẻ guest và biển số để checkout mất thẻ.</div>
+                    <input className="form-control form-control-sm mb-2" placeholder="Mã thẻ guest" value={lostCardGuestCode} onChange={e => setLostCardGuestCode(e.target.value)} />
+                    <input className="form-control form-control-sm mb-2" placeholder="Biển số xe" value={lostCardGuestPlate} onChange={e => setLostCardGuestPlate(e.target.value)} />
+                  </>}
+                  <button type="button" className="btn btn-primary fw-bold w-100" disabled={lostCardPaymentLoading} onClick={handleLostCardPayment}>
+                    {lostCardPaymentLoading ? 'Đang tạo thanh toán...' : hasActiveLostCardSession(lostCardIncident) ? 'Checkout mất thẻ qua VNPay' : 'Thanh toán phí mất thẻ qua VNPay'}
+                  </button>
+                </div>}
+              {!lostCardIncident && <><label htmlFor="lost-card-note" className="form-label small fw-semibold text-dark">Ghi chú (không bắt buộc)</label><textarea id="lost-card-note" className="form-control mb-3" rows="3" maxLength="500" value={lostCardNote} onChange={e => setLostCardNote(e.target.value)} placeholder="Ví dụ: Thẻ bị thất lạc vào sáng nay..." /><div className="rounded-3 p-3 mb-4 small" style={{ color: '#9a3412', background: '#fff7ed', border: '1px solid #fed7aa' }}>Sau khi xác nhận, bạn không thể tiếp tục dùng thẻ cũ. Ban quản lý sẽ kiểm tra và hướng dẫn cấp thẻ thay thế.</div></>}
+              <div className="d-flex justify-content-end gap-2">
+                {lostCardIncident && ['PENDING', 'IN_PROGRESS'].includes(String(lostCardIncident.status || '').toUpperCase()) && <button type="button" className="btn btn-outline-danger fw-semibold px-4" disabled={reportingLostCard} onClick={handleCancelLostCard}>Hủy báo cáo</button>}
+                <button type="button" className="btn btn-light fw-semibold px-4" disabled={reportingLostCard} onClick={() => setLostCardTarget(null)}>Đóng</button>
+                {!lostCardIncident && <button type="submit" className="btn btn-danger fw-bold px-4" disabled={reportingLostCard}>{reportingLostCard ? 'Đang gửi...' : 'Xác nhận báo mất'}</button>}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* === Vehicle Modal === */}
       {showModal && (

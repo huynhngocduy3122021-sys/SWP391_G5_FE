@@ -26,6 +26,16 @@ const parkingApi = {
   updateVehicle: async (id, data) => (await API.put(`/api/vehicles/${id}`, data)).data,
   deleteVehicle: async (id) => (await API.delete(`/api/vehicles/${id}`)).data,
   getMyMonthlyTickets: async () => (await API.get('/api/monthly-tickets/my-tickets')).data,
+  reportLostMonthlyCard: async (data) => (await API.post('/api/incidents/lost-card', data)).data,
+  getIncidentById: async (incidentId) => (await API.get(`/api/incidents/${incidentId}`)).data,
+  createLostCardPayment: async (incidentId) => (await API.post(`/api/incidents/${incidentId}/lost-card-payment`)).data,
+  createLostCardGuestCheckout: async (incidentId, data) => (await API.post(`/api/incidents/${incidentId}/lost-card/guest-checkout`, {
+    guestCardCode: data.guestCardCode,
+    cardCode: data.guestCardCode,
+    licensePlate: data.licensePlate,
+    plateNumber: data.licensePlate,
+  })).data,
+  cancelLostCardIncident: async (incidentId, cancellationReason) => (await API.put(`/api/incidents/${incidentId}/cancel`, { cancellationReason })).data,
 
   // Monthly Ticket Requests
   submitMonthlyTicketRequest: async (data) => (await API.post('/api/monthly-ticket-requests', data)).data,

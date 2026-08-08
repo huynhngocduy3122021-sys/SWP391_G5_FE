@@ -68,8 +68,15 @@ const managerApi = {
 
   // ── Incident Report ───────────────────────────────────────
   getIncidentReports:       async (params = {}) => (await API.get('/api/incidents', { params })).data,
+  getIncidentById:          async (id)          => (await API.get(`/api/incidents/${id}`)).data,
   createIncidentReport:     async (data)        => (await API.post('/api/incidents', data)).data,
   resolveIncident:          async (id, data)    => (await API.put(`/api/incidents/${id}/resolve`, data)).data,
+  verifyLostCard:           async (id)          => (await API.put(`/api/incidents/${id}/verify-lost-card`)).data,
+  recordLostCardCashPayment: async (id, data) => (await API.post(`/api/incidents/${id}/lost-card-payment/cash`, {
+    amount: 50000,
+    receiptNumber: data.receiptNumber,
+    note: data.note,
+  })).data,
   cancelIncident:           async (id, data)    => (await API.put(`/api/incidents/${id}/cancel`, data)).data,
   assignIncident:           async (id, staffId) => (await API.put(`/api/incidents/${id}/assign`, { staffId: Number(staffId), assignedStaffId: Number(staffId), id: Number(staffId), userId: Number(staffId) })).data,
   getIncidentImages:        async (id)          => (await API.get(`/api/incidents/${id}/images`)).data,
