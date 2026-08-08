@@ -17,6 +17,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
     totalVehicles: 0,
     maxVehicles: 0,
     todayRevenue: 0,
+    todayCashRevenue: 0,
+    todayTransferRevenue: 0,
     bookings: 0,
     exited: 0,
     slotsLeft: 0
@@ -61,7 +63,7 @@ export default function StaffTopbar({ mode, onModeChange }) {
       const staffBranchId = String(capacityData?.parkingBranchId || branchId || localStorage.getItem('parkingBranchId') || '');
       const staffBranchName = String(capacityData?.branchName || localStorage.getItem('parkingBranchName') || '').trim().toLowerCase();
 
-      const todayRevenue = payments
+      const todayPaidPayments = payments
         .filter(payment => {
           const status = String(payment.paymentStatus ?? '').toUpperCase();
           const isPaid = ['PAID', 'SUCCESS', 'COMPLETED'].includes(status)
@@ -77,7 +79,13 @@ export default function StaffTopbar({ mode, onModeChange }) {
           return (staffBranchId && paymentBranchId === staffBranchId)
             || (staffBranchName && paymentBranchName === staffBranchName);
         })
+      const todayCashRevenue = todayPaidPayments
+        .filter(payment => !['VNPAY', 'BANK_TRANSFER', 'TRANSFER', 'ONLINE', 'BANK'].includes(String(payment.paymentMethod || payment.method || payment.paymentType || '').toUpperCase()))
         .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+      const todayTransferRevenue = todayPaidPayments
+        .filter(payment => ['VNPAY', 'BANK_TRANSFER', 'TRANSFER', 'ONLINE', 'BANK'].includes(String(payment.paymentMethod || payment.method || payment.paymentType || '').toUpperCase()))
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+      const todayRevenue = todayCashRevenue + todayTransferRevenue;
 
       // Slots left
       const slotsLeft = Number.isFinite(Number(capacityData?.availableCapacity))
@@ -88,6 +96,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
         totalVehicles: totalVehiclesCount,
         maxVehicles: totalCapacity,
         todayRevenue: todayRevenue,
+        todayCashRevenue,
+        todayTransferRevenue,
         bookings: activeBookings,
         exited: exitedToday,
         slotsLeft: slotsLeft
@@ -151,7 +161,8 @@ export default function StaffTopbar({ mode, onModeChange }) {
       {/* Stats */}
       <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap' }}>
         <StatItem label="TỔNG XE" value={totalVehiclesDisplay} />
-        <StatItem label="DOANH THU HÔM NAY" value={displayStats.todayRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="TIỀN MẶT HÔM NAY" value={displayStats.todayCashRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-success)" />
+        <StatItem label="CHUYỂN KHOẢN HÔM NAY" value={displayStats.todayTransferRevenue.toLocaleString('vi-VN') + ' đ'} color="var(--vin-primary)" />
         <StatItem label="ĐẶT TRƯỚC" value={displayStats.bookings} />
       </div>
 
